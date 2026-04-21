@@ -1,0 +1,19 @@
+[workspace]
+name = "holoviz-skills"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64", "win-64"]
+
+[dependencies]
+python = ">=3.12"
+
+[feature.docs.dependencies]
+zensical = "*"
+
+[feature.docs.tasks]
+build-stubs = "python scripts/build_stubs.py"
+docs = { cmd = "zensical serve", depends-on = ["build-stubs"] }
+docs-build = { cmd = "zensical build", depends-on = ["build-stubs"] }
+
+[environments]
+default = ["docs"]
+docs = ["docs"]
