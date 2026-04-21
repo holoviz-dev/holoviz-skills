@@ -1,4 +1,4 @@
-# HoloViz Claude Skills
+# HoloViz Skills
 
 [![Docs](https://img.shields.io/github/actions/workflow/status/holoviz-dev/holoviz-skills/docs.yml?style=flat-square&branch=main&label=docs)](https://github.com/holoviz-dev/holoviz-skills/actions/workflows/docs.yml)
 

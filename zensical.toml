@@ -1,6 +1,6 @@
 [project]
-site_name = "HoloViz Claude Skills"
-site_description = "A curated collection of Claude Skills for the HoloViz ecosystem — Panel, hvPlot, HoloViews, Param, and more."
+site_name = "HoloViz Skills"
+site_description = "A curated collection of Skills for the HoloViz ecosystem — Panel, hvPlot, HoloViews, Param, and more."
 site_author = "HoloViz"
 repo_url = "https://github.com/holoviz-dev/holoviz-skills"
 repo_name = "holoviz-dev/holoviz-skills"

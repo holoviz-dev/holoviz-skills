@@ -26,7 +26,7 @@ Do not use for: [adjacent task with a better-suited tool, if any].
 ## Instructions
 
 [Core procedure. Use prose for flexible tasks; numbered steps for fragile ones.
-Explain *why* things matter — Claude follows reasoning better than ALL CAPS rules.]
+Explain *why* things matter — agents follows reasoning better than ALL CAPS rules.]
 
 1. [Step one]
 2. [Step two]
