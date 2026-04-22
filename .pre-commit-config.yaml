@@ -1,0 +1,32 @@
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-toml
+      - id: check-json
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: detect-private-key
+      - id: end-of-file-fixer
+        exclude: \.svg$
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        exclude: \.svg$
+        additional_dependencies:
+          - tomli
