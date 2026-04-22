@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# IDEs
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+._*
+
+# Environments
+.env
+.venv/
+venv/
+
+# Pixi
+.pixi/
+pixi.lock
+
+# Build outputs
+/site
+docs/skills/
