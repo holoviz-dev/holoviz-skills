@@ -4,17 +4,17 @@ description: What the skill does AND when to use it, in third person. Example �
 # dependencies: python>=3.8, pandas>=1.5.0   # optional
 ---
 
-<!--
+# Your Skill Name
+
+One-line summary of what this skill does.
+
 Frontmatter rules:
 - name:        ≤64 chars, lowercase + hyphens, no "anthropic" or "claude"
 - description: ≤1024 chars (claude.ai limit), third person, must say WHAT and WHEN
 - dependencies: optional; list packages your scripts need
+- version: optional; add the current version of this skill
+
 Keep this file under ~500 lines. Delete sections you don't need.
--->
-
-# Your Skill Name
-
-One-line summary of what this skill does.
 
 ## When to use
 
