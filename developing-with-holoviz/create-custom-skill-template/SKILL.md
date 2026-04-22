@@ -7,7 +7,7 @@ description: What the skill does AND when to use it, in third person. Example �
 <!--
 Frontmatter rules:
 - name:        ≤64 chars, lowercase + hyphens, no "anthropic" or "claude"
-- description: ≤200 chars (claude.ai limit), third person, must say WHAT and WHEN
+- description: ≤1024 chars (claude.ai limit), third person, must say WHAT and WHEN
 - dependencies: optional; list packages your scripts need
 Keep this file under ~500 lines. Delete sections you don't need.
 -->
