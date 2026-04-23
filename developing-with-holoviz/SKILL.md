@@ -1,6 +1,6 @@
 ---
 name: developing-with-holoviz
-description: "**[REQUIRED]** Use for ALL HoloViz tasks: creating plots, building dashboards and data apps, composing interactive visualizations, building custom components, or using the holoviz-mcp CLI. Provides guidance for HoloViz libraries. Trigger phrases: panel, hvplot, holoviews, param, dashboard, data app, interactive plot, widget, layout, template, pane, .hvplot, hv.element, pn.widgets, pn.pane, pn.layout, pn.template, panel serve, holoviz-mcp."
+description: "Use for ALL HoloViz tasks: creating plots, building dashboards and data apps, composing interactive visualizations, building custom components, or using the holoviz-mcp CLI. Provides guidance for HoloViz libraries. Trigger phrases: panel, hvplot, holoviews, param, dashboard, data app, interactive plot, widget, layout, template, pane, .hvplot, hv.element, pn.widgets, pn.pane, pn.layout, pn.template, panel serve, holoviz-mcp."
 ---
 
 # Developing with HoloViz Tools
@@ -9,18 +9,14 @@ This skill provides guidance for working with the HoloViz ecosystem of tools.
 
 ## When to Use
 
-Invoke this skill when the user's request involves any of the following:
+Invoke this skill for any HoloViz-related task including:
 
-- Creating interactive plots, charts, or visualizations
-- Building dashboards, data apps, or web UIs with Panel
-- Using the `.hvplot` accessor on DataFrames or xarray objects
-- Composing HoloViews elements, overlays, or layouts
-- Adding widgets, panes, or layouts to a Panel application
-- Applying Panel Material UI components
-- Building custom Panel components with JS/React
-- Integrating HoloViews / hvPlot plots inside Panel apps
-- Defining parameterized classes with validated, reactive parameters
-- Using the `holoviz-mcp` CLI for documentation or component introspection
+- **Panel**: dashboards, data apps, widgets, panes, layouts, templates, custom components (JS/React)
+- **hvPlot**: interactive plots using `.hvplot` on DataFrames or xarray
+- **HoloViews**: composing elements, overlays, or layouts
+- **Param**: parameterized classes with validated, reactive parameters
+- **Panel Material UI**: Material UI components
+- **holoviz-mcp CLI**: documentation or component introspection
 
 **Trigger phrases:** `panel`, `hvplot`, `holoviews`, `param`, `dashboard`, `data app`,
 `interactive plot`, `widget`, `layout`, `template`, `pane`, `.hvplot`, `hv.element`,
