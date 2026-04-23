@@ -1,11 +1,11 @@
 ---
 name: developing-with-holoviz
-description: "**[REQUIRED]** Use for ALL HoloViz tasks: creating plots, building dashboards and data apps, composing interactive visualizations, building custom components, or using the holoviz-mcp CLI. Routes to the correct HoloViz sub-skill. Trigger phrases: panel, hvplot, holoviews, param, dashboard, data app, interactive plot, widget, layout, template, pane, .hvplot, hv.element, pn.widgets, pn.pane, pn.layout, pn.template, panel serve, holoviz-mcp."
+description: "**[REQUIRED]** Use for ALL HoloViz tasks: creating plots, building dashboards and data apps, composing interactive visualizations, building custom components, or using the holoviz-mcp CLI. Provides guidance for HoloViz libraries. Trigger phrases: panel, hvplot, holoviews, param, dashboard, data app, interactive plot, widget, layout, template, pane, .hvplot, hv.element, pn.widgets, pn.pane, pn.layout, pn.template, panel serve, holoviz-mcp."
 ---
 
 # Developing with HoloViz Tools
 
-This is a **routing skill** that directs you to the right HoloViz sub-skill for the task at hand.
+This skill provides guidance for working with the HoloViz ecosystem of tools.
 
 ## When to Use
 
@@ -31,69 +31,28 @@ Invoke this skill when the user's request involves any of the following:
 ```
 Step 1: Identify which HoloViz library is involved
     ↓
-Step 2: Load the matching sub-skill
+Step 2: Apply library-specific guidance (sub-skills coming soon)
     ↓
-Step 3: Apply the sub-skill guidance to implement or answer the request
+Step 3: Implement or answer the request using HoloViz best practices
 ```
 
 ### Step 1: Identify the Library
 
-Use the routing table below. A single user request may span multiple libraries
+A single user request may span multiple libraries
 (e.g. plotting data with hvPlot and then embedding the result in a Panel app) —
-load all relevant sub-skills in that case.
+identify all relevant libraries in that case.
 
-### Step 2: Load the Sub-Skill
+### Step 2: Apply Library-Specific Guidance
 
-> **Path note:** Sub-skills are siblings of this skill in your agent's skills directory.
-> Use paths relative to this file: `skills/panel/SKILL.md`, `skills/hvplot/SKILL.md`, etc.
+> **Note:** Detailed sub-skills for each HoloViz library will be available at
+> `skills/panel/SKILL.md`, `skills/hvplot/SKILL.md`, etc. in a future update.
+> For now, refer to the official documentation linked in the Resources section below.
 
-| User Need                                                                        | Sub-skill to Load                                  |
-| -------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Building a Panel dashboard, data app, or web UI                                  | `read skills/panel/SKILL.md`                       |
-| Modern Material UI look and feel in Panel                                        | `read skills/panel-material-ui/SKILL.md`           |
-| Embedding HoloViews / hvPlot plots inside Panel apps, linked selections, streams | `read skills/panel-holoviews/SKILL.md`             |
-| Building custom Panel components (JS, React, AnyWidget)                          | `read skills/panel-custom-components/SKILL.md`     |
-| Quick exploratory plots from DataFrames / xarray with `.hvplot`                  | `read skills/hvplot/SKILL.md`                      |
-| Composing HoloViews elements, overlays, layouts, or DynamicMap                   | `read skills/holoviews/SKILL.md`                   |
-| Defining parameterized / reactive classes with `param`                           | `read skills/param/SKILL.md`                       |
-| Using the `holoviz-mcp` CLI tool                                                 | `read skills/holoviz-mcp-cli/SKILL.md`             |
+### Step 3: Implement the Solution
 
-**Common combinations:**
-
-For **building a dashboard with plots**, load in order:
-
-1. `skills/hvplot/SKILL.md` or `skills/holoviews/SKILL.md`
-2. `skills/panel-holoviews/SKILL.md`
-3. `skills/panel/SKILL.md`
-
-For **a modern-looking Panel app**, load:
-
-1. `skills/panel/SKILL.md`
-2. `skills/panel-material-ui/SKILL.md`
-
-For **a custom interactive widget**, load:
-
-1. `skills/panel/SKILL.md`
-2. `skills/panel-custom-components/SKILL.md`
-
-### Step 3: Apply Sub-Skill Guidance
-
-Follow the instructions in the loaded sub-skill(s) to implement or answer the
-request. Each sub-skill contains best practices, DOs/DON'Ts, code patterns, and
-dependency information specific to that library.
-
-## Skill Map
-
-| Sub-skill                                                      | Covers                                                                                   |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [panel](skills/panel/SKILL.md)                                 | Panel web-app framework: widgets, panes, layouts, templates, reactivity, real-time updates   |
-| [panel-material-ui](skills/panel-material-ui/SKILL.md)             | Modern Material UI components for Panel dashboards and apps                   |
-| [panel-holoviews](skills/panel-holoviews/SKILL.md)                 | Integrating HoloViews / hvPlot plots in Panel; streams, linked selections, responsive layouts  |
-| [panel-custom-components](skills/panel-custom-components/SKILL.md) | Custom Panel components via JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent |
-| [hvplot](skills/hvplot/SKILL.md)                                   | Quick interactive plots from DataFrames / xarray using the `.hvplot` accessor            |
-| [holoviews](skills/holoviews/SKILL.md)                             | Composable, declarative visualizations with HoloViews elements, overlays, and DynamicMap          |
-| [param](skills/param/SKILL.md)                                     | Declarative, typed, validated parameters and reactive class definitions |
-| [holoviz-mcp-cli](skills/holoviz-mcp-cli/SKILL.md)                 | CLI reference for the `holoviz-mcp` command-line tool                   |
+Use HoloViz best practices, official documentation, and examples to implement or answer the
+request. Each library has specific patterns for creating visualizations, building apps,
+and composing interactive elements.
 
 ## Resources
 
