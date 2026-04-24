@@ -113,7 +113,7 @@ If working in a .py file DO always serve the plot with hotreload for manual test
 panel serve path/to/file.py --dev --show
 ```
 
-DONT serve with `python path_to_this_file.py`.
+DON'T serve with `python path_to_this_file.py`.
 
 ## General Instructions
 
@@ -303,6 +303,7 @@ For raster/xarray geo data, prefer `quadmesh` over `image` for non-rectangular p
 
 ```python
 import hvplot.xarray  # noqa
+import cartopy.crs as ccrs
 
 air_ds = hvplot.sampledata.air_temperature('xarray')
 

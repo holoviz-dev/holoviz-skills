@@ -40,9 +40,9 @@ dependency information specific to that library.
 
 ## Skill Map
 
-| Sub-skill                        | Covers                                                                        |
-| -------------------------------- | ----------------------------------------------------------------------------- |
-| [hvplot](skills/hvplot/SKILL.md) | Quick interactive plots from DataFrames / xarray using the `.hvplot` accessor |
+| Sub-skill           | Covers                                                                        |
+| ------------------- | ----------------------------------------------------------------------------- |
+| [hvplot](hvplot.md) | Quick interactive plots from DataFrames / xarray using the `.hvplot` accessor |
 
 ## Resources
 
