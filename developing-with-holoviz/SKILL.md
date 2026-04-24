@@ -1,20 +1,20 @@
 ---
 name: developing-with-holoviz
-description: "Routes to library-specific sub-skills for ALL HoloViz tasks: creating plots, building dashboards and data apps, composing interactive visualizations, building custom components, or using the holoviz-mcp CLI. Provides guidance for HoloViz libraries. Trigger phrases: panel, hvplot, holoviews, param, dashboard, data app, interactive plot, widget, layout, template, pane, .hvplot, hv.element, pn.widgets, pn.pane, pn.layout, pn.template, panel serve, holoviz-mcp."
+description: "Routes to library-specific sub-skills for ALL HoloViz tasks: creating plots, building dashboards and data apps, composing interactive visualizations, or building custom components. Provides guidance for HoloViz libraries. Trigger phrases: panel, hvplot, holoviews, param, dashboard, data app, interactive plot, widget, layout, template, pane, .hvplot, hv.element, pn.widgets, pn.pane, pn.layout, pn.template, panel serve."
 ---
 
 # Developing with HoloViz Tools
 
-This skill provides guidance for working with the HoloViz ecosystem of tools.
+This is a **routing skill** that directs you to the right HoloViz sub-skill for the task at hand.
 
 ## Workflow
 
 ```
 Step 1: Identify which HoloViz library is involved
     ↓
-Step 2: Apply library-specific guidance (sub-skills coming soon)
+Step 2: Load the matching sub-skill
     ↓
-Step 3: Implement or answer the request using HoloViz best practices
+Step 3: Apply the sub-skill guidance to implement or answer the request
 ```
 
 ### Step 1: Identify the Library
@@ -23,17 +23,26 @@ A single user request may span multiple libraries
 (e.g. plotting data with hvPlot and then embedding the result in a Panel app) —
 identify all relevant libraries in that case.
 
-### Step 2: Apply Library-Specific Guidance
+### Step 2: Load the Sub-skill
 
-> **Note:** Detailed sub-skills for each HoloViz library will be available at
-> `skills/panel/SKILL.md`, `skills/hvplot/SKILL.md`, etc. in a future update.
-> For now, refer to the official documentation linked in the Resources section below.
+> **Path note:** Sub-skills are siblings of this skill in your agent's skills directory.
+> Use paths relative to this file: `skills/hvplot/SKILL.md`.
 
-### Step 3: Implement the Solution
+| User Need                                                       | Sub-skill to Load              |
+| --------------------------------------------------------------- | ------------------------------ |
+| Quick exploratory plots from DataFrames / xarray with `.hvplot` | `read skills/hvplot/SKILL.md`  |
 
-Use HoloViz best practices, official documentation, and examples to implement or answer the
-request. Each library has specific patterns for creating visualizations, building apps,
-and composing interactive elements.
+### Step 3: Apply Sub-skill Guidance
+
+Follow the instructions in the loaded sub-skill(s) to implement or answer the
+request. Each sub-skill contains best practices, DOs/DON'Ts, code patterns, and
+dependency information specific to that library.
+
+## Skill Map
+
+| Sub-skill                        | Covers                                                                        |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| [hvplot](skills/hvplot/SKILL.md) | Quick interactive plots from DataFrames / xarray using the `.hvplot` accessor |
 
 ## Resources
 

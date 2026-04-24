@@ -25,3 +25,7 @@ pixi.lock
 # Build outputs
 /site
 docs/skills/
+
+# Notebooks
+*.ipynb
+.ipynb_checkpoints/
