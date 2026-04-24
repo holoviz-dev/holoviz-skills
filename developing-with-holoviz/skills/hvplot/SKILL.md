@@ -28,6 +28,7 @@ Do not use for: Static publication-quality figures with complex customization (u
 ## Examples
 
 **Input:** "Create a line plot showing Apple stock closing prices over time"
+
 **Output:**
 
 ```python
@@ -37,6 +38,7 @@ apple.hvplot.line(y='close', title='Apple Close Price', ylabel='USD')
 ```
 
 **Input:** "Visualize earthquake magnitude distribution with a histogram"
+
 **Output:**
 
 ```python
@@ -46,6 +48,7 @@ earthquakes.hvplot.hist('mag', title='Earthquake Magnitude Distribution')
 ```
 
 **Input:** "Plot earthquakes on a map with magnitude shown by color"
+
 **Output:**
 
 ```python

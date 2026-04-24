@@ -9,6 +9,7 @@ description: What the skill does AND when to use it, in third person. Example �
 One-line summary of what this skill does.
 
 Frontmatter rules:
+
 - name:        ≤64 chars, lowercase + hyphens, no "anthropic" or "claude"
 - description: ≤1024 chars (claude.ai limit), third person, must say WHAT and WHEN
 - dependencies: optional; list packages your scripts need
@@ -35,6 +36,7 @@ Explain *why* things matter — agents follows reasoning better than ALL CAPS ru
 ## Examples
 
 **Input:** [realistic input]
+
 **Output:** [what the skill should produce]
 
 ## Resources
