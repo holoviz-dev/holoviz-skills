@@ -29,3 +29,6 @@ docs/skills/
 # Notebooks
 *.ipynb
 .ipynb_checkpoints/
+
+# Evals
+eval_results/
