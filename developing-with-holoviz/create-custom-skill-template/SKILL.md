@@ -11,7 +11,7 @@ One-line summary of what this skill does.
 
 Keep this file under ~500 lines. Focus on patching hallucinations and filling
 knowledge gaps: API gotchas, deprecated patterns, and non-obvious conventions.
-Don't restate general knowledge or upstream docs.
+It should be opinionated. Don't restate general knowledge or upstream docs.
 
 Structure for progressive disclosure: put essentials here in SKILL.md, split
 detailed references or advanced workflows into separate files that the agent
@@ -26,13 +26,7 @@ Use prose for flexible tasks; numbered steps for fragile sequences where order
 matters. Explain *why* a rule exists; LLMs follow reasoning better than bare
 directives.
 
-## Examples
-
-Concrete input → output pairs. At least 2–3 covering common and edge cases.
-
-**Input:** [realistic user request]
-
-**Output:** [what the skill should produce: code, file, or response]
+Add an example to illustrate the goal.
 
 ## Resources
 
