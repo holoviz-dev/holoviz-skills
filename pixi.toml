@@ -61,12 +61,14 @@ check = { cmd = "ruff check .", description = "Lint code with ruff" }
 
 [feature.eval.dependencies]
 pyyaml = "*"
-playwright = "*"
 holoviews = "*"
 hvplot = "*"
 bokeh = "*"
 pandas = "*"
 matplotlib = "*"
+
+[feature.eval.pypi-dependencies]
+playwright = "*"
 
 [feature.eval.tasks]
 _eval-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }

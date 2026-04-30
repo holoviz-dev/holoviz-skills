@@ -75,7 +75,7 @@ class CodeExecutor:
                 "stdout": result.stdout,
                 "stderr": result.stderr,
                 "has_output": bool(result.stdout),
-                "screenshot": str(screenshot_path) if screenshot_path else None,
+                "screenshot": screenshot_path is not None,
             }
 
         except subprocess.TimeoutExpired:
@@ -86,7 +86,7 @@ class CodeExecutor:
                 "execution_time": execution_time,
                 "error": f"Timeout after {self.timeout}s",
                 "has_output": False,
-                "screenshot": None,
+                "screenshot": False,
             }
 
         except Exception as e:
@@ -97,7 +97,7 @@ class CodeExecutor:
                 "execution_time": execution_time,
                 "error": str(e),
                 "has_output": False,
-                "screenshot": None,
+                "screenshot": False,
             }
 
         finally:
@@ -134,7 +134,15 @@ for var_name in ['plot', 'fig', 'p', 'chart', 'viz']:
                 _plot_saved = True
                 break
             except Exception as e:
-                pass  # Try next variable or fallback
+                # For HoloViews objects
+                try:
+                    import holoviews as hv
+                    hv.save(_plot_obj, 'plot_output.html')
+                    print('Plot saved to plot_output.html')
+                    _plot_saved = True
+                    break
+                except Exception:
+                    pass  # Try next variable or fallback
 
 # Try matplotlib if not saved yet
 if not _plot_saved:
@@ -313,7 +321,7 @@ def execute_all_code(
             print(f"  Output: {len(result['stdout'])} chars")
 
         if result.get("screenshot"):
-            print(f"  Screenshot: {Path(result['screenshot']).name}")
+            print("  Screenshot: screenshot.png")
 
         results_summary.append(
             {
@@ -321,7 +329,7 @@ def execute_all_code(
                 "condition": condition,
                 "success": result["success"],
                 "execution_time": result["execution_time"],
-                "has_screenshot": result.get("screenshot") is not None,
+                "has_screenshot": result.get("screenshot", False),
             }
         )
 
