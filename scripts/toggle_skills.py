@@ -32,6 +32,7 @@ def find_skill_files(root_dir: Path, enabled: bool = True) -> list[Path]:
         "docs",
         ".venv",
         "venv",
+        ".pixi",
     }
 
     skill_files = []
@@ -60,6 +61,11 @@ def disable_skills(root_dir: Path) -> list[tuple[Path, Path]]:
 
     for skill_file in skill_files:
         new_path = skill_file.parent / ".SKILL.md.disabled"
+        if new_path.exists():
+            print(
+                f"Warning: {new_path} already exists, skipping {skill_file.relative_to(root_dir)}"
+            )
+            continue
         skill_file.rename(new_path)
         renamed.append((skill_file, new_path))
         print(f"Disabled: {skill_file.relative_to(root_dir)}")
@@ -82,6 +88,10 @@ def enable_skills(root_dir: Path) -> list[tuple[Path, Path]]:
 
     for disabled_file in disabled_files:
         new_path = disabled_file.parent / "SKILL.md"
+        if new_path.exists():
+            rel = disabled_file.relative_to(root_dir)
+            print(f"Warning: {new_path} already exists, skipping {rel}")
+            continue
         disabled_file.rename(new_path)
         renamed.append((disabled_file, new_path))
         print(f"Enabled: {new_path.relative_to(root_dir)}")

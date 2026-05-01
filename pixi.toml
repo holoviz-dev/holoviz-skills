@@ -17,7 +17,6 @@ pip = "*"
 
 [tasks]
 setup-dev = { depends-on = [
-    "build-stubs",
     "lint-install",
 ], description = "Set up development environment" }
 
@@ -29,7 +28,7 @@ zensical = "*"
 [feature.docs.tasks]
 build-stubs = { cmd = "python scripts/build_stubs.py", description = "Generate docs/skills/*.md from SKILL.md files" }
 docs = { cmd = "zensical serve", depends-on = [
-    "build-stubs",
+    "docs-build",
 ], description = "Serve documentation locally" }
 docs-build = { cmd = "zensical build", depends-on = [
     "build-stubs",

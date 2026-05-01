@@ -93,6 +93,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--skip-screenshots",
+        action="store_true",
+        help="Skip screenshot capture during code execution (faster)",
+    )
+
+    parser.add_argument(
         "--skip-aggregation", action="store_true", help="Skip metrics aggregation step"
     )
 
@@ -143,6 +149,8 @@ Examples:
         exec_cmd.extend(["--timeout", str(args.timeout)])
         if args.queries:
             exec_cmd.extend(["--queries"] + args.queries)
+        if args.skip_screenshots:
+            exec_cmd.append("--skip-screenshots")
 
         results["execution"] = run_command(exec_cmd, "Executing Generated Code", cwd=scripts_dir)
 

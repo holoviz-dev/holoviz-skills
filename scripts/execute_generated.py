@@ -122,12 +122,12 @@ _plot_saved = False
 
 # Try to save the last created plot object (common variable names)
 for var_name in ['plot', 'fig', 'p', 'chart', 'viz']:
-    if var_name in locals() or var_name in globals():
-        _plot_obj = locals().get(var_name) or globals().get(var_name)
+    if var_name in globals():
+        _plot_obj = globals()[var_name]
         if _plot_obj is not None:
             try:
                 # For hvplot/bokeh objects
-                from bokeh.plotting import output_file, save as bokeh_save
+                from bokeh.io import output_file, save as bokeh_save
                 output_file('plot_output.html')
                 bokeh_save(_plot_obj)
                 print('Plot saved to plot_output.html')
@@ -214,12 +214,12 @@ if not _plot_saved:
 
                     browser.close()
 
-                print(f"✓ Screenshot captured: {screenshot_path.name}")
+                print(f"Screenshot captured: {screenshot_path.name}")
                 return screenshot_path
 
             except ImportError:
                 print("Playwright not installed, skipping screenshot")
-                print("  Install with: pip install playwright && playwright install chromium")
+                print("Install with: pip install playwright && playwright install chromium")
                 return None
             except Exception as e:
                 print(f"Screenshot capture failed: {e}")
