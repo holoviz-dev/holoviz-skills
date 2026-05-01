@@ -10,11 +10,11 @@ metadata:
 
 This skill provides correct patterns and common pitfalls for hvPlot to effectively visualize data interactively.
 
-Before plotting, consider: what story does the data tell? What comparison matters most? Then choose the plot type, encoding, and labels that make that story obvious.
+Before plotting, consider: what story does the data tell? What comparison matters most? Then choose the plot type, encoding, and labels that make that story obvious. For publication-quality figures needing fine-grained control, use HoloViews directly with the Matplotlib backend instead of Bokeh.
 
 ## Dependencies
 
-Activate the `.hvplot` accessor with the appropriate backend import: `import hvplot.pandas`, `hvplot.polars`, `hvplot.xarray`, `hvplot.duckdb`, or `hvplot.dask`. Backends like Polars and DuckDB must be installed separately. Optional: `datashader` for resampling, `geoviews` or `geopandas` for geographic data.
+Activate the `.hvplot` accessor with the appropriate backend import: `import hvplot.pandas`, `hvplot.polars`, `hvplot.xarray`, `hvplot.duckdb`, or `hvplot.dask`. Backends like Polars and DuckDB must be installed separately. Optional: `datashader` for resampling, `geoviews` or `geopandas` for geographic data. Prefer the Bokeh backend (default) for interactivity, Matplotlib for static/print output, Plotly as a last resort.
 
 ## Plot Labels
 
