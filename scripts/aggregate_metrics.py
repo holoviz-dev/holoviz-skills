@@ -5,11 +5,10 @@ Aggregate metrics from evaluation results.
 This script:
 1. Collects all metadata.json files from eval_results
 2. Compares metrics between with_skills and without_skills conditions
-3. Generates summary reports (JSON and CSV)
+3. Generates summary reports: evaluation_results.json and evaluation_summary.md
 """
 
 import argparse
-import csv
 import json
 from pathlib import Path
 
@@ -151,109 +150,81 @@ def generate_comparison_summary(metrics: dict) -> dict:
     return summary
 
 
-def save_csv_report(metrics: dict, output_file: Path):
-    """Save metrics as CSV for easy analysis."""
-    rows = []
+def save_markdown_report(summary: dict, output_file: Path):
+    """Save a human-readable summary as a Markdown file."""
+    lines = [
+        "# Evaluation Summary\n",
+        f"**Total Queries:** {summary['total_queries']}\n",
+    ]
 
-    for query_id, conditions in metrics.items():
-        for condition, data in conditions.items():
-            row = {
-                "query_id": query_id,
-                "condition": condition,
-                "has_code": data["has_code"],
-                "code_blocks_count": data["code_blocks_count"],
-                "response_time_sec": round(data["execution_time"], 2),
-                "tokens_input": data["tokens_input"],
-                "tokens_output": data["tokens_output"],
-                "tokens_total": data["tokens_total"],
-                "tokens_cached": data["tokens_cached"],
-                "execution_success": data["execution_success"],
-                "execution_duration_sec": round(data["execution_duration"], 2)
-                if data["execution_duration"] is not None
-                else None,
-            }
-            rows.append(row)
-
-    if not rows:
-        print("No metrics to save to CSV")
-        return
-
-    with open(output_file, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-        writer.writeheader()
-        writer.writerows(rows)
-
-    print(f"CSV report saved: {output_file}")
-
-
-def print_summary_report(summary: dict):
-    """Print a human-readable summary to console."""
-    print(f"\n{'=' * 70}")
-    print("EVALUATION SUMMARY")
-    print(f"{'=' * 70}\n")
-
-    print(f"Total Queries: {summary['total_queries']}\n")
-
-    # Aggregate stats
     if "aggregate" in summary:
         agg = summary["aggregate"]
-        print("Aggregate Statistics:")
-        print(f"{'─' * 70}")
-        print("  Code Generation Rate:")
-        print(f"    With Skills:    {agg.get('code_generation_rate_with', 0):.1%}")
-        print(f"    Without Skills: {agg.get('code_generation_rate_without', 0):.1%}")
+        lines += [
+            "## Aggregate Statistics\n",
+            "### Code Generation Rate\n",
+            "| Condition | Rate |",
+            "|-----------|------|",
+            f"| With Skills | {agg.get('code_generation_rate_with', 0):.1%} |",
+            f"| Without Skills | {agg.get('code_generation_rate_without', 0):.1%} |",
+            "",
+        ]
 
         if "execution_success_rate_with" in agg:
-            print("\n  Execution Success Rate:")
-            print(f"    With Skills:    {agg.get('execution_success_rate_with', 0):.1%}")
-            print(f"    Without Skills: {agg.get('execution_success_rate_without', 0):.1%}")
+            lines += [
+                "### Execution Success Rate\n",
+                "| Condition | Rate |",
+                "|-----------|------|",
+                f"| With Skills | {agg.get('execution_success_rate_with', 0):.1%} |",
+                f"| Without Skills | {agg.get('execution_success_rate_without', 0):.1%} |",
+                "",
+            ]
 
-        print(f"\nToken Usage Difference: {agg.get('avg_token_difference', 0):+,.0f} tokens")
-        print(f"Response Time Difference: {agg.get('avg_time_difference', 0):+.2f}s")
-        print(f"{'─' * 70}\n")
+        lines += [
+            "### Resource Usage\n",
+            f"**Avg Token Difference:** {agg.get('avg_token_difference', 0):+,.0f} tokens",
+            f"**Avg Response Time Difference:** {agg.get('avg_time_difference', 0):+.2f}s",
+            "",
+        ]
 
-    # Per-query details
-    print("Per-Query Results:")
-    print(f"{'─' * 70}")
+    lines.append("## Per-Query Results\n")
 
     for query_id, data in summary["queries"].items():
-        print(f"\n  {query_id}:")
-
+        lines.append(f"### `{query_id}`\n")
         with_skills = data.get("with_skills", {})
         without_skills = data.get("without_skills", {})
 
         if with_skills and without_skills:
-            print(
-                f"Code Generated:  With={with_skills['has_code']}  "
-                f"Without={without_skills['has_code']}"
-            )
-            print(
-                f"Response Time:  With={with_skills['execution_time']:.2f}s  "
-                f"Without={without_skills['execution_time']:.2f}s"
-            )
-            print(
-                f"Tokens (output): With={with_skills['tokens_output']:,}  "
-                f"Without={without_skills['tokens_output']:,}"
-            )
+            ws_time = f"{with_skills['execution_time']:.2f}s"
+            wos_time = f"{without_skills['execution_time']:.2f}s"
+            ws_tokens = f"{with_skills['tokens_output']:,}"
+            wos_tokens = f"{without_skills['tokens_output']:,}"
+            lines += [
+                "| Metric | With Skills | Without Skills |",
+                "|--------|-------------|----------------|",
+                f"| Code Generated | {with_skills['has_code']} | {without_skills['has_code']} |",
+                f"| Response Time | {ws_time} | {wos_time} |",
+                f"| Tokens (output) | {ws_tokens} | {wos_tokens} |",
+            ]
 
             if (
                 with_skills["execution_success"] is not None
                 and without_skills["execution_success"] is not None
             ):
-                print(
-                    f"    Execution:       With={with_skills['execution_success']}  "
-                    f"Without={without_skills['execution_success']}"
-                )
+                ws_exec = with_skills["execution_success"]
+                wos_exec = without_skills["execution_success"]
+                lines.append(f"| Execution Success | {ws_exec} | {wos_exec} |")
 
-            # Highlight improvements
-            if data["comparison"]:
+            lines.append("")
+
+            if data.get("comparison"):
                 comp = data["comparison"]
                 if comp.get("execution_improvement"):
-                    print("    IMPROVED: Code executes successfully with skills")
+                    lines.append("**IMPROVED:** Code executes successfully with skills\n")
                 elif comp.get("execution_regression"):
-                    print("    REGRESSION: Code fails with skills")
+                    lines.append("**REGRESSION:** Code fails with skills\n")
 
-    print(f"\n{'=' * 70}\n")
+    output_file.write_text("\n".join(lines))
+    print(f"Markdown report saved: {output_file}")
 
 
 def aggregate_metrics(
@@ -299,90 +270,9 @@ def aggregate_metrics(
         json.dump(summary, f, indent=2)
     print(f"Evaluation results saved: {json_file}")
 
-    # Print summary
-    print_summary_report(summary)
-
-
-def generate_readme(readme_file: Path, summary: dict):
-    """Generate a README explaining the results."""
-    content = f"""# HoloViz Skills Evaluation Results
-
-## Overview
-
-This directory contains evaluation results comparing Copilot's responses to HoloViz
-tasks with and without SKILL.md files enabled.
-
-## Structure
-
-```
-eval_results/
-├── with_skills/          # Results with SKILL.md files enabled
-│   └── [query_id]/
-│       ├── response.txt           # Raw Copilot output
-│       ├── metadata.json          # Metrics and metadata
-│       ├── generated_code.py      # Extracted code
-│       └── execution.log          # Execution output
-├── without_skills/       # Results without SKILL.md files
-│   └── [query_id]/       # (same structure)
-├── metrics_summary.json  # Detailed comparison data
-├── metrics.csv          # Metrics in CSV format
-└── README.md           # This file
-```
-
-## Summary Statistics
-
-- **Total Queries Evaluated**: {summary["total_queries"]}
-"""
-
-    if "aggregate" in summary:
-        agg = summary["aggregate"]
-        content += f"""
-### Code Generation
-
-- With Skills: {agg.get("code_generation_rate_with", 0):.1%} success rate
-- Without Skills: {agg.get("code_generation_rate_without", 0):.1%} success rate
-
-### Execution Success
-
-- With Skills: {agg.get("execution_success_rate_with", 0):.1%} of generated code
-  executes successfully
-- Without Skills: {agg.get("execution_success_rate_without", 0):.1%} of generated
-  code executes successfully
-
-### Resource Usage
-
-- Average Token Difference: {agg.get("avg_token_difference", 0):+.0f} tokens output
-  (with vs without skills)
-- Average Response Time Difference: {agg.get("avg_time_difference", 0):+.2f}s
-  (with vs without skills)
-"""
-
-    content += """
-## How to Use
-
-1. **Review Code**: Compare `generated_code.py` files between with_skills/ and
-   without_skills/ for each query
-2. **Check Execution**: Review `execution.log` to see if code ran successfully
-3. **Analyze Metrics**: Open `metrics.csv` in your spreadsheet tool for detailed analysis
-4. **Read Responses**: Review `response.txt` to see full Copilot responses
-
-## Queries Evaluated
-
-"""
-
-    for query_id in summary["queries"].keys():
-        content += f"- `{query_id}`\n"
-
-    content += """
-## Next Steps
-
-- Manually compare code quality between conditions
-- Review any execution failures
-- Identify patterns in improved/regressed responses
-- Use insights to refine SKILL.md files
-"""
-
-    readme_file.write_text(content)
+    # Save markdown summary report
+    md_file = output_dir / "evaluation_summary.md"
+    save_markdown_report(summary, md_file)
 
 
 def main():
