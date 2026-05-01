@@ -6,10 +6,12 @@ repo_url = "https://github.com/holoviz-dev/holoviz-skills"
 repo_name = "holoviz-dev/holoviz-skills"
 edit_uri = "edit/main/docs/"
 nav = [
-  {"Home" = "index.md"},
-  {"Skills" = [
-    {"Create Custom Skill Template" = "skills/create-custom-skill-template.md"}
-  ]}
+  { "Home" = "index.md" },
+  { "Skills" = [
+    { "Create Custom Skill Template" = "skills/create-custom-skill-template.md" },
+    { "Developing with HoloViz" = "skills/developing-with-holoviz.md" },
+    { "hvPlot" = "skills/hvplot.md" },
+  ] },
 ]
 
 # Theme configuration
