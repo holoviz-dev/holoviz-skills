@@ -8,14 +8,12 @@ metadata:
 
 # Using Panel Material UI effectively
 
-Correct patterns and common pitfalls for panel-material-ui (`pmui`) — specifically where it diverges from standard Panel.
-
 ## Key Differences from Panel
 
 Notes:
 1. Import `panel_material_ui as pmui`. Don't add `"panel_material_ui"` or `"bokeh"` to `pn.extension()`. Don't set `design='material'`.
 2. Use `pmui.Page` instead of `pn.template.FastListTemplate`.
-3. Use new param names (`label`, `color`) not legacy aliases (`name`, `button_type`).
+3. Use new param names (`label`, `color`, `variant`) not legacy aliases (`name`, `button_type`, `button_style`).
 4. Quick preview with `python app.py` + `.show()` works for pmui (unlike standard Panel).
 
 ```python
@@ -33,28 +31,19 @@ class MyApp(pn.viewable.Viewer):
         with pn.config.set(sizing_mode="stretch_width"):
             self._slider = pmui.IntSlider.from_param(self.param.value, margin=(10, 20))
             self._output = pmui.Column(self._display)
-            self._panel = pmui.Row(pmui.Column(self._slider, max_width=300), self._output)
 
     @param.depends("value")
     def _display(self):
         return f"Value: {self.value}"
 
     def __panel__(self):
-        return self._panel
-
-    @classmethod
-    def create_app(cls, **params):
-        instance = cls(**params)
-        return pmui.Page(
-            title="My App",
-            sidebar=[instance._slider],
-            main=[instance._output],
-        )
-
-if __name__ == "__main__":
-    MyApp.create_app().show(port=5007, autoreload=True, open=True)
-elif pn.state.served:
-    MyApp.create_app().servable()
+        if pn.state.served:
+            return pmui.Page(
+                title="My App",
+                sidebar=[self._slider],
+                main=[self._output],
+            )
+        return pmui.Row(pmui.Column(self._slider, max_width=300), self._output)
 ```
 
 ## Page
