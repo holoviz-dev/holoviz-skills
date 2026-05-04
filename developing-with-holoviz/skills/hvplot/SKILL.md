@@ -109,13 +109,14 @@ earthquakes.hvplot.points(
 
 Notes:
 1. Sort values so the largest is at top (or bottom) for easy comparison.
-2. Use a single neutral color by default; reserve color encoding for when it maps to data.
+2. Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
 3. Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, `show_frame=False`.
-4. Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely.
-5. `backend_opts` accesses the underlying plotting library's model properties (e.g. `"outline_line_alpha": 0` to hide the frame in Bokeh). `.opts()` accesses HoloViews-level plot options (e.g. `show_frame=False`). Use either for styling not exposed by hvPlot directly.
-6. Use `NumeralTickFormatter(format='0a')` for large-number axes (e.g. 1.2M, 500K). Pass via `xformatter=` or `yformatter=`.
-7. Use `fontscale=` to increase readability; `padding=` to add room for labels.
-8. This example is heavily stylized to illustrate what's possible; use discretion.
+4. Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely. Pass `responsive=True` and `hover=False` on both plot and labels calls. Inside bars: `y="pos"` where `pos = value * 0.98`, `text_align="right"`, `text_color="white"`. Outside bars: `pos = value + offset`, `text_align="left"`, `text_color="black"`. For stacked bars + labels, the labels DataFrame must include stacked columns via `hover_cols`.
+5. `backend_opts` accesses Bokeh model properties (e.g. `"outline_line_alpha": 0`). `.opts()` accesses HoloViews plot options (e.g. `show_frame=False`).
+6. Prefer hvPlot kwargs over `.opts()` — they take precedence. Pass `responsive=True` in the hvPlot call, not via `.opts()`, which can conflict with default dimensions.
+7. Use `NumeralTickFormatter(format='0a')` for large-number axes via `xformatter=`/`yformatter=`.
+8. Use `fontscale=` for readability.
+9. This example is heavily stylized to illustrate what's possible; use discretion.
 
 ```python
 import hvplot.pandas  # noqa
@@ -176,9 +177,7 @@ apple.hvplot.heatmap(x='index.hour', y='index.month', C='close', cmap='reds', re
 ## Subplots and Layouts
 
 Notes:
-1. `subplots=True` gives each `y` column its own panel. Axes are linked by default; use `shared_axes=False` for independent ranges.
-2. `.cols(N)` controls columns per row.
-3. `col=` / `row=` creates a faceted grid by category — cleaner than `subplots` for categorical splits.
+1. `col=`/`row=` creates a cleaner faceted grid than `subplots=True` for categorical splits. Use `shared_axes=False` for independent ranges.
 
 ```python
 stocks = hvplot.sampledata.stocks("pandas")
