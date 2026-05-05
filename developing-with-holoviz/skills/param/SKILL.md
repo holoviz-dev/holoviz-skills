@@ -13,10 +13,10 @@ Correct patterns and common pitfalls for Param — the reactive parameter librar
 ## Parameterized Classes
 
 Notes:
-1. Add `# pyright: reportAssignmentType=false` at the top — Param's descriptors conflict with static type checkers.
-2. Add type annotations (`target: str = param.String(...)`) for IDE autocomplete — Param doesn't enforce them at runtime.
-3. **Never use `name` as a parameter** — reserved by Param for the instance name.
-4. `self.param.name` is the Parameter object; `self.name` is the current value. Use `self.param.name` with `.from_param()` and pane constructors.
+- Add `# pyright: reportAssignmentType=false` at the top — Param's descriptors conflict with static type checkers.
+- Add type annotations (`target: str = param.String(...)`) for IDE autocomplete — Param doesn't enforce them at runtime.
+- **Never use `name` as a parameter** — reserved by Param for the instance name.
+- `self.param.name` is the Parameter object; `self.name` is the current value. Use `self.param.name` with `.from_param()` and pane constructors.
 
 ```python
 # pyright: reportAssignmentType=false
@@ -31,10 +31,10 @@ class DataConfig(param.Parameterized):
 ## Reactive Dependencies (@param.depends)
 
 Notes:
-1. Without `watch=True`: lazy, called only when something reads the result. Returns content. With `watch=True`: eager, fires every time the parameter changes. Use for side effects only.
-2. Don't use `watch=True` to update UI — causes flickering (the `panel` skill covers this).
-3. `on_init=True` runs the method once at instantiation. Use with `watch=True` to set initial state.
-4. A method without `watch=True` may run multiple times if multiple panes depend on it. Use `watch=True` to update a parameter instead, then bind panes to that parameter.
+- Without `watch=True`: lazy, called only when something reads the result. Returns content. With `watch=True`: eager, fires every time the parameter changes. Use for side effects only.
+- Don't use `watch=True` to update UI — causes flickering (the `panel` skill covers this).
+- `on_init=True` runs the method once at instantiation. Use with `watch=True` to set initial state.
+- A method without `watch=True` may run multiple times if multiple panes depend on it. Use `watch=True` to update a parameter instead, then bind panes to that parameter.
 
 ```python
 import param
@@ -57,7 +57,7 @@ class Analysis(param.Parameterized):
 ## Dependent Parameters
 
 Notes:
-1. When updating `.objects`, always check if the current value is still valid — reset it if not.
+- When updating `.objects`, always check if the current value is still valid — reset it if not.
 
 ```python
 import param
@@ -82,14 +82,14 @@ class CountrySelector(param.Parameterized):
 ## Parameter Types
 
 Notes:
-1. `param.update()` applies multiple changes atomically — watchers fire once, not once per change. Also works as a context manager: `with self.param.update(): self.x = 1; self.y = 2`.
-2. Use the most specific type (`param.Integer` not `Number`, `param.Selector` not `String`). Specificity drives widget selection in Panel's `.from_param()`.
-3. `softbounds` suggests a range for UI sliders without hard enforcement. `step` hints the increment. `label` overrides the display name. `precedence` controls ordering (lower = first).
-4. `param.List(item_type=str)` validates contents. `param.Dict` does not validate values.
-5. `param.DataFrame()` accepts pandas only. For Polars, use `param.Parameter()`.
-6. `param.Event()` resets to `False` after firing watchers. Use for "run now" buttons.
-7. `default_factory` for mutable/dynamic defaults — without it, all instances share the same object. Alternative: `instantiate=True`.
-8. Param does **not** auto-coerce types (unlike Pydantic). `param.Integer(value="25")` raises `ValueError`.
+- `param.update()` applies multiple changes atomically — watchers fire once, not once per change. Also works as a context manager: `with self.param.update(): self.x = 1; self.y = 2`.
+- Use the most specific type (`param.Integer` not `Number`, `param.Selector` not `String`). Specificity drives widget selection in Panel's `.from_param()`.
+- `softbounds` suggests a range for UI sliders without hard enforcement. `step` hints the increment. `label` overrides the display name. `precedence` controls ordering (lower = first).
+- `param.List(item_type=str)` validates contents. `param.Dict` does not validate values.
+- `param.DataFrame()` accepts pandas only. For Polars, use `param.Parameter()`.
+- `param.Event()` resets to `False` after firing watchers. Use for "run now" buttons.
+- `default_factory` for mutable/dynamic defaults — without it, all instances share the same object. Alternative: `instantiate=True`.
+- Param does **not** auto-coerce types (unlike Pydantic). `param.Integer(value="25")` raises `ValueError`.
 
 ```python
 import uuid

@@ -15,8 +15,8 @@ Examples build on the penguins Dashboard from the Panel skill.
 ## DynamicMap: Preserve Zoom/Pan Across Data Refreshes
 
 Notes:
-1. Setting `pane.object = new_plot` resets axes. DynamicMap patches data in place, preserving zoom/pan.
-2. Use a trigger parameter as a signal — DynamicMap caches by argument identity, so read actual data from `self` inside the callback.
+- Setting `pane.object = new_plot` resets axes. DynamicMap patches data in place, preserving zoom/pan.
+- Use a trigger parameter as a signal — DynamicMap caches by argument identity, so read actual data from `self` inside the callback.
 
 ```python
 import holoviews as hv
@@ -64,9 +64,9 @@ class Dashboard(pn.viewable.Viewer):
 ## One Element Per DynamicMap
 
 Notes:
-1. Returning mixed types (`hv.Scatter` sometimes, `hv.Overlay` other times) raises `AssertionError`.
-2. Combining scatter + HLines inside `hv.Overlay([...])` loses hover tooltips.
-3. Create one DynamicMap per element, combine with `*` at layout level. Each callback always returns the same element type.
+- Returning mixed types (`hv.Scatter` sometimes, `hv.Overlay` other times) raises `AssertionError`.
+- Combining scatter + HLines inside `hv.Overlay([...])` loses hover tooltips.
+- Create one DynamicMap per element, combine with `*` at layout level. Each callback always returns the same element type.
 
 ```python
 ...
@@ -100,11 +100,11 @@ class Dashboard(pn.viewable.Viewer):
 hvPlot internally sets `width=700`. This conflicts with `responsive=True` if applied via `.opts()`.
 
 Notes:
-1. **hvPlot**: pass `responsive=True` and `height=N` as **arguments to the hvplot call**, not via `.opts()`. hvPlot's default `width=700` persists through `.opts()` and can't be removed.
-2. **Pure HoloViews**: `.opts(responsive=True, height=N)` is fine — HoloViews doesn't inject a default width.
-3. Never set both `width` and `responsive=True` — `width` wins silently.
-4. Set `sizing_mode="stretch_width"` on the `pn.pane.HoloViews`.
-5. **Overlays**: all elements must have consistent sizing. If one element has `responsive=True` and another has hvPlot's default `width=700`, the overlay warns "responsive mode could not be enabled". Pass `responsive=True, height=N` to every hvPlot call in the overlay.
+- **hvPlot**: pass `responsive=True` and `height=N` as **arguments to the hvplot call**, not via `.opts()`. hvPlot's default `width=700` persists through `.opts()` and can't be removed.
+- **Pure HoloViews**: `.opts(responsive=True, height=N)` is fine — HoloViews doesn't inject a default width.
+- Never set both `width` and `responsive=True` — `width` wins silently.
+- Set `sizing_mode="stretch_width"` on the `pn.pane.HoloViews`.
+- **Overlays**: all elements must have consistent sizing. If one element has `responsive=True` and another has hvPlot's default `width=700`, the overlay warns "responsive mode could not be enabled". Pass `responsive=True, height=N` to every hvPlot call in the overlay.
 
 ```python
 # ✅ hvPlot: responsive and height as arguments
@@ -182,22 +182,22 @@ buffer.send(new_rows_df)  # append data
 ### Stream Pitfalls
 
 Notes:
-1. `Selection1D` needs `tools=['tap', 'box_select']` in `.opts()` — without them no events fire.
-2. Stream callbacks receive `None`/empty on first render — always guard.
-3. Don't mix streams and `param.depends`/`pn.bind` for the same plot.
-4. Use `.opts(framewise=True)` with Pipe/Buffer so axes update when data ranges change.
+- `Selection1D` needs `tools=['tap', 'box_select']` in `.opts()` — without them no events fire.
+- Stream callbacks receive `None`/empty on first render — always guard.
+- Don't mix streams and `param.depends`/`pn.bind` for the same plot.
+- Use `.opts(framewise=True)` with Pipe/Buffer so axes update when data ranges change.
 
 ## Linked Selections / Cross-Filtering
 
 `hv.link_selections` provides automatic cross-filtering. Don't build this manually with streams.
 
 Notes:
-1. Use `.instance()` to create the linker — `hv.link_selections(plot)` returns a plot, not a reusable linker.
-2. Use `hv.operation.histogram(source_element, dimension='x')` for numeric histograms — preserves data lineage. Don't use `hv.Histogram(np.histogram(...))` — pre-binned loses the source link.
-3. `histogram()` only works for numeric dimensions. For categorical bars, use a custom `Operation` subclass (see below).
-4. Apply `selection_expr` to a `hv.Dataset`, not a pandas DataFrame.
-5. Don't add selection tools manually — `link_selections` adds them automatically.
-6. Requires `pyarrow` at runtime. Lasso selection also requires `shapely`.
+- Use `.instance()` to create the linker — `hv.link_selections(plot)` returns a plot, not a reusable linker.
+- Use `hv.operation.histogram(source_element, dimension='x')` for numeric histograms — preserves data lineage. Don't use `hv.Histogram(np.histogram(...))` — pre-binned loses the source link.
+- `histogram()` only works for numeric dimensions. For categorical bars, use a custom `Operation` subclass (see below).
+- Apply `selection_expr` to a `hv.Dataset`, not a pandas DataFrame.
+- Don't add selection tools manually — `link_selections` adds them automatically.
+- Requires `pyarrow` at runtime. Lasso selection also requires `shapely`.
 
 ```python
 from holoviews.operation import histogram
