@@ -4,29 +4,47 @@ Quick test to verify the evaluation system is set up correctly.
 
 This script checks:
 1. Python version
-2. Required dependencies
-3. Copilot CLI availability
-4. SKILL.md files
-5. Query file validity
+2. Required dependencies (matches feature.eval.dependencies in pixi.toml)
+3. Playwright availability (required for screenshot capture)
+4. Copilot CLI availability
+5. SKILL.md files
+6. Query file validity
+7. Evaluation scripts
 """
 
+import io
 import subprocess
 import sys
+from contextlib import redirect_stdout
 from pathlib import Path
+
+
+def _run_check(label: str, fn) -> bool:
+    """
+    Run a check function, capturing its output.
+    On pass: silent. On fail: print label + captured output.
+    """
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        passed = fn()
+    if not passed:
+        print(f"✗ FAIL  {label}")
+        detail = buf.getvalue().strip()
+        if detail:
+            for line in detail.splitlines():
+                print(f"        {line}")
+    return passed
 
 
 def check_python_version():
     """Check if Python version is >= 3.12"""
     version = sys.version_info
     required = (3, 12)
-
     print(f"Python version: {version.major}.{version.minor}.{version.micro}")
-
     if (version.major, version.minor) >= required:
-        print("Python version is compatible\n")
         return True
     else:
-        print(f"Python {required[0]}.{required[1]}+ required\n")
+        print(f"Python {required[0]}.{required[1]}+ required")
         return False
 
 
@@ -35,10 +53,44 @@ def check_dependency(module_name, import_name=None):
     import_name = import_name or module_name
     try:
         __import__(import_name)
-        print(f"{module_name} is installed")
         return True
     except ImportError:
         print(f"{module_name} is NOT installed")
+        return False
+
+
+def check_dependencies():
+    """Check all runtime dependencies from feature.eval.dependencies."""
+    results = [
+        check_dependency("PyYAML", "yaml"),
+        check_dependency("pandas"),
+        check_dependency("matplotlib"),
+        check_dependency("bokeh"),
+        check_dependency("hvplot"),
+        check_dependency("holoviews"),
+    ]
+    return all(results)
+
+
+def check_playwright():
+    """Check if Playwright and the Chromium browser are available."""
+    try:
+        from playwright.sync_api import sync_playwright  # noqa: F401
+    except ImportError:
+        print("playwright is NOT installed (required for screenshots)")
+        print("Install with: pip install playwright && playwright install chromium")
+        return False
+
+    try:
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+        return True
+    except Exception as e:
+        print(f"Chromium browser is NOT available: {e}")
+        print("Run: playwright install chromium")
         return False
 
 
@@ -47,13 +99,15 @@ def check_copilot_cli():
     try:
         result = subprocess.run(["copilot", "--help"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
-            print("Copilot CLI is available")
             return True
         else:
-            print("Copilot CLI returned error")
+            print("Copilot CLI returned a non-zero exit code")
             return False
     except FileNotFoundError:
         print("Copilot CLI is NOT installed or not in PATH")
+        print(
+            "See: https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli"
+        )
         return False
     except Exception as e:
         print(f"Error checking Copilot CLI: {e}")
@@ -65,22 +119,16 @@ def check_skill_files():
     repo_root = Path(__file__).parent.parent
     skill_files = list(repo_root.rglob("SKILL.md"))
 
-    # Filter out certain directories
-    exclude_dirs = {".git", "node_modules", "__pycache__", ".cache", "site"}
+    exclude_dirs = {".git", "node_modules", "__pycache__", ".cache", "site", ".pixi"}
     skill_files = [
         f for f in skill_files if not any(parent.name in exclude_dirs for parent in f.parents)
     ]
 
-    print(f"Found {len(skill_files)} SKILL.md file(s):")
-    for sf in skill_files:
-        print(f"  - {sf.relative_to(repo_root)}")
-
     if skill_files:
-        print("SKILL.md files found\n")
         return True
     else:
-        print("No SKILL.md files found (this is OK for testing)\n")
-        return True
+        print("No SKILL.md files found")
+        return True  # Not a hard failure
 
 
 def check_queries_file():
@@ -91,8 +139,6 @@ def check_queries_file():
         print(f"eval_queries.yaml not found at {queries_file}")
         return False
 
-    print("eval_queries.yaml exists")
-
     try:
         import yaml
 
@@ -100,21 +146,16 @@ def check_queries_file():
             data = yaml.safe_load(f)
 
         queries = data.get("queries", [])
-        print(f"YAML is valid, contains {len(queries)} queries")
-
-        for query in queries:
-            query_id = query.get("id", "UNKNOWN")
-            print(f"  - {query_id}")
-
-        print()
+        if not queries:
+            print("eval_queries.yaml contains no queries")
+            return False
         return True
 
     except ImportError:
-        print("PyYAML not installed, cannot validate YAML content")
-        print("  Install with: pip install pyyaml or pixi install\n")
+        # PyYAML missing — caught by check_dependencies
         return True
     except Exception as e:
-        print(f"Error parsing YAML: {e}\n")
+        print(f"Error parsing eval_queries.yaml: {e}")
         return False
 
 
@@ -129,64 +170,46 @@ def check_scripts():
         "run_full_evaluation.py",
     ]
 
-    all_exist = True
-    for script in required_scripts:
-        script_path = scripts_dir / script
-        if script_path.exists():
-            print(f"{script}")
-        else:
-            print(f"{script} NOT FOUND")
-            all_exist = False
-
-    print()
-    return all_exist
+    missing = [s for s in required_scripts if not (scripts_dir / s).exists()]
+    if missing:
+        for s in missing:
+            print(f"{s} NOT FOUND")
+        return False
+    return True
 
 
 def main():
-    print("=" * 70)
-    print("HoloViz Skills Evaluation - System Check")
-    print("=" * 70)
-    print()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Verify the evaluation system is set up correctly")
+    parser.add_argument(
+        "--skip-screenshots",
+        action="store_true",
+        help="Skip the Playwright/Chromium check (use when running eval-no-screenshots)",
+    )
+    args = parser.parse_args()
 
     checks = {
-        "Python Version": check_python_version(),
-        "Dependencies": all(
-            [
-                check_dependency("PyYAML", "yaml"),
-            ]
-        ),
-        "Copilot CLI": check_copilot_cli(),
-        "SKILL.md Files": check_skill_files(),
-        "Queries File": check_queries_file(),
-        "Evaluation Scripts": check_scripts(),
+        "Python Version": lambda: check_python_version(),
+        "Dependencies": lambda: check_dependencies(),
+        "Copilot CLI": lambda: check_copilot_cli(),
+        "SKILL.md Files": lambda: check_skill_files(),
+        "Queries File": lambda: check_queries_file(),
+        "Evaluation Scripts": lambda: check_scripts(),
     }
+    if not args.skip_screenshots:
+        checks["Playwright"] = lambda: check_playwright()
 
-    print("=" * 70)
-    print("Summary")
-    print("=" * 70)
+    results = {label: _run_check(label, fn) for label, fn in checks.items()}
 
-    for check_name, passed in checks.items():
-        status = "✓ PASS" if passed else "✗ FAIL"
-        print(f"{status:8} {check_name}")
-
-    print()
-
-    if all(checks.values()):
-        print("All checks passed! System is ready for evaluation.")
-        print()
-        print("Next steps:")
-        print("  1. Run: python run_full_evaluation.py")
-        print("  2. Or see EVALUATION_GUIDE.md for detailed usage")
+    if all(results.values()):
+        print("eval-check passed")
         return 0
     else:
-        print("Some checks failed. Please address the issues above.")
-        print()
-        print("Common fixes:")
-        print("  - Install PyYAML: pip install pyyaml or pixi install")
-        print(
-            "  - Install Copilot CLI: https://docs.github.com/en/copilot/github-copilot-in-the-cli"
-        )
-        print("  - Verify you're in the scripts/ directory")
+        print("\nSome checks failed. Common fixes:")
+        print("  - Install dependencies: pixi install")
+        print("  - Install Playwright browser: playwright install chromium")
+        print("  - Verify you're in the root directory")
         return 1
 
 

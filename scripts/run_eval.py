@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 import yaml
-from toggle_skills import disable_skills, enable_skills, get_skill_status
+from toggle_skills import disable_skills, enable_skills
 
 
 class CopilotResponse:
@@ -198,12 +198,7 @@ def run_evaluation(
         print("No queries to evaluate!")
         return
 
-    print(f"\n{'=' * 60}")
-    print("HoloViz Skills Evaluation")
-    print(f"{'=' * 60}")
-    print(f"Queries to evaluate: {len(queries)}")
-    print(f"Output directory: {output_dir}")
-    print(f"{'=' * 60}\n")
+    print(f"Running {len(queries)} quer(ies)\n")
 
     repo_root = Path(__file__).parent.parent
 
@@ -211,48 +206,42 @@ def run_evaluation(
     for i, query in enumerate(queries, 1):
         query_id = query["id"]
         prompt = query["prompt"]
-        timeout = query.get("timeout", 180)  # Default 3 minutes if not specified
+        timeout = query.get("timeout", 180)
 
-        print(f"\n[{i}/{len(queries)}] Query: {query_id}")
-        print(f"{'─' * 60}")
+        print(f"[{i}/{len(queries)}] {query_id}")
 
         # Evaluate WITHOUT skills
         if not skip_without_skills:
             print("Running WITHOUT skills...")
-            disabled = disable_skills(repo_root)
-            print(f"  Disabled {len(disabled)} skill file(s)")
+            disable_skills(repo_root)
 
-            raw_output, exec_time = run_copilot_query(prompt, timeout)
-            response = CopilotResponse(raw_output, prompt, exec_time)
+            try:
+                raw_output, exec_time = run_copilot_query(prompt, timeout)
+                response = CopilotResponse(raw_output, prompt, exec_time)
 
-            print(f"  Completed in {exec_time:.2f}s")
-            print(f"  Tokens: ↑{response.tokens['input']} ↓{response.tokens['output']}")
+                tok = response.tokens
+                print(f"  Completed in {exec_time:.2f}s | Tokens: ↑{tok['input']} ↓{tok['output']}")
 
-            save_results(query_id, response, output_dir, skills_enabled=False)
-
-            # Re-enable skills for next run
-            enable_skills(repo_root)
+                save_results(query_id, response, output_dir, skills_enabled=False)
+            finally:
+                # Re-enable skills for next run
+                enable_skills(repo_root)
 
         # Evaluate WITH skills
         if not skip_with_skills:
-            print("\nRunning WITH skills...")
-            status = get_skill_status(repo_root)
-            print(f"  {len(status['enabled'])} skill file(s) enabled")
+            print("Running WITH skills...")
 
             raw_output, exec_time = run_copilot_query(prompt, timeout)
             response = CopilotResponse(raw_output, prompt, exec_time)
 
-            print(f"  Completed in {exec_time:.2f}s")
-            print(f"  Tokens: ↑{response.tokens['input']} ↓{response.tokens['output']}")
+            tok = response.tokens
+            print(f"  Completed in {exec_time:.2f}s | Tokens: ↑{tok['input']} ↓{tok['output']}")
 
             save_results(query_id, response, output_dir, skills_enabled=True)
 
         print(f"{'─' * 60}")
 
-    print(f"\n{'=' * 60}")
-    print("Evaluation complete!")
-    print(f"Results saved to: {output_dir}")
-    print(f"{'=' * 60}\n")
+    print("\nEvaluation complete.")
 
 
 def main():

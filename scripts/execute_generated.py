@@ -2,17 +2,27 @@
 """
 Execute generated code and capture screenshots.
 
+WARNING: This script executes Copilot-generated Python code in a subprocess.
+Although execution is confined to a temporary working directory, the subprocess
+runs with the same user permissions and has full network access. Only run this
+against code you are willing to execute locally.
+
 This script:
 1. Finds all generated_code.py files in eval_results
-2. Executes each in an isolated subprocess
+2. Executes each in a temporary working directory
 3. Captures stdout/stderr and execution status
-4. Takes screenshots of visual outputs (plots, dashboards)
+4. Copies expected output files (plot_output.html/png) back to the results directory
+5. Takes screenshots of visual outputs (plots, dashboards)
 """
 
 import argparse
 import json
+import os
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -28,9 +38,13 @@ class CodeExecutor:
         """
         Execute a Python file and capture results.
 
+        The code runs inside a temporary working directory so it cannot
+        overwrite files in the repository. Only known output files
+        (plot_output.html, plot_output.png) are copied back to query_dir.
+
         Args:
             code_file: Path to generated_code.py
-            query_dir: Directory containing the code file
+            query_dir: Directory where results are saved
 
         Returns:
             Dictionary with execution results
@@ -41,69 +55,77 @@ class CodeExecutor:
         code_content = code_file.read_text()
         modified_code = self._modify_code_for_headless(code_content)
 
-        # Save modified code temporarily
-        temp_file = query_dir / "generated_code_modified.py"
-        temp_file.write_text(modified_code)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
 
-        try:
-            result = subprocess.run(
-                [sys.executable, str(temp_file)],
-                capture_output=True,
-                text=True,
-                timeout=self.timeout,
-                cwd=query_dir,
-            )
+            # Write modified code into the temp directory
+            temp_file = tmp_path / "generated_code_modified.py"
+            temp_file.write_text(modified_code)
 
-            execution_time = time.time() - start_time
+            try:
+                exec_env = {**os.environ, "MPLBACKEND": "Agg"}
+                result = subprocess.run(
+                    [sys.executable, str(temp_file)],
+                    capture_output=True,
+                    text=True,
+                    timeout=self.timeout,
+                    cwd=tmpdir,
+                    env=exec_env,
+                )
 
-            # Save execution log
-            log_content = f"=== STDOUT ===\n{result.stdout}\n\n=== STDERR ===\n{result.stderr}\n"
-            log_file = query_dir / "execution.log"
-            log_file.write_text(log_content)
+                execution_time = time.time() - start_time
 
-            success = result.returncode == 0
+                # Save execution log to the persistent results directory
+                log_content = (
+                    f"=== STDOUT ===\n{result.stdout}\n\n=== STDERR ===\n{result.stderr}\n"
+                )
+                log_file = query_dir / "execution.log"
+                log_file.write_text(log_content)
 
-            # Capture screenshot if execution succeeded and screenshots enabled
-            screenshot_path = None
-            if success and self.capture_screenshots:
-                screenshot_path = self._capture_screenshot(query_dir)
+                success = result.returncode == 0
 
-            return {
-                "success": success,
-                "returncode": result.returncode,
-                "execution_time": execution_time,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "has_output": bool(result.stdout),
-                "screenshot": screenshot_path is not None,
-            }
+                # Copy only the expected output files back to query_dir
+                for output_name in ("plot_output.html", "plot_output.png"):
+                    src = tmp_path / output_name
+                    if src.exists():
+                        shutil.copy(src, query_dir / output_name)
 
-        except subprocess.TimeoutExpired:
-            execution_time = time.time() - start_time
-            return {
-                "success": False,
-                "returncode": -1,
-                "execution_time": execution_time,
-                "error": f"Timeout after {self.timeout}s",
-                "has_output": False,
-                "screenshot": False,
-            }
+                # Capture screenshot if execution succeeded and screenshots enabled
+                screenshot_path = None
+                if success and self.capture_screenshots:
+                    screenshot_path = self._capture_screenshot(query_dir)
 
-        except Exception as e:
-            execution_time = time.time() - start_time
-            return {
-                "success": False,
-                "returncode": -1,
-                "execution_time": execution_time,
-                "error": str(e),
-                "has_output": False,
-                "screenshot": False,
-            }
+                return {
+                    "success": success,
+                    "returncode": result.returncode,
+                    "execution_time": execution_time,
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "has_output": bool(result.stdout),
+                    "screenshot": screenshot_path is not None,
+                }
 
-        finally:
-            # Clean up temp file
-            if temp_file.exists():
-                temp_file.unlink()
+            except subprocess.TimeoutExpired:
+                execution_time = time.time() - start_time
+                return {
+                    "success": False,
+                    "returncode": -1,
+                    "execution_time": execution_time,
+                    "error": f"Timeout after {self.timeout}s",
+                    "has_output": False,
+                    "screenshot": False,
+                }
+
+            except Exception as e:
+                execution_time = time.time() - start_time
+                return {
+                    "success": False,
+                    "returncode": -1,
+                    "execution_time": execution_time,
+                    "error": str(e),
+                    "has_output": False,
+                    "screenshot": False,
+                }
 
     def _modify_code_for_headless(self, code: str) -> str:
         """
@@ -162,8 +184,6 @@ if not _plot_saved:
         # Remove any existing plt.show() or show() calls
         modified_code = code.replace("plt.show()", "# plt.show() # commented by eval")
         # Be careful with .show() - only remove standalone calls
-        import re
-
         modified_code = re.sub(r"(?<!\w)show\(\)", "# show() # commented by eval", modified_code)
 
         return modified_code + save_code
@@ -187,8 +207,6 @@ if not _plot_saved:
         if png_file.exists():
             screenshot_path = query_dir / "screenshot.png"
             # Copy/rename to screenshot.png for consistency
-            import shutil
-
             shutil.copy(png_file, screenshot_path)
             return screenshot_path
 
@@ -214,9 +232,7 @@ if not _plot_saved:
 
                     browser.close()
 
-                print(f"Screenshot captured: {screenshot_path.name}")
                 return screenshot_path
-
             except ImportError:
                 print("Playwright not installed, skipping screenshot")
                 print("Install with: pip install playwright && playwright install chromium")
@@ -280,13 +296,11 @@ def execute_all_code(
         print("No generated code files found!")
         return
 
-    print(f"\n{'=' * 70}")
-    print("Executing Generated Code")
-    print(f"{'=' * 70}")
-    print(f"Found {len(code_files)} code file(s)")
-    print(f"Timeout: {timeout}s per file")
-    print(f"Screenshots: {'Disabled' if skip_screenshots else 'Enabled'}")
-    print(f"{'=' * 70}\n")
+    screenshots = "off" if skip_screenshots else "on"
+    print(
+        f"Executing {len(code_files)} generated code file(s)"
+        f" (timeout: {timeout}s, screenshots: {screenshots})\n"
+    )
 
     executor = CodeExecutor(timeout=timeout, capture_screenshots=not skip_screenshots)
     results_summary = []
@@ -296,7 +310,6 @@ def execute_all_code(
         condition = cf["condition"]
 
         print(f"[{i}/{len(code_files)}] {query_id} ({condition})")
-        print(f"{'─' * 70}")
 
         result = executor.execute(cf["code_file"], cf["query_dir"])
 
@@ -321,7 +334,7 @@ def execute_all_code(
             print(f"  Output: {len(result['stdout'])} chars")
 
         if result.get("screenshot"):
-            print("  Screenshot: screenshot.png")
+            print("  screenshot: screenshot.png")
 
         results_summary.append(
             {
@@ -333,32 +346,17 @@ def execute_all_code(
             }
         )
 
-        print(f"{'─' * 70}\n")
-
     # Print summary
-    print(f"{'=' * 70}")
-    print("Execution Summary")
-    print(f"{'=' * 70}")
-
     success_count = sum(1 for r in results_summary if r["success"])
+    fail_count = len(results_summary) - success_count
     screenshot_count = sum(1 for r in results_summary if r.get("has_screenshot"))
 
-    print(f"Success: {success_count}/{len(results_summary)}")
-    print(f"Failed:  {len(results_summary) - success_count}/{len(results_summary)}")
-    print(f"Screenshots captured: {screenshot_count}/{len(results_summary)}")
-
-    # Group by condition
-    for condition in ["with_skills", "without_skills"]:
-        condition_results = [r for r in results_summary if r["condition"] == condition]
-        if condition_results:
-            success = sum(1 for r in condition_results if r["success"])
-            screenshots = sum(1 for r in condition_results if r.get("has_screenshot"))
-            print(
-                f"  {condition}: {success}/{len(condition_results)} successful, "
-                f"{screenshots} screenshots"
-            )
-
-    print(f"{'=' * 70}\n")
+    parts = [f"{success_count}/{len(results_summary)} succeeded"]
+    if fail_count:
+        parts.append(f"{fail_count} failed")
+    if screenshot_count:
+        parts.append(f"{screenshot_count} screenshots")
+    print(f"\nExecution complete: {', '.join(parts)}")
 
 
 def main():

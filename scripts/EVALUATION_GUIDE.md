@@ -70,7 +70,7 @@ queries:
 
 Query fields:
 
-- `id`: Unique identifier (lowercase, hyphens only)
+- `id`: Unique identifier (lowercase, using hyphens or underscores)
 - `prompt`: The question/task for Copilot
 - `expected_output`: Type of output (`static_plot` or `panel_app`)
 - `timeout`: Maximum execution time in seconds

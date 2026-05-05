@@ -224,7 +224,6 @@ def save_markdown_report(summary: dict, output_file: Path):
                     lines.append("**REGRESSION:** Code fails with skills\n")
 
     output_file.write_text("\n".join(lines))
-    print(f"Markdown report saved: {output_file}")
 
 
 def aggregate_metrics(
@@ -241,38 +240,22 @@ def aggregate_metrics(
     if output_dir is None:
         output_dir = eval_results_dir
 
-    print(f"\n{'=' * 70}")
-    print("AGGREGATING EVALUATION METRICS")
-    print(f"{'=' * 70}")
-    print(f"Source: {eval_results_dir}")
-    print(f"Output: {output_dir}")
-    if query_filter:
-        print(f"Query Filter: {', '.join(query_filter)}")
-    print(f"{'=' * 70}\n")
-
-    # Collect metrics
-    print("Collecting metrics...")
     metrics = collect_metrics(eval_results_dir, query_filter)
 
     if not metrics:
         print("No metrics found!")
         return
 
-    print(f"Found metrics for {len(metrics)} quer(ies)\n")
-
-    # Generate comparison summary
-    print("Generating comparison summary...")
     summary = generate_comparison_summary(metrics)
 
-    # Save single JSON report with all data
     json_file = output_dir / "evaluation_results.json"
     with open(json_file, "w") as f:
         json.dump(summary, f, indent=2)
-    print(f"Evaluation results saved: {json_file}")
 
-    # Save markdown summary report
     md_file = output_dir / "evaluation_summary.md"
     save_markdown_report(summary, md_file)
+
+    print(f"Metrics aggregated for {len(metrics)} quer(ies) → {md_file.name}")
 
 
 def main():
