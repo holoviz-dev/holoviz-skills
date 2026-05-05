@@ -16,6 +16,8 @@ Before plotting, consider: what story does the data tell? What comparison matter
 
 Activate the `.hvplot` accessor with the appropriate backend import: `import hvplot.pandas`, `hvplot.polars`, `hvplot.xarray`, `hvplot.duckdb`, or `hvplot.dask`. Backends like Polars and DuckDB must be installed separately. Optional: `datashader` for resampling, `geoviews` or `geopandas` for geographic data. Prefer the Bokeh backend (default) for interactivity, Matplotlib for static/print output, Plotly as a last resort.
 
+For HoloViews elements (VLine, HLine, Text, Overlay, etc.), import holoviews directly: `import holoviews as hv`. Do not access via `hvplot.pandas.hv` — it doesn't exist.
+
 ## Plot Labels
 
 Notes:
@@ -109,13 +111,14 @@ earthquakes.hvplot.points(
 
 Notes:
 1. Sort values so the largest is at top (or bottom) for easy comparison.
-2. Use a single neutral color by default; reserve color encoding for when it maps to data.
+2. Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
 3. Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, `show_frame=False`.
-4. Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely.
-5. `backend_opts` accesses the underlying plotting library's model properties (e.g. `"outline_line_alpha": 0` to hide the frame in Bokeh). `.opts()` accesses HoloViews-level plot options (e.g. `show_frame=False`). Use either for styling not exposed by hvPlot directly.
-6. Use `NumeralTickFormatter(format='0a')` for large-number axes (e.g. 1.2M, 500K). Pass via `xformatter=` or `yformatter=`.
-7. Use `fontscale=` to increase readability; `padding=` to add room for labels.
-8. This example is heavily stylized to illustrate what's possible; use discretion.
+4. Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely. Pass `responsive=True` and `hover=False` on both plot and labels calls. Inside bars: `y="pos"` where `pos = value * 0.98`, `text_align="right"`, `text_color="white"`. Outside bars: `pos = value + offset`, `text_align="left"`, `text_color="black"`. For stacked bars + labels, the labels DataFrame must include stacked columns via `hover_cols`.
+5. `backend_opts` accesses Bokeh model properties (e.g. `"outline_line_alpha": 0`). `.opts()` accesses HoloViews plot options (e.g. `show_frame=False`).
+6. Prefer hvPlot kwargs over `.opts()` — they take precedence. Pass `responsive=True` in the hvPlot call, not via `.opts()`, which can conflict with default dimensions.
+7. Use `NumeralTickFormatter(format='0a')` for large-number axes via `xformatter=`/`yformatter=`.
+8. Use `fontscale=` for readability.
+9. This example is heavily stylized to illustrate what's possible; use discretion.
 
 ```python
 import hvplot.pandas  # noqa
@@ -151,6 +154,24 @@ labels = counts.hvplot.labels(
 barh * labels
 ```
 
+## Interaction
+
+Notes:
+1. Hide the toolbar for polished output: `backend_opts={"plot.toolbar.autohide": True}` (shows on hover) or `.opts(toolbar=None)` (removes entirely). Hide on secondary panels in a layout (e.g. the bottom chart) and keep on the main chart.
+2. For timeseries, use `hover_mode='vline'` to snap the crosshair to the nearest x-value — much easier to read than the default point hover.
+3. Configure wheel zoom axis: `tools=['xwheel_zoom']` for timeseries (zoom x only), `tools=['ywheel_zoom']` for vertical, or default `'wheel_zoom'` for both. Replace the active tool with `active_scroll=`.
+
+```python
+# Timeseries with vline crosshair, x-only zoom, toolbar hidden
+apple.hvplot.line(
+    y='close',
+    hover_mode='vline',
+    tools=['xwheel_zoom'],
+    active_tools=['xwheel_zoom'],
+    responsive=True, height=300,
+).opts(toolbar=None)
+```
+
 ## Timeseries
 
 Notes:
@@ -162,12 +183,20 @@ Notes:
 ```python
 import hvplot.pandas  # noqa
 import numpy as np
+from bokeh.models.formatters import DatetimeTickFormatter
 
 apple = hvplot.sampledata.apple_stocks('pandas').set_index('date')
 stocks = hvplot.sampledata.stocks('pandas').set_index('date')
 
 # Each series gets its own y sub-axis
 stocks.hvplot.line(y=['Apple', 'Amazon', 'Google', 'Meta'], subcoordinate_y=True)
+
+# Custom date formatting + LTTB downsampling
+apple.hvplot.line(
+    y='close',
+    xformatter=DatetimeTickFormatter(months='%b %Y'),
+    downsample=True,
+)
 
 # Aggregate by datetime component
 apple.hvplot.heatmap(x='index.hour', y='index.month', C='close', cmap='reds', reduce_function=np.mean)
@@ -176,9 +205,7 @@ apple.hvplot.heatmap(x='index.hour', y='index.month', C='close', cmap='reds', re
 ## Subplots and Layouts
 
 Notes:
-1. `subplots=True` gives each `y` column its own panel. Axes are linked by default; use `shared_axes=False` for independent ranges.
-2. `.cols(N)` controls columns per row.
-3. `col=` / `row=` creates a faceted grid by category — cleaner than `subplots` for categorical splits.
+1. `col=`/`row=` creates a cleaner faceted grid than `subplots=True` for categorical splits. Use `shared_axes=False` for independent ranges.
 
 ```python
 stocks = hvplot.sampledata.stocks("pandas")
@@ -201,7 +228,7 @@ penguins.hvplot.scatter(
 
 ## Statistical Functions
 
-These are **top-level functions**, not `.hvplot` accessor methods:
+These are **top-level functions**, not `.hvplot` accessor methods.
 
 ```python
 import hvplot

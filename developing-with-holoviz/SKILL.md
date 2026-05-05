@@ -1,58 +1,37 @@
 ---
 name: developing-with-holoviz
-description: "Routes to library-specific sub-skills for ALL HoloViz tasks: creating plots, building dashboards and data apps, composing interactive visualizations, or building custom components. Provides guidance for HoloViz libraries. Trigger phrases: panel, hvplot, holoviews, param, dashboard, data app, interactive plot, widget, layout, template, pane, .hvplot, hv.element, pn.widgets, pn.pane, pn.layout, pn.template, panel serve."
+description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param).
 ---
 
 # Developing with HoloViz Tools
 
-This is a **routing skill** that directs you to the right HoloViz sub-skill for the task at hand.
+This is a **routing skill** — load the matching sub-skill(s) for the task at hand.
 
-## Workflow
+> **Path note:** Sub-skills live in `skills/` relative to this file.
 
-```
-Step 1: Identify which HoloViz library is involved
-    ↓
-Step 2: Load the matching sub-skill
-    ↓
-Step 3: Apply the sub-skill guidance to implement or answer the request
-```
+## Loading Table
 
-### Step 1: Identify the Library
+A single request often spans multiple skills. Load all that apply.
 
-A single user request may span multiple libraries
-(e.g. plotting data with hvPlot and then embedding the result in a Panel app) —
-identify all relevant libraries in that case.
+For new apps, prefer `panel-material-ui` over standard Panel templates — it provides modern Material Design components out of the box.
 
-### Step 2: Load the Sub-skill
-
-> **Path note:** Sub-skills are siblings of this skill in your agent's skills directory.
-> Use paths relative to this file: `skills/hvplot/SKILL.md`.
-
-| User Need                                                       | Sub-skill to Load              |
-| --------------------------------------------------------------- | ------------------------------ |
-| Quick exploratory plots from DataFrames / xarray with `.hvplot` | `read skills/hvplot/SKILL.md`  |
-
-### Step 3: Apply Sub-skill Guidance
-
-Follow the instructions in the loaded sub-skill(s) to implement or answer the
-request. Each sub-skill contains best practices, DOs/DON'Ts, code patterns, and
-dependency information specific to that library.
+| User Need | Skills to Load |
+|---|---|
+| Typed, validated, reactive parameters | `skills/param/SKILL.md` |
+| Quick exploratory plots from DataFrames / xarray | `skills/hvplot/SKILL.md` |
+| Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel-material-ui/SKILL.md` |
+| HoloViews/hvPlot plots embedded in Panel (DynamicMap, streams, link_selections) | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel-holoviews/SKILL.md` |
+| Custom JS/React/AnyWidget components | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel-custom-components/SKILL.md` |
+| Playwright UI testing for Panel components | `skills/panel-custom-components/SKILL.md` + `skills/panel-pytest-playwright/SKILL.md` |
 
 ## Skill Map
 
-| Sub-skill           | Covers                                                                        |
-| ------------------- | ----------------------------------------------------------------------------- |
-| [hvplot](hvplot.md) | Quick interactive plots from DataFrames / xarray using the `.hvplot` accessor |
-
-## Resources
-
-- [HoloViz Documentation](https://holoviz.org/)
-- [Panel Documentation](https://panel.holoviz.org/)
-- [hvPlot Documentation](https://hvplot.holoviz.org/)
-- [HoloViews Documentation](https://holoviews.org/)
-- [GeoViews Documentation](https://geoviews.org/)
-- [Datashader Documentation](https://datashader.org/)
-- [Lumen Documentation](https://lumen.holoviz.org/)
-- [Param Documentation](https://param.holoviz.org/)
-- [Colorcet Documentation](https://colorcet.holoviz.org/)
-- [Panel Material UI Documentation](https://panel-material-ui.holoviz.org/)
+| Sub-skill | Covers |
+|---|---|
+| [param](skills/param/SKILL.md) | `@param.depends`, `watch=True`, `.watch()`, parameter types, dependent parameters |
+| [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
+| [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, templates, serving, performance, plotting gotchas |
+| [panel-material-ui](skills/panel-material-ui/SKILL.md) | `pmui.Page`, `theme_config`, `sx`, component gotchas, icons |
+| [panel-holoviews](skills/panel-holoviews/SKILL.md) | DynamicMap, streams, link_selections, responsive sizing, jslink |
+| [panel-custom-components](skills/panel-custom-components/SKILL.md) | JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent, CDN gotchas |
+| [panel-pytest-playwright](skills/panel-pytest-playwright/SKILL.md) | Playwright UI tests, `serve_component`, `wait_until`, state sync tests |
