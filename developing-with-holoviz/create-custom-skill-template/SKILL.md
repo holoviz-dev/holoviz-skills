@@ -34,9 +34,10 @@ Add an example to illustrate the goal.
 
 ### References
 
-This template heavily references Anthropic's official Skills docs:
+This template references Anthropic's official Skills docs:
 
 - [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
 - [Quickstart](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/quickstart)
 - [Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
-- [How to create custom Skills](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills)
+- [Skills in the API](https://platform.claude.com/docs/en/build-with-claude/skills-guide)
+- [How to create custom Skills (Help Center)](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills)

@@ -16,6 +16,8 @@ Before plotting, consider: what story does the data tell? What comparison matter
 
 Activate the `.hvplot` accessor with the appropriate backend import: `import hvplot.pandas`, `hvplot.polars`, `hvplot.xarray`, `hvplot.duckdb`, or `hvplot.dask`. Backends like Polars and DuckDB must be installed separately. Optional: `datashader` for resampling, `geoviews` or `geopandas` for geographic data. Prefer the Bokeh backend (default) for interactivity, Matplotlib for static/print output, Plotly as a last resort.
 
+For HoloViews elements (VLine, HLine, Text, Overlay, etc.), import holoviews directly: `import holoviews as hv`. Do not access via `hvplot.pandas.hv` — it doesn't exist.
+
 ## Plot Labels
 
 Notes:
@@ -152,6 +154,24 @@ labels = counts.hvplot.labels(
 barh * labels
 ```
 
+## Interaction
+
+Notes:
+1. Hide the toolbar for polished output: `backend_opts={"plot.toolbar.autohide": True}` (shows on hover) or `.opts(toolbar=None)` (removes entirely). Hide on secondary panels in a layout (e.g. the bottom chart) and keep on the main chart.
+2. For timeseries, use `hover_mode='vline'` to snap the crosshair to the nearest x-value — much easier to read than the default point hover.
+3. Configure wheel zoom axis: `tools=['xwheel_zoom']` for timeseries (zoom x only), `tools=['ywheel_zoom']` for vertical, or default `'wheel_zoom'` for both. Replace the active tool with `active_scroll=`.
+
+```python
+# Timeseries with vline crosshair, x-only zoom, toolbar hidden
+apple.hvplot.line(
+    y='close',
+    hover_mode='vline',
+    tools=['xwheel_zoom'],
+    active_tools=['xwheel_zoom'],
+    responsive=True, height=300,
+).opts(toolbar=None)
+```
+
 ## Timeseries
 
 Notes:
@@ -163,12 +183,20 @@ Notes:
 ```python
 import hvplot.pandas  # noqa
 import numpy as np
+from bokeh.models.formatters import DatetimeTickFormatter
 
 apple = hvplot.sampledata.apple_stocks('pandas').set_index('date')
 stocks = hvplot.sampledata.stocks('pandas').set_index('date')
 
 # Each series gets its own y sub-axis
 stocks.hvplot.line(y=['Apple', 'Amazon', 'Google', 'Meta'], subcoordinate_y=True)
+
+# Custom date formatting + LTTB downsampling
+apple.hvplot.line(
+    y='close',
+    xformatter=DatetimeTickFormatter(months='%b %Y'),
+    downsample=True,
+)
 
 # Aggregate by datetime component
 apple.hvplot.heatmap(x='index.hour', y='index.month', C='close', cmap='reds', reduce_function=np.mean)
@@ -200,7 +228,7 @@ penguins.hvplot.scatter(
 
 ## Statistical Functions
 
-These are **top-level functions**, not `.hvplot` accessor methods:
+These are **top-level functions**, not `.hvplot` accessor methods.
 
 ```python
 import hvplot
