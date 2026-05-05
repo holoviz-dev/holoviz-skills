@@ -71,7 +71,11 @@ playwright = "*"
 
 [feature.eval.tasks]
 _eval-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }
+eval-check = { cmd = "python scripts/test_setup.py", cwd = ".", description = "Verify evaluation system is set up correctly" }
 evals = { cmd = "python scripts/run_full_evaluation.py", cwd = ".", depends-on = [
+    "eval-check",
     "_eval-setup",
 ], description = "Run full evaluation pipeline" }
-eval-no-screenshots = { cmd = "python scripts/run_full_evaluation.py --skip-screenshots", cwd = ".", description = "Run evaluation without screenshots (faster)" }
+eval-no-screenshots = { cmd = "python scripts/run_full_evaluation.py --skip-screenshots", cwd = ".", depends-on = [
+    "eval-check",
+], description = "Run evaluation without screenshots (faster, no Playwright needed)" }

@@ -67,6 +67,9 @@ Examples:
   # Evaluate specific queries only
   python run_full_evaluation.py --queries hvplot_basic_line
 
+  # Evaluate only the with-skills condition
+  python run_full_evaluation.py --skills with
+
   # Skip code execution
   python run_full_evaluation.py --skip-execution
 
@@ -84,6 +87,13 @@ Examples:
         type=Path,
         default=Path(__file__).parent.parent / "eval_results",
         help="Output directory (default: ../eval_results)",
+    )
+
+    parser.add_argument(
+        "--skills",
+        choices=["both", "with", "without"],
+        default="both",
+        help="Which condition(s) to evaluate: 'both' (default), 'with', or 'without'",
     )
 
     parser.add_argument(
@@ -133,6 +143,7 @@ Examples:
     eval_cmd = [sys.executable, scripts_dir / "run_eval.py"]
     eval_cmd.extend(["--queries-file", str(args.queries_file)])
     eval_cmd.extend(["--output", str(args.output)])
+    eval_cmd.extend(["--skills", args.skills])
     if args.queries:
         eval_cmd.extend(["--queries"] + args.queries)
 

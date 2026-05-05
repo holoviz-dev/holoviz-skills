@@ -8,7 +8,10 @@ Automated system to evaluate whether SKILL.md files improve Copilot's responses 
 # 1. Install all dependencies
 pixi run setup-dev
 
-# 2. Run the full evaluation
+# 2. Check the system is ready
+pixi run eval-check
+
+# 3. Run the full evaluation
 pixi run evals
 
 # Run specific queries only
@@ -73,6 +76,27 @@ Query fields:
 - `timeout`: Maximum execution time in seconds
 - `category`: Optional grouping tag
 
+## Advanced Usage
+
+Run only a specific condition using the `--skills` flag:
+
+```bash
+# Only run the with-skills condition
+python scripts/run_full_evaluation.py --skills with
+
+# Only run the without-skills condition
+python scripts/run_full_evaluation.py --skills without
+
+# Run both (default)
+python scripts/run_full_evaluation.py --skills both
+```
+
+The same flag is available on `run_eval.py` directly:
+
+```bash
+python scripts/run_eval.py --skills with --queries hvplot_basic_line
+```
+
 ## Troubleshooting
 
 ### "copilot: command not found"
@@ -82,12 +106,6 @@ Install GitHub Copilot CLI — see https://docs.github.com/en/copilot/how-tos/co
 ### Code execution fails
 
 Check `execution.log` in the query directory for error details.
-
-### Skills not being toggled
-
-```bash
-python scripts/toggle_skills.py status
-```
 
 ## License
 

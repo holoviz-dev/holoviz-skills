@@ -261,14 +261,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run all queries
+  # Run all queries (both conditions)
   python run_eval.py
 
   # Run specific queries only
   python run_eval.py --queries hvplot_basic_line
 
-  # Run without-skills evaluation only
-  python run_eval.py --skip-with-skills
+  # Run only the with-skills condition
+  python run_eval.py --skills with
+
+  # Run only the without-skills condition
+  python run_eval.py --skills without
         """,
     )
 
@@ -289,11 +292,10 @@ Examples:
     parser.add_argument("--queries", nargs="+", help="Specific query IDs to run (default: all)")
 
     parser.add_argument(
-        "--skip-without-skills", action="store_true", help="Skip evaluation without skills enabled"
-    )
-
-    parser.add_argument(
-        "--skip-with-skills", action="store_true", help="Skip evaluation with skills enabled"
+        "--skills",
+        choices=["both", "with", "without"],
+        default="both",
+        help="Which condition(s) to evaluate: 'both' (default), 'with', or 'without'",
     )
 
     args = parser.parse_args()
@@ -303,17 +305,13 @@ Examples:
         print(f"Error: Queries file not found: {args.queries_file}")
         return 1
 
-    if args.skip_without_skills and args.skip_with_skills:
-        print("Error: Cannot skip both with and without skills!")
-        return 1
-
     # Run evaluation
     run_evaluation(
         queries_file=args.queries_file,
         output_dir=args.output,
         query_ids=args.queries,
-        skip_without_skills=args.skip_without_skills,
-        skip_with_skills=args.skip_with_skills,
+        skip_without_skills=args.skills == "with",
+        skip_with_skills=args.skills == "without",
     )
 
     return 0
