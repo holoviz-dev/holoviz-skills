@@ -2,6 +2,11 @@
 
 Automated system to measure whether SKILL.md files improve Copilot's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces a comparison report.
 
+## Requirements
+
+- A GitHub Copilot subscription (Individual, Business, or Enterprise) or access via the GitHub Copilot API
+- GitHub Copilot CLI installed and authenticated — see [installation guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli)
+
 ## Quick Start
 
 ```bash
@@ -108,9 +113,6 @@ Fields:
 - `category` — optional grouping tag
 
 ## Troubleshooting
-
-**`copilot: command not found`**
-Install GitHub Copilot CLI: https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli
 
 **Code execution fails**
 Check `execution.log` in the query result directory for the full traceback.
