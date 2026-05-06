@@ -50,9 +50,9 @@ class MyComponent(JSComponent):
 Libraries with plugin architectures (FullCalendar, ProseMirror, TipTap) break on esm.sh because each plugin gets its own copy of shared internals — prototype chain breaks silently.
 
 Notes:
-1. **Plugin-based libraries** → use `cdn.skypack.dev`. It deduplicates shared internals.
-2. **Standalone or React libraries** → `esm.sh` is fine. Use `?external=react,react-dom` for React.
-3. **CSS files or raw packages** → `cdn.jsdelivr.net`.
+- **Plugin-based libraries** → use `cdn.skypack.dev`. It deduplicates shared internals.
+- **Standalone or React libraries** → `esm.sh` is fine. Use `?external=react,react-dom` for React.
+- **CSS files or raw packages** → `cdn.jsdelivr.net`.
 
 Signs you hit this: toolbar renders but content is blank, `"Class constructor X cannot be invoked without 'new'"`, works in plain HTML but breaks in Panel.
 
@@ -172,8 +172,8 @@ export function render({ model }) {
 ```
 
 Notes:
-1. Don't import React — it's globally available.
-2. Use `?external=react,react-dom` for external React libraries in `_importmap`.
+- Don't import React — it's globally available.
+- Use `?external=react,react-dom` for external React libraries in `_importmap`.
 
 ## AnyWidgetComponent: get/set/save_changes
 
@@ -189,7 +189,7 @@ export default {
 ```
 
 Notes:
-1. Always pin React versions: `?deps=react@18.2.0,react-dom@18.2.0`. Without pinning, esm.sh serves React 19 with breaking changes.
+- Always pin React versions: `?deps=react@18.2.0,react-dom@18.2.0`. Without pinning, esm.sh serves React 19 with breaking changes.
 
 ## MaterialUIComponent
 
@@ -224,10 +224,10 @@ Use inline `style` props for icon dimensions — MUI CSS classes may not load pr
 ## Key DOs and DON'Ts
 
 Notes:
-1. Use external `.js`/`.jsx` files + `panel serve --dev` for hot reload. Use `panel compile` for production.
-2. Don't use `_` prefix for parameters needed in JS — private params don't sync.
-3. Prefer ESM imports over `__javascript__` — ESM is synchronous, `__javascript__` races with `render()`.
-4. Don't mix API patterns between component types (e.g., `model.get()` in ReactComponent).
-5. Set descriptive element IDs for Playwright testing.
-6. Handle resize events for responsive components.
-7. Clean up resources (intervals, listeners) in the `remove` lifecycle.
+- Use external `.js`/`.jsx` files + `panel serve --dev` for hot reload. Use `panel compile` for production.
+- Don't use `_` prefix for parameters needed in JS — private params don't sync.
+- Prefer ESM imports over `__javascript__` — ESM is synchronous, `__javascript__` races with `render()`.
+- Don't mix API patterns between component types (e.g., `model.get()` in ReactComponent).
+- Set descriptive element IDs for Playwright testing.
+- Handle resize events for responsive components.
+- Clean up resources (intervals, listeners) in the `remove` lifecycle.

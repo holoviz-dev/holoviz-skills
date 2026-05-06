@@ -38,10 +38,10 @@ earthquakes = hvplot.sampledata.earthquakes("pandas")
 ## Plot Labels
 
 Notes:
-1. Label axes and colorbars with descriptive names and units.
-2. Titles should tell the story (what, where, when); don't repeat what the axes already show.
-3. Compute dynamic labels (date ranges, region names) as variables before the plot call to keep it readable.
-4. Use `coastline` or `tiles` for geographic context on geospatial plots.
+- Label axes and colorbars with descriptive names and units.
+- Titles should tell the story (what, where, when); don't repeat what the axes already show.
+- Compute dynamic labels (date ranges, region names) as variables before the plot call to keep it readable.
+- Use `coastline` or `tiles` for geographic context on geospatial plots.
 
 ```python
 import hvplot.pandas  # noqa
@@ -115,11 +115,11 @@ earthquakes.hvplot.points(
 ## Managing Dimensions
 
 Notes:
-1. `color=` and `size=` are vectorized; they scale to large data. Use `cmap=`/`clabel=` with color, `scale=` with size.
-2. `by=` overlays color-coded layers with a legend; useful for stacked/side-by-side bars.
-3. `groupby=` adds a dropdown widget to filter to one category at a time.
-4. `by=` and `groupby=` loop over categories, creating a separate element per value. Slow with many categories; prefer `color=` for high-cardinality columns.
-5. Options not directly exposed by hvPlot (e.g. `color_levels` for a discrete colorbar) can be set via `.opts("Points", ...)`. Use `cticks=` and `clim=` in hvPlot to control colorbar tick count and range.
+- `color=` and `size=` are vectorized; they scale to large data. Use `cmap=`/`clabel=` with color, `scale=` with size.
+- `by=` overlays color-coded layers with a legend; useful for stacked/side-by-side bars.
+- `groupby=` adds a dropdown widget to filter to one category at a time.
+- `by=` and `groupby=` loop over categories, creating a separate element per value. Slow with many categories; prefer `color=` for high-cardinality columns.
+- Options not directly exposed by hvPlot (e.g. `color_levels` for a discrete colorbar) can be set via `.opts("Points", ...)`. Use `cticks=` and `clim=` in hvPlot to control colorbar tick count and range.
 
 ```python
 ...
@@ -138,8 +138,8 @@ earthquakes.hvplot.points(
 ## Big Data
 
 Notes:
-1. If data exceeds 100k points, consider `rasterize=True` over `datashade=True`. Rasterize aggregates server-side but colormaps in the browser, preserving hover tooltips, colorbars, and `cnorm`/`cmap` control. Datashade sends an opaque RGB image — use it only for categorical color mixing (`aggregator='count_cat'`).
-2. `resample_when=N` disables resampling when the viewport contains fewer than N points (e.g. after zooming in), effectively creating a dynamic overlay that toggles opacity of either the rasterized or original layer. However, because it is an overlay, it can be finicky and may cause confusion, e.g. the hover tooltips will only work when the original layer is active.
+- If data exceeds 100k points, consider `rasterize=True` over `datashade=True`. Rasterize aggregates server-side but colormaps in the browser, preserving hover tooltips, colorbars, and `cnorm`/`cmap` control. Datashade sends an opaque RGB image — use it only for categorical color mixing (`aggregator='count_cat'`).
+- `resample_when=N` disables resampling when the viewport contains fewer than N points (e.g. after zooming in), effectively creating a dynamic overlay that toggles opacity of either the rasterized or original layer. However, because it is an overlay, it can be finicky and may cause confusion, e.g. the hover tooltips will only work when the original layer is active.
 
 ```python
 ...
@@ -154,15 +154,15 @@ earthquakes.hvplot.points(
 ## Styling
 
 Notes:
-1. Sort values so the largest is at top (or bottom) for easy comparison.
-2. Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
-3. Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, `show_frame=False`.
-4. Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely. Pass `responsive=True` and `hover=False` on both plot and labels calls. Inside bars: `y="pos"` where `pos = value * 0.98`, `text_align="right"`, `text_color="white"`. Outside bars: `pos = value + offset`, `text_align="left"`, `text_color="black"`. For stacked bars + labels, the labels DataFrame must include stacked columns via `hover_cols`.
-5. `backend_opts` accesses Bokeh model properties (e.g. `"outline_line_alpha": 0`). `.opts()` accesses HoloViews plot options (e.g. `show_frame=False`).
-6. Prefer hvPlot kwargs over `.opts()` — they take precedence. Pass `responsive=True` in the hvPlot call, not via `.opts()`, which can conflict with default dimensions.
-7. Use `NumeralTickFormatter(format='0a')` for large-number axes via `xformatter=`/`yformatter=`.
-8. Use `fontscale=` for readability.
-9. This example is heavily stylized to illustrate what's possible; use discretion.
+- Sort values so the largest is at top (or bottom) for easy comparison.
+- Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
+- Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, `show_frame=False`.
+- Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely. Pass `responsive=True` and `hover=False` on both plot and labels calls. Inside bars: `y="pos"` where `pos = value * 0.98`, `text_align="right"`, `text_color="white"`. Outside bars: `pos = value + offset`, `text_align="left"`, `text_color="black"`. For stacked bars + labels, the labels DataFrame must include stacked columns via `hover_cols`.
+- `backend_opts` accesses Bokeh model properties (e.g. `"outline_line_alpha": 0`). `.opts()` accesses HoloViews plot options (e.g. `show_frame=False`).
+- Prefer hvPlot kwargs over `.opts()` — they take precedence. Pass `responsive=True` in the hvPlot call, not via `.opts()`, which can conflict with default dimensions.
+- Use `NumeralTickFormatter(format='0a')` for large-number axes via `xformatter=`/`yformatter=`.
+- Use `fontscale=` for readability.
+- This example is heavily stylized to illustrate what's possible; use discretion.
 
 ```python
 import hvplot.pandas  # noqa
@@ -201,9 +201,9 @@ barh * labels
 ## Interaction
 
 Notes:
-1. Hide the toolbar for polished output: `backend_opts={"plot.toolbar.autohide": True}` (shows on hover) or `.opts(toolbar=None)` (removes entirely). Hide on secondary panels in a layout (e.g. the bottom chart) and keep on the main chart.
-2. For timeseries, use `hover_mode='vline'` to snap the crosshair to the nearest x-value — much easier to read than the default point hover.
-3. Configure wheel zoom axis: `tools=['xwheel_zoom']` for timeseries (zoom x only), `tools=['ywheel_zoom']` for vertical, or default `'wheel_zoom'` for both. Replace the active tool with `active_scroll=`.
+- Hide the toolbar for polished output: `backend_opts={"plot.toolbar.autohide": True}` (shows on hover) or `.opts(toolbar=None)` (removes entirely). Hide on secondary panels in a layout (e.g. the bottom chart) and keep on the main chart.
+- For timeseries, use `hover_mode='vline'` to snap the crosshair to the nearest x-value — much easier to read than the default point hover.
+- Configure wheel zoom axis: `tools=['xwheel_zoom']` for timeseries (zoom x only), `tools=['ywheel_zoom']` for vertical, or default `'wheel_zoom'` for both. Replace the active tool with `active_scroll=`.
 
 ```python
 # Timeseries with vline crosshair, x-only zoom, toolbar hidden
@@ -219,10 +219,10 @@ apple.hvplot.line(
 ## Timeseries
 
 Notes:
-1. `subcoordinate_y=True` gives each series its own y sub-axis — useful for multi-stock views with different scales.
-2. Access datetime index components directly: `'index.month'`, `'index.hour'`, `'index.year'` work inside hvPlot for aggregation.
-3. Use `xformatter=DatetimeTickFormatter(months='%b %Y')` for custom date formatting.
-4. For large timeseries, use `downsample=True` (LTTB algorithm) to reduce points sent to the browser while preserving visual shape. Updates dynamically on zoom.
+- `subcoordinate_y=True` gives each series its own y sub-axis — useful for multi-stock views with different scales.
+- Access datetime index components directly: `'index.month'`, `'index.hour'`, `'index.year'` work inside hvPlot for aggregation.
+- Use `xformatter=DatetimeTickFormatter(months='%b %Y')` for custom date formatting.
+- For large timeseries, use `downsample=True` (LTTB algorithm) to reduce points sent to the browser while preserving visual shape. Updates dynamically on zoom.
 
 ```python
 import hvplot.pandas  # noqa
@@ -249,7 +249,7 @@ apple.hvplot.heatmap(x='index.hour', y='index.month', C='close', cmap='reds', re
 ## Subplots and Layouts
 
 Notes:
-1. `col=`/`row=` creates a cleaner faceted grid than `subplots=True` for categorical splits. Use `shared_axes=False` for independent ranges.
+- `col=`/`row=` creates a cleaner faceted grid than `subplots=True` for categorical splits. Use `shared_axes=False` for independent ranges.
 
 ```python
 stocks = hvplot.sampledata.stocks("pandas")

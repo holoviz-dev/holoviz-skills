@@ -11,10 +11,10 @@ metadata:
 ## Key Differences from Panel
 
 Notes:
-1. Import `panel_material_ui as pmui`. Don't add `"panel_material_ui"` or `"bokeh"` to `pn.extension()`. Don't set `design='material'`.
-2. Use `pmui.Page` instead of `pn.template.FastListTemplate`.
-3. Use new param names (`label`, `color`, `variant`) not legacy aliases (`name`, `button_type`, `button_style`).
-4. Quick preview with `python app.py` + `.show()` works for pmui (unlike standard Panel).
+- Import `panel_material_ui as pmui`. Don't add `"panel_material_ui"` or `"bokeh"` to `pn.extension()`. Don't set `design='material'`.
+- Use `pmui.Page` instead of `pn.template.FastListTemplate`.
+- Use new param names (`label`, `color`, `variant`) not legacy aliases (`name`, `button_type`, `button_style`).
+- Quick preview with `python app.py` + `.show()` works for pmui (unlike standard Panel).
 
 ```python
 import panel as pn
@@ -49,11 +49,11 @@ class MyApp(pn.viewable.Viewer):
 ## Page
 
 Notes:
-1. Title goes in `Page.title` — don't repeat in `main`.
-2. `Page.sidebar`, `Page.main`, `Page.header` require lists — not bare components or `list(layout)`.
-3. Don't add `ThemeToggle` — built in.
-4. `header` is only 100px — buttons, indicators, nav links only.
-5. Add `margin=10` to outer `main` layouts so they stand out from sidebar.
+- Title goes in `Page.title` — don't repeat in `main`.
+- `Page.sidebar`, `Page.main`, `Page.header` require lists — not bare components or `list(layout)`.
+- Don't add `ThemeToggle` — built in.
+- `header` is only 100px — buttons, indicators, nav links only.
+- Add `margin=10` to outer `main` layouts so they stand out from sidebar.
 
 ```python
 # ✅ Lists
@@ -66,11 +66,11 @@ pmui.Page(sidebar=widget1, main=content)
 ## Styling Layers
 
 Notes:
-1. Preference order: `theme_config` → `sx` → `styles` → `stylesheets`.
-2. `theme_config`: app-wide palette, typography, shape. Define on top-level container; children inherit. Use `"light"`/`"dark"` keys.
-3. `sx`: local Mui styling. Selectors like `& .MuiSlider-thumb`, `.mui-dark`/`.mui-light` for mode overrides.
-4. `styles`: outer Panel wrapper only — spacing, borders, backgrounds.
-5. `stylesheets`: last resort for classic Panel internals.
+- Preference order: `theme_config` → `sx` → `styles` → `stylesheets`.
+- `theme_config`: app-wide palette, typography, shape. Define on top-level container; children inherit. Use `"light"`/`"dark"` keys.
+- `sx`: local Mui styling. Selectors like `& .MuiSlider-thumb`, `.mui-dark`/`.mui-light` for mode overrides.
+- `styles`: outer Panel wrapper only — spacing, borders, backgrounds.
+- `stylesheets`: last resort for classic Panel internals.
 
 ```python
 app_theme = {
@@ -98,22 +98,22 @@ pmui.Page(
 ## Component Gotchas
 
 Notes:
-1. `Grid`: use `spacing=2`+. `ncols` doesn't exist.
-2. `Column`/`Row`: use `size`, not `xs`/`sm`/`md`. Set spacing via `sx`, not `spacing` param.
-3. List layouts take positional args: `pmui.Row(child1, child2)`, not `pmui.Row([child1, child2])`.
-4. `Paper`: set `pmui.Paper.param.margin.default = 10`.
-5. `Switch`: add `margin=(10, 20)` in sidebars. Sliders: margin left/right.
-6. Sidebar widgets need `sizing_mode="stretch_width"` explicitly, or wrap sidebar construction with `pn.config.set(sizing_mode="stretch_width")`.
-7. `Card`: prefer `Paper`. Set `collapsible=False` unless needed.
-8. `Tabulator`: use `"materialize"` theme, not `"material"` (doesn't exist).
-9. `Box` → use `Column`. `TextField` → use `TextInput`. Neither exists.
+- `Grid`: use `spacing=2`+. `ncols` doesn't exist.
+- `Column`/`Row`: use `size`, not `xs`/`sm`/`md`. Set spacing via `sx`, not `spacing` param.
+- List layouts take positional args: `pmui.Row(child1, child2)`, not `pmui.Row([child1, child2])`.
+- `Paper`: set `pmui.Paper.param.margin.default = 10`.
+- `Switch`: add `margin=(10, 20)` in sidebars. Sliders: margin left/right.
+- Sidebar widgets need `sizing_mode="stretch_width"` explicitly, or wrap sidebar construction with `pn.config.set(sizing_mode="stretch_width")`.
+- `Card`: prefer `Paper`. Set `collapsible=False` unless needed.
+- `Tabulator`: use `"materialize"` theme, not `"material"` (doesn't exist).
+- `Box` → use `Column`. `TextField` → use `TextInput`. Neither exists.
 
 ## Icons
 
 Notes:
-1. Prefer Material UI icons over emojis.
-2. Standalone decorative icons: use `Typography`, not `IconButton`.
-3. Widget labels/options: embed with `:material/...:` token syntax.
+- Prefer Material UI icons over emojis.
+- Standalone decorative icons: use `Typography`, not `IconButton`.
+- Widget labels/options: embed with `:material/...:` token syntax.
 
 ```python
 pmui.Typography(
