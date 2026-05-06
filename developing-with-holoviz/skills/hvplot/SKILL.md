@@ -111,6 +111,7 @@ earthquakes.hvplot.points(
 
 Notes:
 - Sort values so the largest is at top (or bottom) for easy comparison.
+- For `barh`, `.set_index("category")` before plotting. Without this, `sort_values()` leaves a numeric index that renders as NaN on the y-axis.
 - Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
 - Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, `show_frame=False`.
 - Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely. Pass `responsive=True` and `hover=False` on both plot and labels calls. Inside bars: `y="pos"` where `pos = value * 0.98`, `text_align="right"`, `text_color="white"`. Outside bars: `pos = value + offset`, `text_align="left"`, `text_color="black"`. For stacked bars + labels, the labels DataFrame must include stacked columns via `hover_cols`.

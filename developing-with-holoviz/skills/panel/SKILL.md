@@ -14,6 +14,7 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 
 Notes:
 - Recreating panes or layouts inside `@param.depends` causes flickering. Create them once in `__init__`, bind to reactive content.
+- `on_init=True` watchers fire during `super().__init__()`. Create any panes they reference *before* the `super().__init__(**params)` call.
 - Use `pn.pane.Placeholder` when the content type varies (string → plot → widget). Swap with `.update()` or `.object =`.
 - Implement `__panel__` to return the layout. When served, wrap in `pmui.Page` (see the panel-material-ui skill); otherwise return the bare component.
 
@@ -31,15 +32,15 @@ species_list = sorted(penguins["species"].unique())
 # ✅ Static panes, reactive content
 class Dashboard(pn.viewable.Viewer):
     species = param.ListSelector(default=species_list, objects=species_list)
-    chart = param.Parameter()
 
     def __init__(self, **params):
+        # Create panes before super().__init__ — on_init=True watchers fire during super()
+        self._species_widget = pmui.CheckButtonGroup.from_param(self.param.species)
+        self._chart_pane = pn.pane.HoloViews(sizing_mode="stretch_width")
         super().__init__(**params)
-        self._species_widget = pn.widgets.CrossSelector.from_param(self.param.species)
-        self._chart_pane = pn.pane.HoloViews(self.param.chart)
         with pn.config.set(sizing_mode="stretch_width"):
-            self._sidebar = pn.Column(self._species_widget)
-            self._main = pn.Column(self._summary, self._chart_pane)
+            self._sidebar = pmui.Column(self._species_widget)
+            self._main = pmui.Column(self._summary, self._chart_pane)
 
     def _filtered(self):
         return penguins[penguins["species"].isin(self.species)]
@@ -50,7 +51,7 @@ class Dashboard(pn.viewable.Viewer):
 
     @param.depends("species", watch=True, on_init=True)
     def _update_chart(self):
-        self.chart = self._filtered().hvplot.scatter(
+        self._chart_pane.object = self._filtered().hvplot.scatter(
             x="bill_length_mm", y="bill_depth_mm", by="species",
         )
 

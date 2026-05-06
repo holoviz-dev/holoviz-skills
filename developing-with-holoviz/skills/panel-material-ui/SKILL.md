@@ -12,6 +12,7 @@ metadata:
 
 Notes:
 - Import `panel_material_ui as pmui`. Don't add `"panel_material_ui"` or `"bokeh"` to `pn.extension()`. Don't set `design='material'`.
+- Prefer `pmui.Column`/`Row`/`Grid`/`Container` over `pn.*` equivalents — they support `spacing`, breakpoints, and theme inheritance. Fall back to `pn.*` only when no pmui equivalent exists (e.g. `pn.pane.HoloViews`). If an existing app already uses `pn.*` layouts, keep them rather than migrating.
 - Use `pmui.Page` instead of `pn.template.FastListTemplate`.
 - Use new param names (`label`, `color`, `variant`) not legacy aliases (`name`, `button_type`, `button_style`).
 - Quick preview with `python app.py` + `.show()` works for pmui (unlike standard Panel).
@@ -54,6 +55,7 @@ Notes:
 - Don't add `ThemeToggle` — built in.
 - `header` is only 100px — buttons, indicators, nav links only.
 - Add `margin=10` to outer `main` layouts so they stand out from sidebar.
+- Only use a sidebar when there are multiple control widgets. For a single selector, use inline `RadioButtonGroup` or `Select` in the main area with `pmui.Container` — avoids wasting viewport on a near-empty sidebar.
 
 ```python
 # ✅ Lists
@@ -93,6 +95,34 @@ pmui.Page(
     ],
     theme_config=app_theme,
 )
+```
+
+## Chart Theming
+
+Notes:
+- pmui auto-themes Bokeh/hvPlot/HoloViews when using `Page` or `ThemeToggle` — respects primary color, font, and dark/light mode.
+- For cleaner chart chrome, set `hv.renderer("bokeh").theme = "light_minimal"` at module level.
+- `pmui.theme.generate_palette(primary_color)` for categorical palettes; `pmui.theme.linear_gradient(start, end, n=256)` for continuous colormaps.
+- Define a `PRIMARY` color constant and reuse across chart `color=`, KPI `styles`, and `theme_config` for cohesion.
+
+## Layouts
+
+Notes:
+- `pmui.Container(width_option="lg")` clamps content max width — prevents wide-screen stretching.
+- `pmui.Grid` with `size=` breakpoints for responsive multi-column layouts. Nest items inside `Grid(container=True)`. KPI cards: `size={"xs": 6, "md": 3}`. Side-by-side charts: `size={"xs": 12, "md": 6}`.
+- `size="grow"` for auto-sized items.
+- Set `sizing_mode="stretch_width"` on children inside `Grid` items so they fill the cell.
+
+```python
+# 2-column responsive layout
+pmui.Grid(
+    pmui.Grid(left_card, size={"xs": 12, "md": 6}),
+    pmui.Grid(right_card, size={"xs": 12, "md": 6}),
+    container=True, spacing=2,
+)
+
+# Width-clamped page content
+pmui.Container(pmui.Column(...), width_option="lg")
 ```
 
 ## Component Gotchas
