@@ -163,11 +163,10 @@ def check_scripts():
     """Check if all evaluation scripts exist"""
     scripts_dir = Path(__file__).parent
     required_scripts = [
-        "run_eval.py",
+        "eval.py",
         "execute_generated.py",
         "aggregate_metrics.py",
         "toggle_skills.py",
-        "run_full_evaluation.py",
     ]
 
     missing = [s for s in required_scripts if not (scripts_dir / s).exists()]

@@ -75,10 +75,10 @@ playwright = "*"
 _eval-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }
 _eval-check-no-screenshots = { cmd = "python scripts/test_setup.py --skip-screenshots", cwd = ".", description = "Verify evaluation system (without Playwright check)" }
 eval-check = { cmd = "python scripts/test_setup.py", cwd = ".", description = "Verify evaluation system is set up correctly" }
-evals = { cmd = "python scripts/run_full_evaluation.py", cwd = ".", depends-on = [
+evals = { cmd = "python scripts/eval.py", cwd = ".", depends-on = [
     "eval-check",
     "_eval-setup",
 ], description = "Run full evaluation pipeline" }
-eval-no-screenshots = { cmd = "python scripts/run_full_evaluation.py --skip-screenshots", cwd = ".", depends-on = [
+eval-no-screenshots = { cmd = "python scripts/eval.py --skip-screenshots", cwd = ".", depends-on = [
     "_eval-check-no-screenshots",
 ], description = "Run evaluation without screenshots (faster, no Playwright needed)" }
