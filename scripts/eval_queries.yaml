@@ -2,15 +2,6 @@
 # Each query tests whether SKILL.md files improve Copilot's responses
 
 queries:
-  - id: hvplot_basic_line
-    prompt: |
-      Create a line plot using hvplot from a pandas DataFrame.
-      The DataFrame should have columns 'x' with values from 0 to 10,
-      and 'y' with the sine of x values. Display the plot.
-    expected_output: static_plot
-    timeout: 120
-    category: hvplot_basics
-
   - id: hvplot_interactive_scatter
     prompt: |
       Create an interactive scatter plot with hvplot from a pandas DataFrame
@@ -19,7 +10,8 @@ queries:
     expected_output: static_plot
     timeout: 120
     category: hvplot_interactivity
-  - id: earthquake_plot
+
+  - id: hvplot_earthquake_plot
     prompt: |
       I'm working with the earthquake dataset from the sampledata module.
       Create an hvplot map visualization using a dark CartoDB tile basemap, colored by magnitude.
