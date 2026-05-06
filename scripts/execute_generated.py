@@ -26,6 +26,73 @@ import tempfile
 import time
 from pathlib import Path
 
+# Appended to every generated script before execution.
+# Tries to save the last plot object to plot_output.html/png so the executor
+# can copy it back to the results directory.
+_HEADLESS_SAVE_CODE = """\
+
+# AUTO-ADDED: Save plot output
+import sys
+_plot_saved = False
+
+def _try_save_plot(obj):
+    \"\"\"Attempt to save a plot object to plot_output.html. Returns True on success.\"\"\"
+    try:
+        import holoviews as hv
+        import holoviews.core
+        if isinstance(obj, holoviews.core.Dimensioned):
+            hv.save(obj, 'plot_output.html')
+            print('Plot saved to plot_output.html')
+            return True
+    except Exception:
+        pass
+    try:
+        from bokeh.model import Model
+        from bokeh.io import output_file, save as bokeh_save
+        if isinstance(obj, Model):
+            output_file('plot_output.html')
+            bokeh_save(obj)
+            print('Plot saved to plot_output.html')
+            return True
+    except Exception:
+        pass
+    return False
+
+# 1. Check well-known variable names first
+for _var_name in ['plot', 'fig', 'p', 'chart', 'viz', '_last_plot']:
+    if _var_name in globals() and globals()[_var_name] is not None:
+        if _try_save_plot(globals()[_var_name]):
+            _plot_saved = True
+            break
+
+# 2. Scan all globals for any HoloViews/Bokeh object
+if not _plot_saved:
+    try:
+        import holoviews.core
+        from bokeh.model import Model
+        for _v in list(globals().values()):
+            if isinstance(_v, (holoviews.core.Dimensioned, Model)):
+                if _try_save_plot(_v):
+                    _plot_saved = True
+                    break
+    except Exception:
+        pass
+
+# 3. Try matplotlib if not saved yet
+if not _plot_saved:
+    try:
+        import matplotlib.pyplot as plt
+        if plt.get_fignums():
+            plt.savefig('plot_output.png', dpi=150, bbox_inches='tight')
+            print('Plot saved to plot_output.png')
+            _plot_saved = True
+    except Exception:
+        pass
+
+if not _plot_saved:
+    print('Warning: Could not detect or save plot output')
+"""
+
 
 class CodeExecutor:
     """Execute generated Python code in isolation."""
@@ -135,74 +202,8 @@ class CodeExecutor:
         - matplotlib: plt.show() -> plt.savefig()
         - hvplot/bokeh: save plot object to HTML
         """
-        # Add imports and save logic at the end
-        save_code = """
-
-# AUTO-ADDED: Save plot output
-import sys
-_plot_saved = False
-
-def _try_save_plot(obj):
-    \"\"\"Attempt to save a plot object to plot_output.html. Returns True on success.\"\"\"
-    try:
-        import holoviews as hv
-        import holoviews.core
-        if isinstance(obj, holoviews.core.Dimensioned):
-            hv.save(obj, 'plot_output.html')
-            print('Plot saved to plot_output.html')
-            return True
-    except Exception:
-        pass
-    try:
-        from bokeh.model import Model
-        from bokeh.io import output_file, save as bokeh_save
-        if isinstance(obj, Model):
-            output_file('plot_output.html')
-            bokeh_save(obj)
-            print('Plot saved to plot_output.html')
-            return True
-    except Exception:
-        pass
-    return False
-
-# 1. Check well-known variable names first
-for _var_name in ['plot', 'fig', 'p', 'chart', 'viz', '_last_plot']:
-    if _var_name in globals() and globals()[_var_name] is not None:
-        if _try_save_plot(globals()[_var_name]):
-            _plot_saved = True
-            break
-
-# 2. Scan all globals for any HoloViews/Bokeh object
-if not _plot_saved:
-    try:
-        import holoviews.core
-        from bokeh.model import Model
-        for _v in list(globals().values()):
-            if isinstance(_v, (holoviews.core.Dimensioned, Model)):
-                if _try_save_plot(_v):
-                    _plot_saved = True
-                    break
-    except Exception:
-        pass
-
-# 3. Try matplotlib if not saved yet
-if not _plot_saved:
-    try:
-        import matplotlib.pyplot as plt
-        if plt.get_fignums():
-            plt.savefig('plot_output.png', dpi=150, bbox_inches='tight')
-            print('Plot saved to plot_output.png')
-            _plot_saved = True
-    except Exception:
-        pass
-
-if not _plot_saved:
-    print('Warning: Could not detect or save plot output')
-"""
-
-        # Remove any existing plt.show() or show() calls
+        # Comment out any display calls
         modified_code = code.replace("plt.show()", "# plt.show() # commented by eval")
-        # Be careful with .show() - only remove standalone calls
         modified_code = re.sub(r"(?<!\w)show\(\)", "# show() # commented by eval", modified_code)
 
         # Use AST to detect a bare expression as the last statement and assign it
@@ -214,17 +215,15 @@ if not _plot_saved:
             tree = _ast.parse(modified_code)
             if tree.body and isinstance(tree.body[-1], _ast.Expr):
                 last_stmt = tree.body[-1]
-                # Extract the source lines for the last statement
                 start = last_stmt.lineno - 1  # 0-indexed
                 lines = modified_code.splitlines()
-                expr_lines = lines[start:]
-                expr_src = "\n".join(expr_lines)
                 prefix = "\n".join(lines[:start])
+                expr_src = "\n".join(lines[start:])
                 modified_code = prefix + "\n_last_plot = " + expr_src + "\n"
         except Exception:
             pass  # Leave code unmodified if AST parse fails
 
-        return modified_code + save_code
+        return modified_code + _HEADLESS_SAVE_CODE
 
     def _capture_screenshot(self, query_dir: Path) -> Path | None:
         """
