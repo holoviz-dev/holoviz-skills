@@ -1,19 +1,32 @@
 #!/usr/bin/env python3
 """
-Main evaluation runner for HoloViz skills evaluation.
+HoloViz skills evaluation runner.
 
-This script:
-1. Loads test queries from eval_queries.yaml
-2. Runs Copilot CLI with and without SKILL.md files enabled
-3. Captures responses, token usage, and timing
-4. Extracts generated code blocks
-5. Saves results for comparison
+Runs Copilot queries with and without skills enabled, optionally executes
+the generated code and aggregates metrics — all in a single command.
+
+Usage:
+  # Full pipeline (generate + execute + report)
+  python eval.py
+
+  # Generate only
+  python eval.py --skip-execution --skip-aggregation
+
+  # Specific queries, with-skills condition only
+  python eval.py --queries earthquake_plot --skills with
+
+  # Re-run execution and reporting without re-querying Copilot
+  python eval.py --skip-generation
+
+  # Full pipeline, longer execution timeout, no screenshots
+  python eval.py --timeout 60 --skip-screenshots
 """
 
 import argparse
 import json
 import re
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -25,6 +38,14 @@ from toggle_skills import disable_skills, enable_skills
 CODE_OUTPUT_INSTRUCTION = (
     "\n\nRespond with a single self-contained ```python``` code block and nothing else outside it."
 )
+
+SCRIPTS_DIR = Path(__file__).parent
+REPO_ROOT = SCRIPTS_DIR.parent
+
+
+# ---------------------------------------------------------------------------
+# Response parsing
+# ---------------------------------------------------------------------------
 
 
 class CopilotResponse:
@@ -44,20 +65,15 @@ class CopilotResponse:
 
     def _extract_token_usage(self) -> dict[str, int]:
         """Extract token usage from the response footer."""
-        # Pattern: Tokens ↑ 34.3k • ↓ 408 • 0 (cached) • 128 (reasoning)
         tokens = {"input": 0, "output": 0, "cached": 0, "reasoning": 0}
-
-        # Try to find token line
         token_pattern = (
             r"Tokens\s+↑\s*([\d.k]+)\s*•\s*↓\s*([\d.k]+)\s*"
             r"•\s*([\d.k]+)\s*\(cached\)\s*•\s*([\d.k]+)\s*\(reasoning\)"
         )
         match = re.search(token_pattern, self.raw_output)
-
         if match:
 
             def parse_token_value(val: str) -> int:
-                """Convert '34.3k' to 34300, or '408' to 408."""
                 val = val.strip()
                 if "k" in val.lower():
                     return int(float(val.lower().replace("k", "")) * 1000)
@@ -67,15 +83,12 @@ class CopilotResponse:
             tokens["output"] = parse_token_value(match.group(2))
             tokens["cached"] = parse_token_value(match.group(3))
             tokens["reasoning"] = parse_token_value(match.group(4))
-
         return tokens
 
     def get_primary_code(self) -> str | None:
-        """Get the first/primary code block (usually the main answer)."""
         return self.code_blocks[0] if self.code_blocks else None
 
     def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
         return {
             "query": self.query,
             "execution_time": self.execution_time,
@@ -85,128 +98,73 @@ class CopilotResponse:
         }
 
 
+# ---------------------------------------------------------------------------
+# Query loading
+# ---------------------------------------------------------------------------
+
+
 def load_queries(yaml_path: Path) -> list[dict]:
-    """Load test queries from YAML file."""
     with open(yaml_path) as f:
         data = yaml.safe_load(f)
     return data.get("queries", [])
 
 
+# ---------------------------------------------------------------------------
+# Step 1: Generate responses via Copilot CLI
+# ---------------------------------------------------------------------------
+
+
 def run_copilot_query(query: str, timeout: int = 180) -> tuple[str, float]:
-    """
-    Run a Copilot CLI query and capture output.
-
-    Args:
-        query: The prompt/question to ask Copilot
-        timeout: Maximum execution time in seconds (default: 180s = 3 minutes)
-
-    Returns:
-        Tuple of (raw_output, execution_time_seconds)
-    """
     start_time = time.time()
-
     try:
-        # Run copilot CLI with the query
         result = subprocess.run(
             ["copilot", "--allow-all", "-p", query],
             capture_output=True,
             text=True,
             timeout=timeout,
-            cwd=Path(__file__).parent.parent,  # Run from repo root
+            cwd=REPO_ROOT,
         )
-
         execution_time = time.time() - start_time
-
-        # Combine stdout and stderr
         output = result.stdout
         if result.stderr:
             output += f"\n\n[STDERR]\n{result.stderr}"
-
         return output, execution_time
-
     except subprocess.TimeoutExpired:
-        execution_time = time.time() - start_time
-        return f"[TIMEOUT after {timeout}s]", execution_time
-
+        return f"[TIMEOUT after {timeout}s]", time.time() - start_time
     except Exception as e:
-        execution_time = time.time() - start_time
-        return f"[ERROR: {str(e)}]", execution_time
+        return f"[ERROR: {str(e)}]", time.time() - start_time
 
 
 def save_results(query_id: str, response: CopilotResponse, output_dir: Path, skills_enabled: bool):
-    """
-    Save evaluation results to disk.
-
-    Args:
-        query_id: Unique identifier for the query
-        response: Parsed Copilot response
-        output_dir: Base output directory
-        skills_enabled: Whether skills were enabled for this run
-    """
-    # Determine subdirectory
     subdir = "with_skills" if skills_enabled else "without_skills"
     query_dir = output_dir / subdir / query_id
     query_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save raw response
-    with open(query_dir / "response.txt", "w") as f:
-        f.write(response.raw_output)
+    (query_dir / "response.txt").write_text(response.raw_output)
 
-    # Save metadata
     metadata = response.to_dict()
     metadata["skills_enabled"] = skills_enabled
     with open(query_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
 
-    # Save primary code block if available
     primary_code = response.get_primary_code()
     if primary_code:
-        with open(query_dir / "generated_code.py", "w") as f:
-            f.write(primary_code)
+        (query_dir / "generated_code.py").write_text(primary_code)
         print(f"  Saved code ({len(primary_code)} chars)")
     else:
         print("  No code block found in response")
 
-    # Save all code blocks if multiple
     if len(response.code_blocks) > 1:
         for i, code in enumerate(response.code_blocks):
-            with open(query_dir / f"code_block_{i}.py", "w") as f:
-                f.write(code)
+            (query_dir / f"code_block_{i}.py").write_text(code)
 
 
-def run_evaluation(
-    queries_file: Path,
+def run_generation(
+    queries: list[dict],
     output_dir: Path,
-    query_ids: list[str] | None = None,
     skip_without_skills: bool = False,
     skip_with_skills: bool = False,
 ):
-    """
-    Run the full evaluation pipeline.
-
-    Args:
-        queries_file: Path to eval_queries.yaml
-        output_dir: Output directory for results
-        query_ids: Optional list of specific query IDs to run (default: all)
-        skip_without_skills: Skip the without-skills evaluation
-        skip_with_skills: Skip the with-skills evaluation
-    """
-    # Load queries
-    queries = load_queries(queries_file)
-
-    # Filter queries if specific IDs requested
-    if query_ids:
-        queries = [q for q in queries if q["id"] in query_ids]
-
-    if not queries:
-        print("No queries to evaluate!")
-        return
-
-    print(f"Running {len(queries)} quer(ies)\n")
-
-    repo_root = Path(__file__).parent.parent
-
-    # Run evaluation for each query
     for i, query in enumerate(queries, 1):
         query_id = query["id"]
         prompt = query["prompt"].rstrip() + CODE_OUTPUT_INSTRUCTION
@@ -214,99 +172,186 @@ def run_evaluation(
 
         print(f"[{i}/{len(queries)}] {query_id}")
 
-        # Evaluate WITHOUT skills
         if not skip_without_skills:
-            print("Running WITHOUT skills...")
-            disable_skills(repo_root)
-
+            print("  Running WITHOUT skills...")
+            disable_skills(REPO_ROOT)
             try:
                 raw_output, exec_time = run_copilot_query(prompt, timeout)
                 response = CopilotResponse(raw_output, prompt, exec_time)
-
                 tok = response.tokens
                 print(f"  Completed in {exec_time:.2f}s | Tokens: ↑{tok['input']} ↓{tok['output']}")
-
                 save_results(query_id, response, output_dir, skills_enabled=False)
             finally:
-                # Re-enable skills for next run
-                enable_skills(repo_root)
+                enable_skills(REPO_ROOT)
 
-        # Evaluate WITH skills
         if not skip_with_skills:
-            print("Running WITH skills...")
-
+            print("  Running WITH skills...")
             raw_output, exec_time = run_copilot_query(prompt, timeout)
             response = CopilotResponse(raw_output, prompt, exec_time)
-
             tok = response.tokens
             print(f"  Completed in {exec_time:.2f}s | Tokens: ↑{tok['input']} ↓{tok['output']}")
-
             save_results(query_id, response, output_dir, skills_enabled=True)
 
         print(f"{'─' * 60}")
 
-    print("\nEvaluation complete.")
+
+# ---------------------------------------------------------------------------
+# Step 2: Execute generated code
+# ---------------------------------------------------------------------------
+
+
+def run_execution(
+    output_dir: Path,
+    query_ids: list[str] | None,
+    timeout: int,
+    skip_screenshots: bool,
+):
+    # Import here so execute_generated.py remains independently runnable
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    from execute_generated import execute_all_code
+
+    execute_all_code(
+        eval_results_dir=output_dir,
+        timeout=timeout,
+        query_ids=query_ids,
+        skip_screenshots=skip_screenshots,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Step 3: Aggregate metrics
+# ---------------------------------------------------------------------------
+
+
+def run_aggregation(output_dir: Path, query_ids: list[str] | None):
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    from aggregate_metrics import aggregate_metrics
+
+    aggregate_metrics(eval_results_dir=output_dir, query_filter=query_ids)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run HoloViz skills evaluation",
+        description="HoloViz skills evaluation pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run all queries (both conditions)
-  python run_eval.py
+  # Full pipeline
+  python eval.py
 
-  # Run specific queries only
-  python run_eval.py --queries hvplot_basic_line
+  # Specific queries only
+  python eval.py --queries earthquake_plot hvplot_basic_line
 
-  # Run only the with-skills condition
-  python run_eval.py --skills with
+  # With-skills condition only
+  python eval.py --skills with
 
-  # Run only the without-skills condition
-  python run_eval.py --skills without
+  # Re-run execution + report without re-querying Copilot
+  python eval.py --skip-generation
+
+  # Generate only
+  python eval.py --skip-execution --skip-aggregation
+
+  # Full pipeline, longer timeout, no screenshots
+  python eval.py --timeout 60 --skip-screenshots
         """,
     )
 
     parser.add_argument(
         "--queries-file",
         type=Path,
-        default=Path(__file__).parent / "eval_queries.yaml",
+        default=SCRIPTS_DIR / "eval_queries.yaml",
         help="Path to queries YAML file (default: eval_queries.yaml)",
     )
-
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(__file__).parent.parent / "eval_results",
+        default=REPO_ROOT / "eval_results",
         help="Output directory (default: ../eval_results)",
     )
-
-    parser.add_argument("--queries", nargs="+", help="Specific query IDs to run (default: all)")
-
+    parser.add_argument(
+        "--queries",
+        nargs="+",
+        help="Specific query IDs to run (default: all)",
+    )
     parser.add_argument(
         "--skills",
         choices=["both", "with", "without"],
         default="both",
-        help="Which condition(s) to evaluate: 'both' (default), 'with', or 'without'",
+        help="Which condition(s) to evaluate (default: both)",
+    )
+    parser.add_argument(
+        "--skip-generation",
+        action="store_true",
+        help="Skip Copilot query step (use existing generated_code.py files)",
+    )
+    parser.add_argument(
+        "--skip-execution",
+        action="store_true",
+        help="Skip code execution step",
+    )
+    parser.add_argument(
+        "--skip-screenshots",
+        action="store_true",
+        help="Skip screenshot capture during execution (faster)",
+    )
+    parser.add_argument(
+        "--skip-aggregation",
+        action="store_true",
+        help="Skip metrics aggregation step",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="Code execution timeout in seconds (default: 30)",
     )
 
     args = parser.parse_args()
 
-    # Validate
     if not args.queries_file.exists():
         print(f"Error: Queries file not found: {args.queries_file}")
         return 1
 
-    # Run evaluation
-    run_evaluation(
-        queries_file=args.queries_file,
-        output_dir=args.output,
-        query_ids=args.queries,
-        skip_without_skills=args.skills == "with",
-        skip_with_skills=args.skills == "without",
-    )
+    queries = load_queries(args.queries_file)
+    if args.queries:
+        queries = [q for q in queries if q["id"] in args.queries]
+    if not queries:
+        print("No queries matched.")
+        return 1
 
+    print(f"Running {len(queries)} quer(ies)\n")
+
+    # Step 1: Generate
+    if not args.skip_generation:
+        run_generation(
+            queries=queries,
+            output_dir=args.output,
+            skip_without_skills=args.skills == "with",
+            skip_with_skills=args.skills == "without",
+        )
+        print("\nGeneration complete.")
+
+    # Step 2: Execute
+    if not args.skip_execution:
+        print("\n→ Executing generated code...")
+        run_execution(
+            output_dir=args.output,
+            query_ids=args.queries,
+            timeout=args.timeout,
+            skip_screenshots=args.skip_screenshots,
+        )
+
+    # Step 3: Aggregate
+    if not args.skip_aggregation:
+        print("\n→ Aggregating metrics...")
+        run_aggregation(output_dir=args.output, query_ids=args.queries)
+
+    print(f"\nDone. Results saved to: {args.output}")
     return 0
 
 
