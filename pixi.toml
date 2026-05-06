@@ -65,6 +65,8 @@ hvplot = "*"
 bokeh = "*"
 pandas = "*"
 matplotlib = "*"
+geoviews = "*"
+hvsampledata = "*"
 
 [feature.eval.pypi-dependencies]
 playwright = "*"

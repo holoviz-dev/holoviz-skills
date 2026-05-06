@@ -16,7 +16,24 @@ Before plotting, consider: what story does the data tell? What comparison matter
 
 Activate the `.hvplot` accessor with the appropriate backend import: `import hvplot.pandas`, `hvplot.polars`, `hvplot.xarray`, `hvplot.duckdb`, or `hvplot.dask`. Backends like Polars and DuckDB must be installed separately. Optional: `datashader` for resampling, `geoviews` or `geopandas` for geographic data. Prefer the Bokeh backend (default) for interactivity, Matplotlib for static/print output, Plotly as a last resort.
 
-For HoloViews elements (VLine, HLine, Text, Overlay, etc.), import holoviews directly: `import holoviews as hv`. Do not access via `hvplot.pandas.hv` — it doesn't exist.
+**Do NOT add `import holoviews as hv` or `hv.extension('bokeh')` to hvplot-only code.** They are unnecessary — `import hvplot.pandas` activates the Bokeh backend automatically. Only import holoviews directly when you need HoloViews primitives (VLine, HLine, Text, Overlay, etc.).
+
+```python
+# WRONG — redundant import, do not do this
+import holoviews as hv
+import hvplot.pandas
+
+# CORRECT — hvplot.pandas is sufficient
+import hvplot.pandas
+```
+
+**Sample data lives in `hvplot.sampledata`, not `holoviews.sampledata`.** `holoviews.sampledata` does not exist and will raise `ModuleNotFoundError`. Always load sample datasets like this:
+
+```python
+import hvplot.pandas  # noqa — also activates Bokeh backend
+
+earthquakes = hvplot.sampledata.earthquakes("pandas")
+```
 
 ## Plot Labels
 
@@ -44,12 +61,39 @@ earthquakes.hvplot.points(
 )
 ```
 
+## Geographic Plots
+
+Notes:
+1. `geo=True` enables geographic (web-mercator) projection and tile basemaps. Requires `geoviews` to be installed.
+2. **`tiles=` accepts only these built-in strings:** `"CartoDark"`, `"CartoLight"`, `"CartoMidnight"`, `"OSM"`, `"EsriImagery"`, `"EsriTerrain"`. **Do not use `"CartoDB.DarkMatter"`, `"CartoDB Dark_Matter"`, or any xyzservices name** — they raise `ValueError`.
+3. Do not convert to a GeoDataFrame or reproject to EPSG:3857 manually. Pass `geo=True` and hvplot handles projection.
+
+```python
+import hvplot.pandas  # noqa
+
+earthquakes = hvplot.sampledata.earthquakes("pandas")
+earthquakes.hvplot.points(
+    x="lon",
+    y="lat",
+    geo=True,
+    tiles="CartoDark",       # correct — do NOT use "CartoDB.DarkMatter"
+    color="mag",
+    cmap="viridis_r",
+    clabel="Magnitude",
+    size=6,
+    alpha=0.8,
+    hover_cols=["place", "time", "mag", "depth"],
+    responsive=True,
+    title="Earthquakes colored by magnitude",
+)
+```
+
 ## Hover Tooltips
 
 Notes:
 1. Pair `hover_cols` with `hover_tooltips`: columns not used as x/y/color are not sent to the client by default, producing `???` in tooltips.
 2. Only include the columns you need to avoid sending all data to the client.
-3. `hover_tooltips` replaces the deprecated `hover_formatters` — models may hallucinate the old name.
+3. **Never pass `hover_formatters`** — it is deprecated and raises a `DeprecationWarning`. Do not pass it even alongside `hover_tooltips`. Format datetimes inline in the tooltip string instead.
 4. Bokeh format syntax: `{0.1f}` floats, `{0,0}` thousands, `{%F %H:%M}` datetimes. Literal text like `km` can follow the format.
 
 ```python
