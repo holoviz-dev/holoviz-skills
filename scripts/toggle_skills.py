@@ -2,11 +2,18 @@
 """
 Utility to toggle SKILL.md files on/off for evaluation purposes.
 
-Disabling skills: SKILL.md -> .SKILL.md.disabled
-Enabling skills: .SKILL.md.disabled -> SKILL.md
+Disabling skills: renames AGENTS.md -> .AGENTS.md.disabled so the Copilot CLI
+                  finds no custom instructions.
+Enabling skills:  restores .AGENTS.md.disabled -> AGENTS.md.
+
+SKILL.md files are also renamed to .SKILL.md.disabled when disabling, for
+runtimes (e.g. OpenCode/Claude) that discover skills by that filename.
 """
 
 from pathlib import Path
+
+AGENTS_MD = "AGENTS.md"
+AGENTS_MD_DISABLED = ".AGENTS.md.disabled"
 
 
 def find_skill_files(root_dir: Path, enabled: bool = True) -> list[Path]:
@@ -22,7 +29,6 @@ def find_skill_files(root_dir: Path, enabled: bool = True) -> list[Path]:
     """
     pattern = "SKILL.md" if enabled else ".SKILL.md.disabled"
 
-    # Exclude certain directories
     exclude_dirs = {
         ".git",
         "node_modules",
@@ -37,7 +43,6 @@ def find_skill_files(root_dir: Path, enabled: bool = True) -> list[Path]:
 
     skill_files = []
     for item in root_dir.rglob(pattern):
-        # Skip if any parent directory is in exclude list
         if any(parent.name in exclude_dirs for parent in item.parents):
             continue
         if item.is_file():
@@ -48,18 +53,25 @@ def find_skill_files(root_dir: Path, enabled: bool = True) -> list[Path]:
 
 def disable_skills(root_dir: Path) -> list[tuple[Path, Path]]:
     """
-    Disable all SKILL.md files by renaming them to .SKILL.md.disabled
+    Disable skills for the without-skills eval condition:
+    - Renames AGENTS.md -> .AGENTS.md.disabled (hides it from the Copilot CLI)
+    - Renames SKILL.md -> .SKILL.md.disabled (hides from OpenCode/Claude runtimes)
 
     Args:
         root_dir: Root directory to search from
 
     Returns:
-        List of (old_path, new_path) tuples for renamed files
+        List of (old_path, new_path) tuples for renamed SKILL.md files
     """
-    skill_files = find_skill_files(root_dir, enabled=True)
-    renamed = []
+    # Disable AGENTS.md
+    agents_md = root_dir / AGENTS_MD
+    agents_md_disabled = root_dir / AGENTS_MD_DISABLED
+    if agents_md.exists() and not agents_md_disabled.exists():
+        agents_md.rename(agents_md_disabled)
 
-    for skill_file in skill_files:
+    # Disable SKILL.md files
+    renamed = []
+    for skill_file in find_skill_files(root_dir, enabled=True):
         new_path = skill_file.parent / ".SKILL.md.disabled"
         if new_path.exists():
             continue
@@ -71,18 +83,25 @@ def disable_skills(root_dir: Path) -> list[tuple[Path, Path]]:
 
 def enable_skills(root_dir: Path) -> list[tuple[Path, Path]]:
     """
-    Enable all disabled skill files by renaming them back to SKILL.md
+    Enable skills for the with-skills eval condition:
+    - Restores .AGENTS.md.disabled -> AGENTS.md
+    - Restores .SKILL.md.disabled -> SKILL.md
 
     Args:
         root_dir: Root directory to search from
 
     Returns:
-        List of (old_path, new_path) tuples for renamed files
+        List of (old_path, new_path) tuples for restored SKILL.md files
     """
-    disabled_files = find_skill_files(root_dir, enabled=False)
-    renamed = []
+    # Restore AGENTS.md
+    agents_md = root_dir / AGENTS_MD
+    agents_md_disabled = root_dir / AGENTS_MD_DISABLED
+    if agents_md_disabled.exists() and not agents_md.exists():
+        agents_md_disabled.rename(agents_md)
 
-    for disabled_file in disabled_files:
+    # Restore SKILL.md files
+    renamed = []
+    for disabled_file in find_skill_files(root_dir, enabled=False):
         new_path = disabled_file.parent / "SKILL.md"
         if new_path.exists():
             continue
@@ -97,12 +116,18 @@ def get_skill_status(root_dir: Path) -> dict:
     Get the current status of skill files.
 
     Returns:
-        Dictionary with 'enabled' and 'disabled' lists of paths
+        Dictionary with 'enabled' and 'disabled' lists of paths, and AGENTS.md state
     """
     enabled = find_skill_files(root_dir, enabled=True)
     disabled = find_skill_files(root_dir, enabled=False)
+    agents_md_present = (root_dir / AGENTS_MD).exists()
 
-    return {"enabled": enabled, "disabled": disabled, "total": len(enabled) + len(disabled)}
+    return {
+        "enabled": enabled,
+        "disabled": disabled,
+        "total": len(enabled) + len(disabled),
+        "agents_md": agents_md_present,
+    }
 
 
 def main():
@@ -121,23 +146,23 @@ def main():
     args = parser.parse_args()
 
     if args.action == "disable":
-        print(f"Disabling SKILL.md files in {args.root}...")
+        print(f"Disabling skills in {args.root}...")
         renamed = disable_skills(args.root)
-        print(f"\nDisabled {len(renamed)} skill file(s)")
+        print(f"Disabled {len(renamed)} SKILL.md file(s) + AGENTS.md")
     elif args.action == "enable":
-        print(f"Enabling SKILL.md files in {args.root}...")
+        print(f"Enabling skills in {args.root}...")
         renamed = enable_skills(args.root)
-        print(f"\nEnabled {len(renamed)} skill file(s)")
+        print(f"Enabled {len(renamed)} SKILL.md file(s) + AGENTS.md")
     elif args.action == "status":
         status = get_skill_status(args.root)
         print(f"\nSkill Status in {args.root}:")
-        print(f"  Enabled:  {len(status['enabled'])} file(s)")
+        print(f"  AGENTS.md: {'present' if status['agents_md'] else 'absent (disabled)'}")
+        print(f"  SKILL.md enabled:  {len(status['enabled'])} file(s)")
         for path in status["enabled"]:
             print(f"    - {path.relative_to(args.root)}")
-        print(f"  Disabled: {len(status['disabled'])} file(s)")
+        print(f"  SKILL.md disabled: {len(status['disabled'])} file(s)")
         for path in status["disabled"]:
             print(f"    - {path.relative_to(args.root)}")
-        print(f"  Total:    {status['total']} skill file(s)")
 
 
 if __name__ == "__main__":

@@ -20,6 +20,12 @@ from pathlib import Path
 import yaml
 from toggle_skills import disable_skills, enable_skills
 
+# Appended to every query prompt so the model always wraps code in a fenced
+# block, giving the extractor a stable target regardless of prose formatting.
+CODE_OUTPUT_INSTRUCTION = (
+    "\n\nRespond with a single self-contained ```python``` code block and nothing else outside it."
+)
+
 
 class CopilotResponse:
     """Parsed response from Copilot CLI."""
@@ -32,11 +38,9 @@ class CopilotResponse:
         self.tokens = self._extract_token_usage()
 
     def _extract_code_blocks(self) -> list[str]:
-        """Extract Python code blocks from the response."""
-        # Match ```python ... ``` or ``` ... ``` blocks
+        """Extract Python code blocks from the response (fenced ``` blocks only)."""
         pattern = r"```(?:python)?\s*\n(.*?)```"
-        matches = re.findall(pattern, self.raw_output, re.DOTALL)
-        return matches
+        return re.findall(pattern, self.raw_output, re.DOTALL)
 
     def _extract_token_usage(self) -> dict[str, int]:
         """Extract token usage from the response footer."""
@@ -104,7 +108,7 @@ def run_copilot_query(query: str, timeout: int = 180) -> tuple[str, float]:
     try:
         # Run copilot CLI with the query
         result = subprocess.run(
-            ["copilot", "-p", query],
+            ["copilot", "--allow-all", "-p", query],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -205,7 +209,7 @@ def run_evaluation(
     # Run evaluation for each query
     for i, query in enumerate(queries, 1):
         query_id = query["id"]
-        prompt = query["prompt"]
+        prompt = query["prompt"].rstrip() + CODE_OUTPUT_INSTRUCTION
         timeout = query.get("timeout", 180)
 
         print(f"[{i}/{len(queries)}] {query_id}")
