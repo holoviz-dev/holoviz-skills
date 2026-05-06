@@ -19,3 +19,10 @@ queries:
     expected_output: static_plot
     timeout: 120
     category: hvplot_interactivity
+  - id: earthquake_plot
+    prompt: |
+      I'm working with the earthquake dataset from the sampledata module.
+      Create an hvplot map visualization using a dark CartoDB tile basemap, colored by magnitude.
+    expected_output: static_plot
+    timeout: 120
+    category: hvplot_interactivity
