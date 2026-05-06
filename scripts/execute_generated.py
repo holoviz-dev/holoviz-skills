@@ -142,35 +142,54 @@ class CodeExecutor:
 import sys
 _plot_saved = False
 
-# Try to save the last created plot object (common variable names)
-for var_name in ['plot', 'fig', 'p', 'chart', 'viz']:
-    if var_name in globals():
-        _plot_obj = globals()[var_name]
-        if _plot_obj is not None:
-            try:
-                # For hvplot/bokeh objects
-                from bokeh.io import output_file, save as bokeh_save
-                output_file('plot_output.html')
-                bokeh_save(_plot_obj)
-                print('Plot saved to plot_output.html')
-                _plot_saved = True
-                break
-            except Exception as e:
-                # For HoloViews objects
-                try:
-                    import holoviews as hv
-                    hv.save(_plot_obj, 'plot_output.html')
-                    print('Plot saved to plot_output.html')
+def _try_save_plot(obj):
+    \"\"\"Attempt to save a plot object to plot_output.html. Returns True on success.\"\"\"
+    try:
+        import holoviews as hv
+        import holoviews.core
+        if isinstance(obj, holoviews.core.Dimensioned):
+            hv.save(obj, 'plot_output.html')
+            print('Plot saved to plot_output.html')
+            return True
+    except Exception:
+        pass
+    try:
+        from bokeh.model import Model
+        from bokeh.io import output_file, save as bokeh_save
+        if isinstance(obj, Model):
+            output_file('plot_output.html')
+            bokeh_save(obj)
+            print('Plot saved to plot_output.html')
+            return True
+    except Exception:
+        pass
+    return False
+
+# 1. Check well-known variable names first
+for _var_name in ['plot', 'fig', 'p', 'chart', 'viz', '_last_plot']:
+    if _var_name in globals() and globals()[_var_name] is not None:
+        if _try_save_plot(globals()[_var_name]):
+            _plot_saved = True
+            break
+
+# 2. Scan all globals for any HoloViews/Bokeh object
+if not _plot_saved:
+    try:
+        import holoviews.core
+        from bokeh.model import Model
+        for _v in list(globals().values()):
+            if isinstance(_v, (holoviews.core.Dimensioned, Model)):
+                if _try_save_plot(_v):
                     _plot_saved = True
                     break
-                except Exception:
-                    pass  # Try next variable or fallback
+    except Exception:
+        pass
 
-# Try matplotlib if not saved yet
+# 3. Try matplotlib if not saved yet
 if not _plot_saved:
     try:
         import matplotlib.pyplot as plt
-        if plt.get_fignums():  # Check if any figures exist
+        if plt.get_fignums():
             plt.savefig('plot_output.png', dpi=150, bbox_inches='tight')
             print('Plot saved to plot_output.png')
             _plot_saved = True
@@ -185,6 +204,25 @@ if not _plot_saved:
         modified_code = code.replace("plt.show()", "# plt.show() # commented by eval")
         # Be careful with .show() - only remove standalone calls
         modified_code = re.sub(r"(?<!\w)show\(\)", "# show() # commented by eval", modified_code)
+
+        # Use AST to detect a bare expression as the last statement and assign it
+        # to _last_plot so the globals scan can find it. This correctly handles
+        # multi-line expressions like df.hvplot.points(\n    ...\n).
+        try:
+            import ast as _ast
+
+            tree = _ast.parse(modified_code)
+            if tree.body and isinstance(tree.body[-1], _ast.Expr):
+                last_stmt = tree.body[-1]
+                # Extract the source lines for the last statement
+                start = last_stmt.lineno - 1  # 0-indexed
+                lines = modified_code.splitlines()
+                expr_lines = lines[start:]
+                expr_src = "\n".join(expr_lines)
+                prefix = "\n".join(lines[:start])
+                modified_code = prefix + "\n_last_plot = " + expr_src + "\n"
+        except Exception:
+            pass  # Leave code unmodified if AST parse fails
 
         return modified_code + save_code
 
