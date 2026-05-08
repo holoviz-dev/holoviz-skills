@@ -12,11 +12,17 @@ This script checks:
 7. Evaluation scripts
 """
 
+import argparse
 import io
 import subprocess
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 
 def _run_check(label: str, fn) -> bool:
@@ -139,9 +145,10 @@ def check_queries_file():
         print(f"eval_queries.yaml not found at {queries_file}")
         return False
 
-    try:
-        import yaml
+    if yaml is None:
+        return True
 
+    try:
         with open(queries_file) as f:
             data = yaml.safe_load(f)
 
@@ -151,9 +158,6 @@ def check_queries_file():
             return False
         return True
 
-    except ImportError:
-        # PyYAML missing — caught by check_dependencies
-        return True
     except Exception as e:
         print(f"Error parsing eval_queries.yaml: {e}")
         return False
@@ -178,8 +182,6 @@ def check_scripts():
 
 
 def main():
-    import argparse
-
     parser = argparse.ArgumentParser(description="Verify the evaluation system is set up correctly")
     parser.add_argument(
         "--skip-screenshots",

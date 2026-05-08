@@ -30,19 +30,13 @@ def collect_metrics(eval_results_dir: Path, query_filter: list[str] = None) -> d
         condition_dir = eval_results_dir / condition
         if not condition_dir.exists():
             continue
-
         for query_dir in condition_dir.iterdir():
             if not query_dir.is_dir():
                 continue
-
             query_id = query_dir.name
-
-            # Skip if not in filter
             if query_filter and query_id not in query_filter:
                 continue
-
             metadata_file = query_dir / "metadata.json"
-
             if not metadata_file.exists():
                 continue
 

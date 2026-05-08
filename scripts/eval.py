@@ -43,11 +43,6 @@ SCRIPTS_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPTS_DIR.parent
 
 
-# ---------------------------------------------------------------------------
-# Response parsing
-# ---------------------------------------------------------------------------
-
-
 class CopilotResponse:
     """Parsed response from Copilot CLI."""
 
@@ -98,20 +93,10 @@ class CopilotResponse:
         }
 
 
-# ---------------------------------------------------------------------------
-# Query loading
-# ---------------------------------------------------------------------------
-
-
 def load_queries(yaml_path: Path) -> list[dict]:
     with open(yaml_path) as f:
         data = yaml.safe_load(f)
     return data.get("queries", [])
-
-
-# ---------------------------------------------------------------------------
-# Step 1: Generate responses via Copilot CLI
-# ---------------------------------------------------------------------------
 
 
 def run_copilot_query(query: str, timeout: int = 180) -> tuple[str, float]:
@@ -195,11 +180,6 @@ def run_generation(
         print(f"{'─' * 60}")
 
 
-# ---------------------------------------------------------------------------
-# Step 2: Execute generated code
-# ---------------------------------------------------------------------------
-
-
 def run_execution(
     output_dir: Path,
     query_ids: list[str] | None,
@@ -218,21 +198,11 @@ def run_execution(
     )
 
 
-# ---------------------------------------------------------------------------
-# Step 3: Aggregate metrics
-# ---------------------------------------------------------------------------
-
-
 def run_aggregation(output_dir: Path, query_ids: list[str] | None):
     sys.path.insert(0, str(SCRIPTS_DIR))
     from aggregate_metrics import aggregate_metrics
 
     aggregate_metrics(eval_results_dir=output_dir, query_filter=query_ids)
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
 
 
 def main():
