@@ -49,7 +49,6 @@ class MyComponent(JSComponent):
 
 Libraries with plugin architectures (FullCalendar, ProseMirror, TipTap) break on esm.sh because each plugin gets its own copy of shared internals — prototype chain breaks silently.
 
-Notes:
 - **Plugin-based libraries** → use `cdn.skypack.dev`. It deduplicates shared internals.
 - **Standalone or React libraries** → `esm.sh` is fine. Use `?external=react,react-dom` for React.
 - **CSS files or raw packages** → `cdn.jsdelivr.net`.
@@ -171,7 +170,6 @@ export function render({ model }) {
 }
 ```
 
-Notes:
 - Don't import React — it's globally available.
 - Use `?external=react,react-dom` for external React libraries in `_importmap`.
 
@@ -188,7 +186,6 @@ export default {
 }
 ```
 
-Notes:
 - Always pin React versions: `?deps=react@18.2.0,react-dom@18.2.0`. Without pinning, esm.sh serves React 19 with breaking changes.
 
 ## MaterialUIComponent
@@ -223,7 +220,6 @@ Use inline `style` props for icon dimensions — MUI CSS classes may not load pr
 
 ## Key DOs and DON'Ts
 
-Notes:
 - Use external `.js`/`.jsx` files + `panel serve --dev` for hot reload. Use `panel compile` for production.
 - Don't use `_` prefix for parameters needed in JS — private params don't sync.
 - Prefer ESM imports over `__javascript__` — ESM is synchronous, `__javascript__` races with `render()`.

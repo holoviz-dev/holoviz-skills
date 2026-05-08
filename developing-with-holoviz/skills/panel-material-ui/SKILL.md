@@ -10,7 +10,6 @@ metadata:
 
 ## Key Differences from Panel
 
-Notes:
 - Import `panel_material_ui as pmui`. Don't add `"panel_material_ui"` or `"bokeh"` to `pn.extension()`. Don't set `design='material'`.
 - Use `pmui.Page` instead of `pn.template.FastListTemplate`.
 - Use new param names (`label`, `color`, `variant`) not legacy aliases (`name`, `button_type`, `button_style`).
@@ -48,7 +47,6 @@ class MyApp(pn.viewable.Viewer):
 
 ## Page
 
-Notes:
 - Title goes in `Page.title` — don't repeat in `main`.
 - `Page.sidebar`, `Page.main`, `Page.header` require lists — not bare components or `list(layout)`.
 - Don't add `ThemeToggle` — built in.
@@ -65,7 +63,6 @@ pmui.Page(sidebar=widget1, main=content)
 
 ## Styling Layers
 
-Notes:
 - Preference order: `theme_config` → `sx` → `styles` → `stylesheets`.
 - `theme_config`: app-wide palette, typography, shape. Define on top-level container; children inherit. Use `"light"`/`"dark"` keys.
 - `sx`: local Mui styling. Selectors like `& .MuiSlider-thumb`, `.mui-dark`/`.mui-light` for mode overrides.
@@ -97,7 +94,6 @@ pmui.Page(
 
 ## Component Gotchas
 
-Notes:
 - `Grid`: use `spacing=2`+. `ncols` doesn't exist.
 - `Column`/`Row`: use `size`, not `xs`/`sm`/`md`. Set spacing via `sx`, not `spacing` param.
 - List layouts take positional args: `pmui.Row(child1, child2)`, not `pmui.Row([child1, child2])`.
@@ -110,7 +106,6 @@ Notes:
 
 ## Icons
 
-Notes:
 - Prefer Material UI icons over emojis.
 - Standalone decorative icons: use `Typography`, not `IconButton`.
 - Widget labels/options: embed with `:material/...:` token syntax.
