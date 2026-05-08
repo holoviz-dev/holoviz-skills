@@ -21,6 +21,7 @@ Examples build on the penguins Dashboard from the Panel skill.
 import holoviews as hv
 import hvplot.pandas  # noqa
 import panel as pn
+import panel_material_ui as pmui
 import param
 
 pn.extension(throttled=True)
@@ -36,7 +37,7 @@ class Dashboard(pn.viewable.Viewer):
         super().__init__(**params)
         dmap = hv.DynamicMap(pn.bind(self._render_scatter, self.param._trigger))
         self._chart_pane = pn.pane.HoloViews(dmap, sizing_mode="stretch_width")
-        self._layout = pn.Column(self._chart_pane)
+        self._layout = pmui.Column(self._chart_pane)
 
     def _filtered(self):
         return penguins[penguins["species"].isin(self.species)]
@@ -144,7 +145,7 @@ def show_selected(index):
     return hv.Table(penguins.iloc[index], kdims=["bill_length_mm", "bill_depth_mm"])
 
 table_dmap = hv.DynamicMap(show_selected, streams=[selection])
-pn.Row(points, table_dmap).servable()
+pmui.Row(points, table_dmap).servable()
 ```
 
 ### Tap
