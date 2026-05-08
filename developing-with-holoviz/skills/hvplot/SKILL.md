@@ -27,14 +27,6 @@ import hvplot.pandas
 import hvplot.pandas
 ```
 
-**Sample data lives in `hvplot.sampledata`, not `holoviews.sampledata`.** Always load sample datasets like this:
-
-```python
-import hvplot.pandas  # noqa — also activates Bokeh backend
-
-earthquakes = hvplot.sampledata.earthquakes("pandas")
-```
-
 ## Plot Labels
 
 Notes:
