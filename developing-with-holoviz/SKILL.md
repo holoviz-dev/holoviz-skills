@@ -5,24 +5,28 @@ description: Route to HoloViz sub-skills. Use for ANY task involving interactive
 
 # Developing with HoloViz Tools
 
-This is a **routing skill** — load the matching sub-skill(s) for the task at hand.
+This is a **routing skill**. You MUST use the `view` tool to read every sub-skill file listed in the table below that matches the task BEFORE writing any code or giving any answer. Do not skip this step.
 
-> **Path note:** Sub-skills live in `skills/` relative to this file.
+## Instructions
 
-## Loading Table
-
-A single request often spans multiple skills. Load all that apply.
+1. Identify which sub-skill(s) apply from the Loading Table below.
+2. Use the `view` tool to read each matching sub-skill file in full.
+3. Only after reading the sub-skill file(s), proceed with the task.
 
 For new apps, prefer `panel-material-ui` over standard Panel templates — it provides modern Material Design components out of the box.
 
-| User Need | Skills to Load |
+## Loading Table
+
+A single request often spans multiple skills. Read ALL that apply.
+
+| User Need | Sub-skill file(s) to read with `view` |
 |---|---|
-| Typed, validated, reactive parameters | `skills/param/SKILL.md` |
-| Quick exploratory plots from DataFrames / xarray | `skills/hvplot/SKILL.md` |
-| Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel-material-ui/SKILL.md` |
-| HoloViews/hvPlot plots embedded in Panel (DynamicMap, streams, link_selections) | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel-holoviews/SKILL.md` |
-| Custom JS/React/AnyWidget components | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel-custom-components/SKILL.md` |
-| Playwright UI testing for Panel components | `skills/panel-custom-components/SKILL.md` + `skills/panel-pytest-playwright/SKILL.md` |
+| Typed, validated, reactive parameters | `developing-with-holoviz/skills/param/SKILL.md` |
+| Quick exploratory plots from DataFrames / xarray | `developing-with-holoviz/skills/hvplot/SKILL.md` |
+| Dashboard, data app, or interactive tool | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel-material-ui/SKILL.md` |
+| HoloViews/hvPlot plots embedded in Panel (DynamicMap, streams, link_selections) | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel-holoviews/SKILL.md` |
+| Custom JS/React/AnyWidget components | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel-custom-components/SKILL.md` |
+| Playwright UI testing for Panel components | `developing-with-holoviz/skills/panel-custom-components/SKILL.md` + `developing-with-holoviz/skills/panel-pytest-playwright/SKILL.md` |
 
 ## Skill Map
 

@@ -7,6 +7,7 @@ platforms = ["osx-arm64", "osx-64", "linux-64", "win-64"]
 default = ["docs", "lint", "dev"]
 docs = ["docs"]
 lint = ["lint"]
+eval = ["eval"]
 
 # =================== BASE ===================
 
@@ -16,7 +17,6 @@ pip = "*"
 
 [tasks]
 setup-dev = { depends-on = [
-    "build-stubs",
     "lint-install",
 ], description = "Set up development environment" }
 
@@ -28,7 +28,7 @@ zensical = "*"
 [feature.docs.tasks]
 build-stubs = { cmd = "python scripts/build_stubs.py", description = "Generate docs/skills/*.md from SKILL.md files" }
 docs = { cmd = "zensical serve", depends-on = [
-    "build-stubs",
+    "docs-build",
 ], description = "Serve documentation locally" }
 docs-build = { cmd = "zensical build", depends-on = [
     "build-stubs",
@@ -55,3 +55,30 @@ lint = { cmd = "pre-commit run --all-files", description = "Run all pre-commit h
 lint-install = { cmd = "pre-commit install", description = "Install pre-commit hooks" }
 format = { cmd = "ruff format .", description = "Format code with ruff" }
 check = { cmd = "ruff check .", description = "Lint code with ruff" }
+
+# =================== EVAL ====================
+
+[feature.eval.dependencies]
+pyyaml = "*"
+holoviews = "*"
+hvplot = "*"
+bokeh = "*"
+pandas = "*"
+matplotlib = "*"
+geoviews = "*"
+hvsampledata = "*"
+
+[feature.eval.pypi-dependencies]
+playwright = "*"
+
+[feature.eval.tasks]
+_eval-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }
+_eval-check-no-screenshots = { cmd = "python scripts/test_setup.py --skip-screenshots", cwd = ".", description = "Verify evaluation system (without Playwright check)" }
+eval-check = { cmd = "python scripts/test_setup.py", cwd = ".", description = "Verify evaluation system is set up correctly" }
+evals = { cmd = "python scripts/eval.py", cwd = ".", depends-on = [
+    "eval-check",
+    "_eval-setup",
+], description = "Run full evaluation pipeline" }
+eval-no-screenshots = { cmd = "python scripts/eval.py --skip-screenshots", cwd = ".", depends-on = [
+    "_eval-check-no-screenshots",
+], description = "Run evaluation without screenshots (faster, no Playwright needed)" }

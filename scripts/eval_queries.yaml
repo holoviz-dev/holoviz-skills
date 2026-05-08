@@ -1,0 +1,20 @@
+# Evaluation queries for testing HoloViz skills
+# Each query tests whether SKILL.md files improve Copilot's responses
+
+queries:
+  - id: hvplot_interactive_scatter
+    prompt: |
+      Create an interactive scatter plot with hvplot from a pandas DataFrame
+      containing columns 'x', 'y', and 'category'. Include hover tooltips
+      that show all column values when hovering over points.
+    expected_output: static_plot
+    timeout: 120
+    category: hvplot_interactivity
+
+  - id: hvplot_earthquake_plot
+    prompt: |
+      I'm working with the earthquake dataset from the sampledata module.
+      Create an hvplot map visualization using a dark CartoDB tile basemap, colored by magnitude.
+    expected_output: static_plot
+    timeout: 120
+    category: hvplot_interactivity

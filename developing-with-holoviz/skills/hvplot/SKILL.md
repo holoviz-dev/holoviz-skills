@@ -16,7 +16,16 @@ Before plotting, consider: what story does the data tell? What comparison matter
 
 Activate the `.hvplot` accessor with the appropriate backend import: `import hvplot.pandas`, `hvplot.polars`, `hvplot.xarray`, `hvplot.duckdb`, or `hvplot.dask`. Backends like Polars and DuckDB must be installed separately. Optional: `datashader` for resampling, `geoviews` or `geopandas` for geographic data. Prefer the Bokeh backend (default) for interactivity, Matplotlib for static/print output, Plotly as a last resort.
 
-For HoloViews elements (VLine, HLine, Text, Overlay, etc.), import holoviews directly: `import holoviews as hv`. Do not access via `hvplot.pandas.hv` — it doesn't exist.
+Do NOT add `import holoviews as hv` or `hv.extension('bokeh')` to hvplot-only code. `import hvplot.pandas` activates the Bokeh backend automatically. Only import holoviews when you need HoloViews elements or containers like VLine, HLine, Text, Overlay, etc.
+
+```python
+# WRONG — redundant import, do not do this
+import holoviews as hv
+import hvplot.pandas
+
+# CORRECT — hvplot.pandas is sufficient
+import hvplot.pandas
+```
 
 ## Plot Labels
 
@@ -44,12 +53,39 @@ earthquakes.hvplot.points(
 )
 ```
 
+## Geographic Plots
+
+Notes:
+- `geo=True` enables geographic (web-mercator) projection and tile basemaps. Requires `geoviews` to be installed.
+- `tiles=` accepts these built-in strings: `"CartoDark"`, `"CartoLight"`, `"CartoMidnight"`, `"OSM"`, `"EsriImagery"`, `"EsriTerrain"` or ``xyzservices.TileProvider`` instances **Do not use `"CartoDB.DarkMatter"`, `"CartoDB Dark_Matter"`.** See https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/geographic.html#tiles
+- Do not convert to a GeoDataFrame or reproject to EPSG:3857 manually. Pass `geo=True` and hvplot handles projection.
+
+```python
+import hvplot.pandas  # noqa
+
+earthquakes = hvplot.sampledata.earthquakes("pandas")
+earthquakes.hvplot.points(
+    x="lon",
+    y="lat",
+    geo=True,
+    tiles="CartoDark",       # correct — do NOT use "CartoDB.DarkMatter"
+    color="mag",
+    cmap="viridis_r",
+    clabel="Magnitude",
+    size=6,
+    alpha=0.8,
+    hover_cols=["place", "time", "mag", "depth"],
+    responsive=True,
+    title="Earthquakes colored by magnitude",
+)
+```
+
 ## Hover Tooltips
 
 Notes:
 - Pair `hover_cols` with `hover_tooltips`: columns not used as x/y/color are not sent to the client by default, producing `???` in tooltips.
 - Only include the columns you need to avoid sending all data to the client.
-- `hover_tooltips` replaces the deprecated `hover_formatters` — models may hallucinate the old name.
+- `hover_formatters` is deprecated and should not be used. Do not pass it even alongside `hover_tooltips`. Format datetimes inline in the tooltip string instead.
 - Bokeh format syntax: `{0.1f}` floats, `{0,0}` thousands, `{%F %H:%M}` datetimes. Literal text like `km` can follow the format.
 
 ```python
