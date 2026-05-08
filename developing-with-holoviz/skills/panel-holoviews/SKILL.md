@@ -14,7 +14,6 @@ Examples build on the penguins Dashboard from the Panel skill.
 
 ## DynamicMap: Preserve Zoom/Pan Across Data Refreshes
 
-Notes:
 - Setting `pane.object = new_plot` resets axes. DynamicMap patches data in place, preserving zoom/pan.
 - Use a trigger parameter as a signal — DynamicMap caches by argument identity, so read actual data from `self` inside the callback.
 
@@ -63,7 +62,6 @@ class Dashboard(pn.viewable.Viewer):
 
 ## One Element Per DynamicMap
 
-Notes:
 - Returning mixed types (`hv.Scatter` sometimes, `hv.Overlay` other times) raises `AssertionError`.
 - Combining scatter + HLines inside `hv.Overlay([...])` loses hover tooltips.
 - Create one DynamicMap per element, combine with `*` at layout level. Each callback always returns the same element type.
@@ -99,7 +97,6 @@ class Dashboard(pn.viewable.Viewer):
 
 hvPlot internally sets `width=700`. This conflicts with `responsive=True` if applied via `.opts()`.
 
-Notes:
 - **hvPlot**: pass `responsive=True` and `height=N` as **arguments to the hvplot call**, not via `.opts()`. hvPlot's default `width=700` persists through `.opts()` and can't be removed.
 - **Pure HoloViews**: `.opts(responsive=True, height=N)` is fine — HoloViews doesn't inject a default width.
 - Never set both `width` and `responsive=True` — `width` wins silently.
@@ -181,7 +178,6 @@ buffer.send(new_rows_df)  # append data
 
 ### Stream Pitfalls
 
-Notes:
 - `Selection1D` needs `tools=['tap', 'box_select']` in `.opts()` — without them no events fire.
 - Stream callbacks receive `None`/empty on first render — always guard.
 - Don't mix streams and `param.depends`/`pn.bind` for the same plot.
@@ -191,7 +187,6 @@ Notes:
 
 `hv.link_selections` provides automatic cross-filtering. Don't build this manually with streams.
 
-Notes:
 - Use `.instance()` to create the linker — `hv.link_selections(plot)` returns a plot, not a reusable linker.
 - Use `hv.operation.histogram(source_element, dimension='x')` for numeric histograms — preserves data lineage. Don't use `hv.Histogram(np.histogram(...))` — pre-binned loses the source link.
 - `histogram()` only works for numeric dimensions. For categorical bars, use a custom `Operation` subclass (see below).

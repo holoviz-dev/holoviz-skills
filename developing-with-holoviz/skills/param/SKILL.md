@@ -12,7 +12,6 @@ Correct patterns and common pitfalls for Param — the reactive parameter librar
 
 ## Parameterized Classes
 
-Notes:
 - Add `# pyright: reportAssignmentType=false` at the top — Param's descriptors conflict with static type checkers.
 - Add type annotations (`target: str = param.String(...)`) for IDE autocomplete — Param doesn't enforce them at runtime.
 - **Never use `name` as a parameter** — reserved by Param for the instance name.
@@ -30,7 +29,6 @@ class DataConfig(param.Parameterized):
 
 ## Reactive Dependencies (@param.depends)
 
-Notes:
 - Without `watch=True`: lazy, called only when something reads the result. Returns content. With `watch=True`: eager, fires every time the parameter changes. Use for side effects only.
 - Don't use `watch=True` to update UI — causes flickering (the `panel` skill covers this).
 - `on_init=True` runs the method once at instantiation. Use with `watch=True` to set initial state.
@@ -56,7 +54,6 @@ class Analysis(param.Parameterized):
 
 ## Dependent Parameters
 
-Notes:
 - When updating `.objects`, always check if the current value is still valid — reset it if not.
 
 ```python
@@ -81,7 +78,6 @@ class CountrySelector(param.Parameterized):
 
 ## Parameter Types
 
-Notes:
 - `param.update()` applies multiple changes atomically — watchers fire once, not once per change. Also works as a context manager: `with self.param.update(): self.x = 1; self.y = 2`.
 - Use the most specific type (`param.Integer` not `Number`, `param.Selector` not `String`). Specificity drives widget selection in Panel's `.from_param()`.
 - `softbounds` suggests a range for UI sliders without hard enforcement. `step` hints the increment. `label` overrides the display name. `precedence` controls ordering (lower = first).

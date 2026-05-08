@@ -29,7 +29,6 @@ import hvplot.pandas
 
 ## Plot Labels
 
-Notes:
 - Label axes and colorbars with descriptive names and units.
 - Titles should tell the story (what, where, when); don't repeat what the axes already show.
 - Compute dynamic labels (date ranges, region names) as variables before the plot call to keep it readable.
@@ -55,7 +54,6 @@ earthquakes.hvplot.points(
 
 ## Geographic Plots
 
-Notes:
 - `geo=True` enables geographic (web-mercator) projection and tile basemaps. Requires `geoviews` to be installed.
 - `tiles=` accepts these built-in strings: `"CartoDark"`, `"CartoLight"`, `"CartoMidnight"`, `"OSM"`, `"EsriImagery"`, `"EsriTerrain"` or ``xyzservices.TileProvider`` instances **Do not use `"CartoDB.DarkMatter"`, `"CartoDB Dark_Matter"`.** See https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/geographic.html#tiles
 - Do not convert to a GeoDataFrame or reproject to EPSG:3857 manually. Pass `geo=True` and hvplot handles projection.
@@ -82,7 +80,6 @@ earthquakes.hvplot.points(
 
 ## Hover Tooltips
 
-Notes:
 - Pair `hover_cols` with `hover_tooltips`: columns not used as x/y/color are not sent to the client by default, producing `???` in tooltips.
 - Only include the columns you need to avoid sending all data to the client.
 - `hover_formatters` is deprecated and should not be used. Do not pass it even alongside `hover_tooltips`. Format datetimes inline in the tooltip string instead.
@@ -106,7 +103,6 @@ earthquakes.hvplot.points(
 
 ## Managing Dimensions
 
-Notes:
 - `color=` and `size=` are vectorized; they scale to large data. Use `cmap=`/`clabel=` with color, `scale=` with size.
 - `by=` overlays color-coded layers with a legend; useful for stacked/side-by-side bars.
 - `groupby=` adds a dropdown widget to filter to one category at a time.
@@ -129,7 +125,6 @@ earthquakes.hvplot.points(
 
 ## Big Data
 
-Notes:
 - If data exceeds 100k points, consider `rasterize=True` over `datashade=True`. Rasterize aggregates server-side but colormaps in the browser, preserving hover tooltips, colorbars, and `cnorm`/`cmap` control. Datashade sends an opaque RGB image — use it only for categorical color mixing (`aggregator='count_cat'`).
 - `resample_when=N` disables resampling when the viewport contains fewer than N points (e.g. after zooming in), effectively creating a dynamic overlay that toggles opacity of either the rasterized or original layer. However, because it is an overlay, it can be finicky and may cause confusion, e.g. the hover tooltips will only work when the original layer is active.
 
@@ -145,7 +140,6 @@ earthquakes.hvplot.points(
 
 ## Styling
 
-Notes:
 - Sort values so the largest is at top (or bottom) for easy comparison.
 - Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
 - Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, `show_frame=False`.
@@ -192,7 +186,6 @@ barh * labels
 
 ## Interaction
 
-Notes:
 - Hide the toolbar for polished output: `backend_opts={"plot.toolbar.autohide": True}` (shows on hover) or `.opts(toolbar=None)` (removes entirely). Hide on secondary panels in a layout (e.g. the bottom chart) and keep on the main chart.
 - For timeseries, use `hover_mode='vline'` to snap the crosshair to the nearest x-value — much easier to read than the default point hover.
 - Configure wheel zoom axis: `tools=['xwheel_zoom']` for timeseries (zoom x only), `tools=['ywheel_zoom']` for vertical, or default `'wheel_zoom'` for both. Replace the active tool with `active_scroll=`.
@@ -210,7 +203,6 @@ apple.hvplot.line(
 
 ## Timeseries
 
-Notes:
 - `subcoordinate_y=True` gives each series its own y sub-axis — useful for multi-stock views with different scales.
 - Access datetime index components directly: `'index.month'`, `'index.hour'`, `'index.year'` work inside hvPlot for aggregation.
 - Use `xformatter=DatetimeTickFormatter(months='%b %Y')` for custom date formatting.
@@ -240,7 +232,6 @@ apple.hvplot.heatmap(x='index.hour', y='index.month', C='close', cmap='reds', re
 
 ## Subplots and Layouts
 
-Notes:
 - `col=`/`row=` creates a cleaner faceted grid than `subplots=True` for categorical splits. Use `shared_axes=False` for independent ranges.
 
 ```python
