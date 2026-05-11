@@ -37,6 +37,7 @@ color = self.color
 ## Nesting and Early Returns
 
 - Return or continue early to avoid deep nesting.
+- Consolidate multiple guard clauses into a single condition when possible.
 - Refactor code with more than three levels of nesting into helper functions.
 
 ```python
@@ -54,11 +55,7 @@ def process(items):
 def process(items):
     results = []
     for item in items:
-        if not item.is_valid:
-            continue
-        if item.category != 'A':
-            continue
-        if item.value <= 0:
+        if not item.is_valid or item.category != 'A' or item.value <= 0:
             continue
         results.append(transform(item))
     return results
