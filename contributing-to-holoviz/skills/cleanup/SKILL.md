@@ -104,29 +104,30 @@ class DataProcessor(param.Parameterized):
         return normalize(values)
 ```
 
-## Naming Conventions
+## Naming and Style
 
 - Use consistent and readable naming conventions. If a class is `FollowUpSuggestion`, the variable name should be `follow_up_suggestion`, not `followup_suggestion` or `follow_up_suggestions` (plural when singular is meant).
 - Sort `param` parameter declarations alphabetically on `Parameterized` classes, with a blank line between each declaration.
+- Include `doc="""..."""` on every public param to describe its purpose.
 
 ```python
-# WRONG — arbitrary order
+# WRONG — arbitrary order, no docs, no spacing
 class MyWidget(param.Parameterized):
-
     zoom = param.Number(default=1.0)
-
     alpha = param.Number(default=0.5)
-
     color = param.String(default='blue')
 
-# CORRECT — alphabetical
+# CORRECT — alphabetical, spaced, documented
 class MyWidget(param.Parameterized):
 
-    alpha = param.Number(default=0.5)
+    alpha = param.Number(default=0.5, doc="""
+        The opacity of the widget.""")
 
-    color = param.String(default='blue')
+    color = param.String(default='blue', doc="""
+        The primary color of the widget.""")
 
-    zoom = param.Number(default=1.0)
+    zoom = param.Number(default=1.0, doc="""
+        The zoom level of the widget.""")
 ```
 
 ## Magic Numbers
