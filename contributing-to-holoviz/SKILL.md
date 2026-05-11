@@ -21,5 +21,5 @@ A single request often spans multiple skills. Read ALL that apply.
 |---|---|
 | Review a PR or refactor code | `contributing-to-holoviz/skills/cleanup/SKILL.md` |
 | Write or review tests | `contributing-to-holoviz/skills/testing/SKILL.md` |
-| Write or review docs, changelog | `contributing-to-holoviz/skills/documentation/SKILL.md` |
+| Write or review docs | `contributing-to-holoviz/skills/documentation/SKILL.md` |
 | Full PR review | All three above |

@@ -10,9 +10,7 @@ metadata:
 
 This skill covers documentation expectations when contributing to HoloViz repositories.
 
-## Changelog
-
-- Add a changelog entry for every user-facing change. Include the PR number and a one-line description of what changed from the user's perspective.
+Most HoloViz projects follow the [Diátaxis](https://diataxis.fr/) documentation framework, organizing content into four categories: tutorials (learning-oriented), how-to guides (task-oriented), explanation (understanding-oriented), and reference (information-oriented). Place new docs in the appropriate category.
 
 ## Docs Coverage
 

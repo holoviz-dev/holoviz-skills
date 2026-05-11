@@ -110,19 +110,25 @@ class DataProcessor(param.Parameterized):
 ## Naming Conventions
 
 - Use consistent and readable naming conventions. If a class is `FollowUpSuggestion`, the variable name should be `follow_up_suggestion`, not `followup_suggestion` or `follow_up_suggestions` (plural when singular is meant).
-- Sort `param` parameter declarations alphabetically on `Parameterized` classes.
+- Sort `param` parameter declarations alphabetically on `Parameterized` classes, with a blank line between each declaration.
 
 ```python
 # WRONG — arbitrary order
 class MyWidget(param.Parameterized):
+
     zoom = param.Number(default=1.0)
+
     alpha = param.Number(default=0.5)
+
     color = param.String(default='blue')
 
 # CORRECT — alphabetical
 class MyWidget(param.Parameterized):
+
     alpha = param.Number(default=0.5)
+
     color = param.String(default='blue')
+
     zoom = param.Number(default=1.0)
 ```
 
