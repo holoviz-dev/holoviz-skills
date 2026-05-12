@@ -26,6 +26,7 @@ This skill covers code quality patterns and common pitfalls when reviewing or re
 - Use consistent naming. If a class is `FollowUpSuggestion`, the variable should be `follow_up_suggestion`, not `followup_suggestion` or `follow_up_suggestions`.
 - Sort `param` declarations alphabetically with a blank line between each.
 - Include `doc="""..."""` on every public param, starting on a new line.
+- Ensure comments are about *why* and *what must remain true*, not what the syntax does. Good comments explain intent, constraints, workarounds, performance rationale, or API quirks. Avoid restating obvious code or narrating line-by-line.
 - Place internal `_`-prefixed params after public params. Use a `_`-prefixed param (e.g. `_cache = param.Dict()`) when the value needs to trigger watches or be serialized. Use a plain class/instance variable (e.g. `self._cache = {}` in `__init__`) for transient internal state that doesn't need param machinery.
 
 ```python
