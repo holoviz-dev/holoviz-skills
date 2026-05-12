@@ -14,21 +14,17 @@ This skill covers code quality patterns and common pitfalls when reviewing or re
 
 Perform a `git diff` from the PR branch to the main branch, and review the code changes for potential issues, improvements, and adherence to best practices. Then provide a plan, pointing to lines of code and modules for refactoring the code to improve its quality, readability, and maintainability.
 
+## Linting
+
+- Leave formatting and style enforcement to linters and pre-commit hooks. Run via `pixi run lint`.
+
 ## Imports
 
-- Place imports at the top of the file. Avoid imports inside functions unless there is a specific reason (slow import, circular import, optional dependency).
+- Top-level imports should only be from the standard library, required dependencies, and relative imports. Imports of optional or slow-loading dependencies should go inside the function that uses them.
 
 ## Attribute Access
 
-- Avoid `hasattr` and `getattr` when the attribute is known to be present. Access it directly — the `AttributeError` on a typo is more useful than a silent fallback.
-
-```python
-# WRONG — attribute is always present on this or parent class
-color = getattr(self, 'color', None)
-
-# CORRECT
-color = self.color
-```
+- Prefer direct attribute access when the attribute is known to exist. `getattr` with a default is appropriate when the attribute may be absent (e.g. checking across class hierarchies or optional mixins) and the caller handles the fallback.
 
 ## Holistic Review
 
@@ -63,46 +59,12 @@ def process(items):
 
 ## Type Hints
 
-- Use Python 3.11+ built-in generics and union syntax. No need to import from `typing` for common types.
-
-```python
-# WRONG — legacy typing imports
-from typing import Dict, List, Optional, Tuple, Union
-
-def process(items: List[str], config: Optional[Dict[str, int]] = None) -> Tuple[str, ...]:
-    ...
-
-def load(path: Union[str, Path]) -> None:
-    ...
-
-# CORRECT — built-in generics and | syntax
-def process(items: list[str], config: dict[str, int] | None = None) -> tuple[str, ...]:
-    ...
-
-def load(path: str | Path) -> None:
-    ...
-```
+- Prefer Python 3.11+ built-in generics and `|` union syntax for new code. Leave enforcement to the linter.
 
 ## File Organization
 
 - Order file contents: imports, constants, functions (or ideally a separate `utils` module), then classes.
-- Avoid `@staticmethod` unless it is evidently necessary over a plain function. If the method doesn't access `cls` or `self`, it's usually a function that belongs at module level or in a utils file.
-
-```python
-# WRONG — staticmethod that doesn't need the class
-class DataProcessor(param.Parameterized):
-    @staticmethod
-    def normalize(values):
-        return (values - values.min()) / (values.max() - values.min())
-
-# CORRECT — plain function at module level or in utils.py
-def normalize(values):
-    return (values - values.min()) / (values.max() - values.min())
-
-class DataProcessor(param.Parameterized):
-    def process(self, values):
-        return normalize(values)
-```
+- `@staticmethod` is fine when the method is part of the class's public interface or is only meaningful in the context of that class. Move to module level or a `utils` module only if it has clear reuse elsewhere.
 
 ## Naming and Style
 
@@ -128,24 +90,4 @@ class MyWidget(param.Parameterized):
 
     zoom = param.Number(default=1.0, doc="""
         The zoom level of the widget.""")
-```
-
-## Magic Numbers
-
-- Minimize magic numbers. Expose the value as a `param` parameter so users can customize it.
-
-```python
-# WRONG — hardcoded threshold buried in logic
-def process(self, items):
-    if len(items) > 50:
-        self._paginate(items)
-
-# CORRECT — exposed as a param parameter
-class ItemProcessor(param.Parameterized):
-    max_items_per_page = param.Integer(default=50, bounds=(1, None), doc="""
-        Maximum number of items to display per page before paginating.""")
-
-    def process(self, items):
-        if len(items) > self.max_items_per_page:
-            self._paginate(items)
 ```
