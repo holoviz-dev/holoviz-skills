@@ -32,16 +32,26 @@ def test_filter_by_range():
 
 # CORRECT — covers edge cases and logical boundaries
 @pytest.mark.parametrize(
+@pytest.mark.parametrize(
     ("data", "low", "high", "expected_len"),
     [
-        pytest.param([1, 2, 3], 1, 3, 3, id="inclusive_bounds"),
-        pytest.param([1, 2, 3], 2, 2, 1, id="single_value_range"),
-        pytest.param([1, 2, 3], 5, 10, 0, id="no_matches"),
-        pytest.param([], 0, 1, 0, id="empty_input"),
-        pytest.param([np.nan, 1, 2], 0, 2, 2, id="nan_values"),
-        pytest.param([1, 2, None], 0, 2, 2, id="none_values"),
+        ([1, 2, 3], 1, 3, 3),
+        ([1, 2, 3], 2, 2, 1),
+        ([1, 2, 3], 5, 10, 0),
+        ([], 0, 1, 0),
+        ([np.nan, 1, 2], 0, 2, 2),
+        ([1, 2, None], 0, 2, 2),
+    ],
+    ids=[
+        "inclusive_bounds",
+        "single_value_range",
+        "no_matches",
+        "empty_input",
+        "nan_values",
+        "none_values",
     ],
 )
+
 def test_filter_by_range(data, low, high, expected_len):
     df = pd.DataFrame({'x': data})
     result = filter_by_range(df, 'x', low=low, high=high)
