@@ -32,7 +32,6 @@ def test_filter_by_range():
 
 # CORRECT — covers edge cases and logical boundaries
 @pytest.mark.parametrize(
-@pytest.mark.parametrize(
     ("data", "low", "high", "expected_len"),
     [
         ([1, 2, 3], 1, 3, 3),
