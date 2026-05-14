@@ -35,29 +35,23 @@ document.addEventListener("DOMContentLoaded", function () {
   btn.href = "#";
   btn.setAttribute("aria-label", "Copy page as Markdown");
 
-  // MkDocs Material's content.tooltips feature only processes elements
-  // present at page load.  For dynamically created buttons we need to
-  // build the tooltip span ourselves so it matches the theme's style.
-  var tooltip = document.createElement("span");
-  tooltip.className = "md-tooltip";
-  tooltip.textContent = "Copy page as Markdown";
-
   btn.innerHTML = COPY_ICON;
-  btn.prepend(tooltip);
-
-  // Also set title as a fallback for browsers/themes that use native tooltips.
   btn.title = "Copy page as Markdown";
 
-  // ---- Insert next to the existing action buttons ----
+  // ---- Insert alongside the existing action buttons ----
+  // MkDocs Material renders action buttons (edit, view source) as
+  // float:right <a> elements before the <h1> inside .md-content__inner.
+  // Insert our button right before the first existing action button so
+  // it joins the same float row without overlapping.
   var toolbar = document.querySelector(".md-content__inner");
   if (toolbar) {
-    // MkDocs Material puts action buttons (edit, view source) as the first
-    // children of .md-content__inner.  Insert ours before the first heading.
-    var h1 = toolbar.querySelector("h1");
-    if (h1) {
-      toolbar.insertBefore(btn, h1);
+    var firstBtn = toolbar.querySelector("a.md-content__button");
+    if (firstBtn) {
+      toolbar.insertBefore(btn, firstBtn);
     } else {
-      toolbar.prepend(btn);
+      var h1 = toolbar.querySelector("h1");
+      if (h1) toolbar.insertBefore(btn, h1);
+      else toolbar.prepend(btn);
     }
   }
 
@@ -70,7 +64,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (svgEl) svgEl.remove();
     btn.insertAdjacentHTML("beforeend", CHECK_ICON);
     btn.style.color = "#4caf50";
-    tooltip.textContent = "Copied!";
     btn.title = "Copied!";
 
     clearTimeout(feedbackTimer);
@@ -82,7 +75,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (svgEl) svgEl.remove();
     btn.insertAdjacentHTML("beforeend", COPY_ICON);
     btn.style.color = "";
-    tooltip.textContent = "Copy page as Markdown";
     btn.title = "Copy page as Markdown";
   }
 

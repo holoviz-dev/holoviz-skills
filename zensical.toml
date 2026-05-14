@@ -8,7 +8,7 @@ edit_uri = "edit/main/docs/"
 extra_javascript = ["assets/copy-markdown.js"]
 nav = [
   { "Home" = "index.md" },
-  { "Developing with HoloViz Packages" = [
+  { "Developing with HoloViz" = [
     "developing-with-holoviz/index.md",
     { "Using Param effectively" = "developing-with-holoviz/param.md" },
     { "Using hvPlot effectively" = "developing-with-holoviz/hvplot.md" },
@@ -18,13 +18,13 @@ nav = [
     { "Panel Custom Components" = "developing-with-holoviz/panel-custom-components.md" },
     { "Panel Playwright UI Testing" = "developing-with-holoviz/panel-pytest-playwright.md" },
   ] },
-  { "Contributing to HoloViz Packages" = [
+  { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",
     { "Code Cleanup" = "contributing-to-holoviz/cleanup.md" },
     { "Documentation" = "contributing-to-holoviz/documentation.md" },
     { "Testing" = "contributing-to-holoviz/testing.md" },
   ] },
-  { "Creating Custom HoloViz Skills" = "creating-custom-holoviz-skills.md" },
+  { "Creating Custom Skills" = "creating-custom-holoviz-skills.md" },
 ]
 
 # Theme configuration
