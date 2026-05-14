@@ -3,7 +3,7 @@ name: developing-with-holoviz
 description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param).
 ---
 
-# Developing with HoloViz Packages
+# Developing with HoloViz
 
 This is a **routing skill**. You MUST use the `view` tool to read every sub-skill file listed in the table below that matches the task BEFORE writing any code or giving any answer. Do not skip this step.
 
