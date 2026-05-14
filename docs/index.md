@@ -8,31 +8,15 @@ Agent Skills are folders of instructions, scripts, and references that teach AI 
 
 ## Available Skills
 
-Browse the **Skills** section in the navigation menu to see all available skills.
+- [Developing with HoloViz](developing-with-holoviz/index.md) — skills for building apps with Panel, hvPlot, HoloViews, Param, and more
+- [Contributing to HoloViz](contributing-to-holoviz/index.md) — skills for maintaining and contributing to HoloViz packages
+- [Creating Custom Skills](creating-custom-holoviz-skills.md) — guide for adding new skills to this repository
 
 ## Using Skills
 
 Agent Skills are supported by a growing number of AI coding tools. See your tool's documentation for setup instructions:
 
-| Tool | Feature | Docs |
-|---|---|---|
-| [Claude Code / Cowork](https://code.claude.com) | Skills (SKILL.md) | [Skills docs](https://code.claude.com/docs/en/skills) |
-| [GitHub Copilot](https://github.com/features/copilot) | Agent Skills | [VS Code skills](https://code.visualstudio.com/docs/copilot/customization/agent-skills) |
-| [OpenAI Codex](https://openai.com/index/codex/) | AGENTS.md + Skills | [Codex skills](https://developers.openai.com/codex/skills) |
-| [Cursor](https://cursor.com) | Rules | [Rules docs](https://docs.cursor.com/context/rules) |
-| [Windsurf](https://windsurf.com) | Rules | [Windsurf docs](https://docs.windsurf.com/windsurf/getting-started) |
-| [Cline](https://cline.bot) | Cline Rules | [Rules docs](https://docs.cline.bot/customization/cline-rules) |
-| [Continue](https://continue.dev) | Rules | [Rules docs](https://docs.continue.dev/customize/rules) |
-| [Aider](https://aider.chat) | Conventions | [Conventions docs](https://aider.chat/docs/usage/conventions.html) |
-| [JetBrains AI](https://www.jetbrains.com/ai/) | Project Rules | [Rules docs](https://www.jetbrains.com/help/ai-assistant/configure-project-rules.html) |
-| [Amazon Q Developer](https://aws.amazon.com/q/developer/) | Project Rules | [Rules docs](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/context-project-rules.html) |
-| [Zed](https://zed.dev) | Rules | [Rules docs](https://zed.dev/docs/ai/rules) |
-| [Augment Code](https://augmentcode.com) | Rules & Guidelines | [Guidelines docs](https://docs.augmentcode.com/setup-augment/guidelines) |
-| [Devin](https://devin.ai) | Rules + Skills | [Rules docs](https://cli.devin.ai/docs/extensibility/rules) |
-| [Gemini Code Assist](https://cloud.google.com/gemini/docs/codeassist/overview) | Rules | [Customization docs](https://developers.google.com/gemini-code-assist/docs/customize-repo-review) |
-| [TRAE IDE](https://trae.ai) | Rules | [Rules docs](https://docs.trae.ai/ide/rules?_lang=en) |
-| [Tabnine](https://tabnine.com) | Guidelines | [Guidelines docs](https://docs.tabnine.com/main/getting-started/tabnine-agent/guidelines) |
-| [Sourcegraph Cody](https://sourcegraph.com/cody) | Pre-instructions | [Prompts guide](https://sourcegraph.com/docs/cody/prompts-guide) |
+[Claude Code / Cowork](https://code.claude.com/docs/en/skills) · [GitHub Copilot](https://code.visualstudio.com/docs/copilot/customization/agent-skills) · [OpenAI Codex](https://developers.openai.com/codex/skills) · [Cursor](https://cursor.com/docs/skills) · [Windsurf](https://docs.windsurf.com/windsurf/cascade/skills) · [Cline](https://docs.cline.bot/customization/skills) · [Continue](https://docs.continue.dev/customize/rules) · [JetBrains AI](https://www.jetbrains.com/help/ai-assistant/settings-reference-skills.html) · [Amazon Q](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/context-project-rules.html) · [Zed](https://zed.dev/docs/ai/rules) · [Augment Code](https://docs.augmentcode.com/using-augment/skills) · [Devin](https://cli.devin.ai/docs/extensibility/skills/overview) · [Gemini CLI](https://geminicli.com/docs/cli/skills/) · [Antigravity](https://antigravity.google/docs/skills) · [Mistral Vibe](https://docs.mistral.ai/mistral-vibe/agents-skills) · [Tabnine](https://docs.tabnine.com/main/getting-started/tabnine-cli/features/agent-skills)
 
 You can also click the **Copy Markdown** icon at the top of each skill page to paste a skill directly into any AI chat.
 
