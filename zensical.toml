@@ -14,11 +14,11 @@ nav = [
     { "Using hvPlot" = "developing-with-holoviz/hvplot.md" },
     { "Using Panel" = [
       "developing-with-holoviz/panel/index.md",
-      { "Mapping Widgets" = "developing-with-holoviz/panel/widget_mapping.md" },
       { "Building Custom Components" = "developing-with-holoviz/panel/custom-components.md" },
       { "Applying Material UI" = "developing-with-holoviz/panel/material-ui.md" },
       { "Interacting with HoloViews" = "developing-with-holoviz/panel/holoviews.md" },
       { "Using Pytest Playwright" = "developing-with-holoviz/panel/pytest-playwright.md" },
+      { "Mapping Widgets" = "developing-with-holoviz/panel/widget-mapping.md" },
     ] },
   ] },
   { "Contributing to HoloViz" = [

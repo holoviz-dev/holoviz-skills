@@ -153,6 +153,10 @@ giving the agent access to deep detail when it needs it.
 
 ### Naming references
 
+Use lowercase-with-hyphens for filenames (`custom-components.md`, not
+`custom_components.md` or `CustomComponents.md`) — consistent with skill
+directory naming and avoids mixed conventions in docs URLs.
+
 Use action-oriented H1 titles without the parent skill's name — the context
 is already clear from the directory structure. Titles appear in the docs
 sidebar navigation, so keep them concise.

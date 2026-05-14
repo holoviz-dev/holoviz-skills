@@ -27,7 +27,7 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 
 Read these for specialized topics. Each is a standalone document you can load with the `view` tool.
 
-- [Mapping Widgets](references/widget_mapping.md) — which Panel/pmui widget to use for each Param type, with `.from_param()` patterns
+- [Mapping Widgets](references/widget-mapping.md) — which Panel/pmui widget to use for each Param type, with `.from_param()` patterns
 - [Building Custom Components](references/custom-components.md) — building JSComponent, ReactComponent, AnyWidgetComponent, and MaterialUIComponent; CDN selection, event handling, state sync lifecycle
 - [Applying Material UI](references/material-ui.md) — `pmui.Page` template, `theme_config` palettes, `sx` styling, `Grid` responsive layouts, chart theming, component gotchas
 - [Interacting with HoloViews](references/holoviews.md) — DynamicMap for preserving zoom/pan, responsive sizing, Selection1D/Tap/Pipe/Buffer streams, `link_selections` cross-filtering, `jslink` client-side interactions

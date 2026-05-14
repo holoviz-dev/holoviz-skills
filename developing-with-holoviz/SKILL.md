@@ -45,4 +45,4 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 | [holoviews](skills/panel/references/holoviews.md) | DynamicMap, streams, link_selections, responsive sizing, jslink |
 | [custom-components](skills/panel/references/custom-components.md) | JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent, CDN gotchas |
 | [pytest-playwright](skills/panel/references/pytest-playwright.md) | Playwright UI tests, `serve_component`, `wait_until`, state sync tests |
-| [widget_mapping](skills/panel/references/widget_mapping.md) | Param type → Panel/pmui widget table |
+| [widget-mapping](skills/panel/references/widget-mapping.md) | Param type → Panel/pmui widget table |

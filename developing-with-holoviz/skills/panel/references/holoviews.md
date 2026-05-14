@@ -1,7 +1,5 @@
 # Interacting with HoloViews
 
-Correct patterns for embedding HoloViews/hvPlot plots in Panel apps. Let Panel control the renderer theme — don't set `hv.renderer('bokeh').theme` directly.
-
 Examples build on the penguins Dashboard from the Panel skill.
 
 ## Contents
