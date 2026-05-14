@@ -10,13 +10,16 @@ nav = [
   { "Home" = "index.md" },
   { "Developing with HoloViz" = [
     "developing-with-holoviz/index.md",
-    { "Using Param effectively" = "developing-with-holoviz/param.md" },
-    { "Using hvPlot effectively" = "developing-with-holoviz/hvplot.md" },
-    { "Using Panel effectively" = "developing-with-holoviz/panel.md" },
-    { "Using Panel Material UI effectively" = "developing-with-holoviz/panel-material-ui.md" },
-    { "Panel + HoloViews Integration" = "developing-with-holoviz/panel-holoviews.md" },
-    { "Panel Custom Components" = "developing-with-holoviz/panel-custom-components.md" },
-    { "Panel Playwright UI Testing" = "developing-with-holoviz/panel-pytest-playwright.md" },
+    { "Using Param" = "developing-with-holoviz/param.md" },
+    { "Using hvPlot" = "developing-with-holoviz/hvplot.md" },
+    { "Using Panel" = [
+      "developing-with-holoviz/panel/index.md",
+      { "Mapping Widgets" = "developing-with-holoviz/panel/widget_mapping.md" },
+      { "Building Custom Components" = "developing-with-holoviz/panel/custom-components.md" },
+      { "Applying Material UI" = "developing-with-holoviz/panel/material-ui.md" },
+      { "Interacting with HoloViews" = "developing-with-holoviz/panel/holoviews.md" },
+      { "Using Pytest Playwright" = "developing-with-holoviz/panel/pytest-playwright.md" },
+    ] },
   ] },
   { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",

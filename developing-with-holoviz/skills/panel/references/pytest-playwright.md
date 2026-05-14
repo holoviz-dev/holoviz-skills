@@ -1,14 +1,14 @@
----
-name: panel-pytest-playwright
-description: UI testing for Panel custom components with Playwright. Use when writing browser-based tests for custom components, testing Python-JS state sync, or verifying rendering in a real browser.
-metadata:
-  version: "1.0.0"
-  author: holoviz
----
-
-# Panel Playwright UI Testing
+# Using Pytest Playwright
 
 Test custom Panel components in a real browser with Playwright.
+
+## Contents
+
+- [Key Utilities](#key-utilities)
+- [Complete Example](#complete-example)
+- [Key Patterns](#key-patterns)
+- [External Resources](#external-resources)
+- [Running Tests](#running-tests)
 
 ## Key Utilities
 

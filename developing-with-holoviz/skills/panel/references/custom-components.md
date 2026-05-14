@@ -1,14 +1,21 @@
----
-name: panel-custom-components
-description: Build custom Panel components bridging Python and JavaScript. Use when wrapping JS libraries (D3, Leaflet, FullCalendar), creating interactive widgets with JSComponent/ReactComponent/AnyWidgetComponent, or debugging ESM import and CDN issues.
-metadata:
-  version: "1.1.0"
-  author: holoviz
----
-
-# Panel Custom Components
+# Building Custom Components
 
 Build custom Panel components that bridge Python and JavaScript.
+
+## Contents
+
+- [Which Component Type](#which-component-type)
+- [Development: POC First](#development-poc-first)
+- [Python Class Structure](#python-class-structure)
+- [CDN Selection Guide (Critical)](#cdn-selection-guide-critical)
+- [Event Handling](#event-handling)
+- [The `_rename` Dict](#the-_rename-dict)
+- [Child and Children](#child-and-children)
+- [JSComponent: State Sync and Lifecycle](#jscomponent-state-sync-and-lifecycle)
+- [ReactComponent: useState](#reactcomponent-usestate)
+- [AnyWidgetComponent: get/set/save_changes](#anywidgetcomponent-getsetsave_changes)
+- [MaterialUIComponent](#materialuicomponent)
+- [Key DOs and DON'Ts](#key-dos-and-donts)
 
 ## Which Component Type
 

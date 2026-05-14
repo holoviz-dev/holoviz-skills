@@ -1,12 +1,14 @@
----
-name: panel-material-ui
-description: Build Material UI themed Panel apps with panel-material-ui (pmui). Use when the user wants Material Design components, MUI theming (palette, sx, theme_config), or the pmui.Page template. Covers only where pmui diverges from standard Panel.
-metadata:
-  version: "1.0.0"
-  author: holoviz
----
+# Applying Material UI
 
-# Using Panel Material UI effectively
+## Contents
+
+- [Key Differences from Panel](#key-differences-from-panel)
+- [Page](#page)
+- [Styling Layers](#styling-layers)
+- [Chart Theming](#chart-theming)
+- [Layouts](#layouts)
+- [Component Gotchas](#component-gotchas)
+- [Icons](#icons)
 
 ## Key Differences from Panel
 

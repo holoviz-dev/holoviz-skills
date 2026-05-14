@@ -1,16 +1,17 @@
----
-name: panel-holoviews
-description: Embed HoloViews and hvPlot plots in Panel apps. Use when plots need to preserve zoom/pan on data refresh, respond to user interactions (clicks, selections, streaming), cross-filter across views, or resize responsively in Panel layouts.
-metadata:
-  version: "1.0.0"
-  author: holoviz
----
-
-# Panel + HoloViews Integration
+# Interacting with HoloViews
 
 Correct patterns for embedding HoloViews/hvPlot plots in Panel apps. Let Panel control the renderer theme — don't set `hv.renderer('bokeh').theme` directly.
 
 Examples build on the penguins Dashboard from the Panel skill.
+
+## Contents
+
+- [DynamicMap: Preserve Zoom/Pan Across Data Refreshes](#dynamicmap-preserve-zoompan-across-data-refreshes)
+- [One Element Per DynamicMap](#one-element-per-dynamicmap)
+- [Responsive Sizing](#responsive-sizing)
+- [HoloViews Streams](#holoviews-streams)
+- [Linked Selections / Cross-Filtering](#linked-selections-cross-filtering)
+- [Client-Side Interactions with jslink](#client-side-interactions-with-jslink)
 
 ## DynamicMap: Preserve Zoom/Pan Across Data Refreshes
 
@@ -257,3 +258,4 @@ widget.jslink(plot, code={'value': """
 ```
 
 Targets: `glyph.*` (fill_alpha, size, line_width), `plot.title.*`, `xaxis.*`/`yaxis.*`, `x_range.*`/`y_range.*`, `color_mapper.*`.
+
