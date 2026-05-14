@@ -9,6 +9,18 @@ Guide for adding a new skill to the holoviz-skills repository. This covers
 what's specific to *this repo* — for general skill-authoring advice (drafting,
 testing, iterating, description optimization), see the `skill-creator` skill.
 
+## Contents
+
+- [When a new skill makes sense](#when-a-new-skill-makes-sense)
+- [Repo layout](#repo-layout)
+- [Adding a sub-skill](#adding-a-sub-skill)
+- [SKILL.md structure](#skillmd-structure)
+- [Resource files](#resource-files)
+- [Routing skills](#routing-skills)
+- [Docs pipeline](#docs-pipeline)
+- [Evaluation](#evaluation)
+- [Resources](#resources)
+
 ## When a new skill makes sense
 
 Add a skill when agents consistently get something wrong about a HoloViz
