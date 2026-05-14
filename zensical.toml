@@ -5,13 +5,26 @@ site_author = "HoloViz"
 repo_url = "https://github.com/holoviz-dev/holoviz-skills"
 repo_name = "holoviz-dev/holoviz-skills"
 edit_uri = "edit/main/docs/"
+extra_javascript = ["assets/copy-markdown.js"]
 nav = [
   { "Home" = "index.md" },
-  { "Skills" = [
-    { "Create Custom Skill Template" = "skills/create-custom-skill-template.md" },
-    { "Developing with HoloViz" = "skills/developing-with-holoviz.md" },
-    { "hvPlot" = "skills/hvplot.md" },
+  { "Developing with HoloViz Packages" = [
+    "developing-with-holoviz/index.md",
+    { "Using Param effectively" = "developing-with-holoviz/param.md" },
+    { "Using hvPlot effectively" = "developing-with-holoviz/hvplot.md" },
+    { "Using Panel effectively" = "developing-with-holoviz/panel.md" },
+    { "Using Panel Material UI effectively" = "developing-with-holoviz/panel-material-ui.md" },
+    { "Panel + HoloViews Integration" = "developing-with-holoviz/panel-holoviews.md" },
+    { "Panel Custom Components" = "developing-with-holoviz/panel-custom-components.md" },
+    { "Panel Playwright UI Testing" = "developing-with-holoviz/panel-pytest-playwright.md" },
   ] },
+  { "Contributing to HoloViz Packages" = [
+    "contributing-to-holoviz/index.md",
+    { "Code Cleanup" = "contributing-to-holoviz/cleanup.md" },
+    { "Documentation" = "contributing-to-holoviz/documentation.md" },
+    { "Testing" = "contributing-to-holoviz/testing.md" },
+  ] },
+  { "Creating Custom HoloViz Skills" = "creating-custom-holoviz-skills.md" },
 ]
 
 # Theme configuration
@@ -29,7 +42,6 @@ features = [
   "navigation.instant",
   "navigation.instant.prefetch",
   "navigation.instant.progress",
-  "navigation.sections",
   "navigation.top",
   "navigation.tracking",
   "search.highlight",
