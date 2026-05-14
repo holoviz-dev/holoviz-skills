@@ -15,7 +15,7 @@ Correct patterns and common pitfalls for Param — the reactive parameter librar
 - Add `# pyright: reportAssignmentType=false` at the top — Param's descriptors conflict with static type checkers.
 - Add type annotations (`target: str = param.String(...)`) for IDE autocomplete — Param doesn't enforce them at runtime.
 - **Never use `name` as a parameter** — reserved by Param for the instance name.
-- `self.param.name` is the Parameter object; `self.name` is the current value. Use `self.param.name` with `.from_param()` and pane constructors.
+- `self.param.param_key` is the Parameter object; `self.param_key` is the current value. Use `self.param.param_key` with `.from_param()` and pane constructors.
 
 ```python
 # pyright: reportAssignmentType=false

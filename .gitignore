@@ -25,6 +25,9 @@ pixi.lock
 # Build outputs
 /site
 docs/skills/
+docs/developing-with-holoviz/
+docs/contributing-to-holoviz/
+docs/creating-custom-holoviz-skills.md
 
 # Notebooks
 *.ipynb
