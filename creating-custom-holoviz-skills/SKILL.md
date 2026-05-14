@@ -63,11 +63,15 @@ to* a HoloViz package (testing, docs, releases), it goes under
 
 1. Create a directory: `<category>/skills/<your-skill-name>/SKILL.md`
 2. Write the SKILL.md (see structure below).
-3. Add an entry to the parent routing skill's Loading Table and Skill Map so
+3. Optionally add `references/*.md` files for detailed lookup material.
+4. Add an entry to the parent routing skill's Loading Table and Skill Map so
    agents know when to load your skill.
-4. Run `python scripts/build_stubs.py` — this regenerates the docs pages and
-   updates the nav in `zensical.toml` automatically.
-5. Submit a pull request.
+5. Run `python scripts/build_stubs.py` — this regenerates all docs pages and
+   updates `zensical.toml` automatically. **Do not edit `zensical.toml` by
+   hand** — the script manages the nav, including nested sections for skills
+   with reference files.
+6. Preview with `pixi run docs` (runs `zensical serve`).
+7. Submit a pull request.
 
 ## SKILL.md structure
 
