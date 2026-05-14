@@ -9,6 +9,18 @@ Guide for adding a new skill to the holoviz-skills repository. This covers
 what's specific to *this repo* — for general skill-authoring advice (drafting,
 testing, iterating, description optimization), see the `skill-creator` skill.
 
+## Contents
+
+- [When a new skill makes sense](#when-a-new-skill-makes-sense)
+- [Repo layout](#repo-layout)
+- [Adding a sub-skill](#adding-a-sub-skill)
+- [SKILL.md structure](#skillmd-structure)
+- [Resource files](#resource-files)
+- [Routing skills](#routing-skills)
+- [Docs pipeline](#docs-pipeline)
+- [Evaluation](#evaluation)
+- [Resources](#resources)
+
 ## When a new skill makes sense
 
 Add a skill when agents consistently get something wrong about a HoloViz
@@ -51,26 +63,46 @@ to* a HoloViz package (testing, docs, releases), it goes under
 
 1. Create a directory: `<category>/skills/<your-skill-name>/SKILL.md`
 2. Write the SKILL.md (see structure below).
-3. Add an entry to the parent routing skill's Loading Table and Skill Map so
+3. Optionally add `references/*.md` files for detailed lookup material.
+4. Add an entry to the parent routing skill's Loading Table and Skill Map so
    agents know when to load your skill.
-4. Run `python scripts/build_stubs.py` — this regenerates the docs pages and
-   updates the nav in `zensical.toml` automatically.
-5. Submit a pull request.
+5. Run `python scripts/build_stubs.py` — this regenerates all docs pages and
+   updates `zensical.toml` automatically. **Do not edit `zensical.toml` by
+   hand** — the script manages the nav, including nested sections for skills
+   with reference files.
+6. Preview with `pixi run docs` (runs `zensical serve`).
+7. Submit a pull request.
 
 ## SKILL.md structure
 
 ```yaml
 ---
-name: your-skill-name        # lowercase + hyphens, ≤64 chars
+name: your-skill-name        # lowercase + hyphens, ≤64 chars, must match directory name
 description: >-              # ≤1024 chars, third person, WHAT + WHEN
   Do X for Y. Use when the user asks about Z.
+# Optional fields:
+license: BSD-3-Clause
+compatibility: Requires panel>=1.5
+user-invocable: true         # false hides from /slash-command menu (use for routing skills)
+disable-model-invocation: false  # true = manual invocation only (use for skills with side effects)
+argument-hint: "[component] [description]"  # shown in slash-command input
+allowed-tools: Read Grep Glob Bash(python:*)  # experimental: pre-approve tools
+metadata:
+  version: "1.0.0"
+  author: holoviz
 ---
 ```
 
 After the frontmatter, write Markdown. Key principles:
 
+- **Start with a Contents section.** Agents may only read the first ~100
+  lines. A table of contents at the top lets them see every section and
+  decide what to load. List References first if the skill has them — this
+  tells the agent what deeper material is available before it reads the
+  core instructions.
 - **Keep it under ~500 lines.** If you're exceeding that, split detailed
-  references into separate files that the agent loads on demand.
+  references into separate files that the agent loads on demand (see
+  Resource files below).
 - **Be opinionated.** State the correct way to do things, don't enumerate
   alternatives. Agents follow confident instructions better than menus.
 - **Explain why.** LLMs follow reasoning better than bare directives. Instead
@@ -79,6 +111,77 @@ After the frontmatter, write Markdown. Key principles:
   upstream docs. Focus on hallucination patches and knowledge gaps.
 - **Use code examples.** Show the correct pattern, optionally contrast with
   the common mistake: `# WRONG: ...` / `# CORRECT: ...`
+
+## Resource files
+
+A skill is a directory, not just a single file. Place supporting files
+alongside SKILL.md and reference them with relative paths. The agent loads
+these on demand (L3) — they consume zero context tokens until actually read.
+
+```
+panel/
+  SKILL.md                        # Core instructions (always loaded when skill triggers)
+  examples/
+    basic_app.py                  # Runnable example — agent can read or execute
+    streaming_app.py
+  references/
+    widget_mapping.md             # Param type → Panel widget table
+    template_options.md           # Detailed template comparison
+  scripts/
+    validate_app.py               # Agent runs this; only stdout enters context
+```
+
+Use resource files when:
+
+- **examples/** — Runnable code the agent can copy, adapt, or execute. Better
+  than inline code blocks for multi-file apps or examples over ~30 lines.
+  Reference from SKILL.md: "See `examples/basic_app.py` for a working starter."
+- **references/** — Detailed lookup tables, API surfaces, or extended docs
+  that would bloat SKILL.md. The agent reads these only when it needs specifics.
+  Good for: widget mapping tables, full parameter lists, template comparisons.
+  Each reference file should have its own Contents TOC at the top.
+- **scripts/** — Executable scripts the agent runs via Bash. The script code
+  itself never enters the context window — only its output does. Use for
+  validation, linting, scaffolding, or any deterministic operation.
+- **assets/** — Templates, sample data, config files the agent fills in or
+  copies. Good for: project scaffolds, CI configs, test fixtures.
+
+The key insight: SKILL.md should contain the *judgment calls* (what to do and
+why), while resource files hold the *reference material* (exact APIs, working
+examples, executable tools). This keeps the core instructions lean while
+giving the agent access to deep detail when it needs it.
+
+### Naming references
+
+Use lowercase-with-hyphens for filenames (`custom-components.md`, not
+`custom_components.md` or `CustomComponents.md`) — consistent with skill
+directory naming and avoids mixed conventions in docs URLs.
+
+Use action-oriented H1 titles without the parent skill's name — the context
+is already clear from the directory structure. Titles appear in the docs
+sidebar navigation, so keep them concise.
+
+```
+# ✅ Good — action-oriented, no redundant prefix
+Building Custom Components
+Applying Material UI
+Interacting with HoloViews
+Mapping Widgets
+
+# ❌ Bad — repeats "Panel" from the parent skill
+Panel Custom Components
+Using Panel Material UI effectively
+Panel + HoloViews Integration
+```
+
+### Docs nesting
+
+When `build_stubs.py` finds a skill with a `references/` directory, it
+automatically creates a nested docs section: the SKILL.md becomes
+`panel/index.md` and each reference becomes a sibling page
+(`panel/custom-components.md`, etc.). Links like `[name](references/foo.md)`
+in SKILL.md are rewritten to `[name](foo.md)` so they resolve correctly in
+the docs. No manual nav configuration needed.
 
 ## Routing skills
 
@@ -101,7 +204,8 @@ agent-facing frontmatter) and the docs (which need clean Markdown):
 1. Finds every SKILL.md under non-excluded top-level directories.
 2. Strips YAML frontmatter and HTML comments.
 3. Rewrites internal `[name](…/SKILL.md)` links to point at sibling docs pages.
-4. Writes cleaned stubs to `docs/skills/<slug>.md`.
+4. For skills with `references/`, creates a nested directory (`panel/index.md`
+   + `panel/custom-components.md`, etc.) and rewrites `references/` links.
 5. Updates the `nav` block in `zensical.toml` with hierarchical sections.
 
 You don't need to edit `zensical.toml` or `docs/` by hand — the script

@@ -6,16 +6,39 @@ metadata:
   author: holoviz
 ---
 
-# Using Panel effectively
+# Using Panel
+
+Panel is a Python library for building interactive dashboards, data apps, and tools entirely in Python — no JavaScript required. It connects widgets to plots, tables, and text with reactive callbacks, and serves the result as a web application.
 
 Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, layout, and logic organized and avoids flickering from recreated components.
+
+## Contents
+
+- [References](#references) — detailed docs on Material UI, HoloViews, custom components, Playwright testing, widget mapping
+- [Viewer Class Pattern](#viewer-class-pattern)
+- [Widgets and Extensions](#widgets-and-extensions)
+- [Templates and Layouts](#templates-and-layouts)
+- [Serving Workflow](#serving-workflow)
+- [Performance](#performance)
+- [Plotting Integration](#plotting-integration)
+- [Component Gotchas](#component-gotchas)
+
+## References
+
+Read these for specialized topics. Each is a standalone document you can load with the `view` tool.
+
+- [Mapping Widgets](references/widget-mapping.md) — which Panel/pmui widget to use for each Param type, with `.from_param()` patterns
+- [Building Custom Components](references/custom-components.md) — building JSComponent, ReactComponent, AnyWidgetComponent, and MaterialUIComponent; CDN selection, event handling, state sync lifecycle
+- [Applying Material UI](references/material-ui.md) — `pmui.Page` template, `theme_config` palettes, `sx` styling, `Grid` responsive layouts, chart theming, component gotchas
+- [Interacting with HoloViews](references/holoviews.md) — DynamicMap for preserving zoom/pan, responsive sizing, Selection1D/Tap/Pipe/Buffer streams, `link_selections` cross-filtering, `jslink` client-side interactions
+- [Using Pytest Playwright](references/pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components
 
 ## Viewer Class Pattern
 
 - Recreating panes or layouts inside `@param.depends` causes flickering. Create them once in `__init__`, bind to reactive content.
 - `on_init=True` watchers fire during `super().__init__()`. Create any panes they reference *before* the `super().__init__(**params)` call.
 - Use `pn.pane.Placeholder` when the content type varies (string → plot → widget). Swap with `.update()` or `.object =`.
-- Implement `__panel__` to return the layout. When served, wrap in `pmui.Page` (see the panel-material-ui skill); otherwise return the bare component.
+- Implement `__panel__` to return the layout. When served, wrap in `pmui.Page` (see [Material UI](references/material-ui.md)); otherwise return the bare component.
 
 ```python
 import hvplot.pandas  # noqa
@@ -84,7 +107,7 @@ class BadDashboard(pn.viewable.Viewer):
 
 ## Templates and Layouts
 
-For new apps, use `pmui.Page` from panel-material-ui (see the panel-material-ui skill). If an existing codebase already uses a different template (e.g. `FastListTemplate`), keep it rather than migrating.
+For new apps, use `pmui.Page` from panel-material-ui (see [Material UI](references/material-ui.md)). If an existing codebase already uses a different template (e.g. `FastListTemplate`), keep it rather than migrating.
 
 - Sidebar order: logo → description → widgets → docs.
 - Use `FlexBox`, `GridSpec`, or `GridBox` for complex layouts instead of nested Rows/Columns.
@@ -113,7 +136,7 @@ with pn.io.hold():
 
 ## Plotting Integration
 
-For HoloViews/hvPlot plots in Panel (DynamicMap, streams, responsive sizing), see the panel-holoviews skill.
+For HoloViews/hvPlot plots in Panel (DynamicMap, streams, responsive sizing), see [HoloViews integration](references/holoviews.md).
 
 ### Matplotlib
 

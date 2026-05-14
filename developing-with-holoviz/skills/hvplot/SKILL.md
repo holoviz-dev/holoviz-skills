@@ -6,11 +6,25 @@ metadata:
   author: holoviz
 ---
 
-# Using hvPlot effectively
+# Using hvPlot
 
-This skill provides correct patterns and common pitfalls for hvPlot to effectively visualize data interactively.
+This skill provides correct patterns and common pitfalls for hvPlot to visualize data interactively.
 
 Before plotting, consider: what story does the data tell? What comparison matters most? Then choose the plot type, encoding, and labels that make that story obvious. For publication-quality figures needing fine-grained control, use HoloViews directly with the Matplotlib backend instead of Bokeh.
+
+## Contents
+
+- [Dependencies](#dependencies)
+- [Plot Labels](#plot-labels)
+- [Geographic Plots](#geographic-plots)
+- [Hover Tooltips](#hover-tooltips)
+- [Managing Dimensions](#managing-dimensions)
+- [Big Data](#big-data)
+- [Styling](#styling)
+- [Interaction](#interaction)
+- [Timeseries](#timeseries)
+- [Subplots and Layouts](#subplots-and-layouts)
+- [Statistical Functions](#statistical-functions)
 
 ## Dependencies
 
@@ -126,7 +140,7 @@ earthquakes.hvplot.points(
 ## Big Data
 
 - If data exceeds 100k points, consider `rasterize=True` over `datashade=True`. Rasterize aggregates server-side but colormaps in the browser, preserving hover tooltips, colorbars, and `cnorm`/`cmap` control. Datashade sends an opaque RGB image — use it only for categorical color mixing (`aggregator='count_cat'`).
-- `resample_when=N` disables resampling when the viewport contains fewer than N points (e.g. after zooming in), effectively creating a dynamic overlay that toggles opacity of either the rasterized or original layer. However, because it is an overlay, it can be finicky and may cause confusion, e.g. the hover tooltips will only work when the original layer is active.
+- `resample_when=N` disables resampling when the viewport contains fewer than N points (e.g. after zooming in), creating a dynamic overlay that toggles opacity of either the rasterized or original layer. However, because it is an overlay, it can be finicky and may cause confusion, e.g. the hover tooltips will only work when the original layer is active.
 
 ```python
 ...

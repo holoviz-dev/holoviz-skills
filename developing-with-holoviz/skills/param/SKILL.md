@@ -6,9 +6,19 @@ metadata:
   author: holoviz
 ---
 
-# Using Param effectively
+# Using Param
 
 Correct patterns and common pitfalls for Param — the reactive parameter library that underpins Panel, HoloViews, and the HoloViz ecosystem.
+
+## Contents
+
+- [Parameterized Classes](#parameterized-classes)
+- [Reactive Dependencies (@param.depends)](#reactive-dependencies-paramdepends)
+- [Dependent Parameters](#dependent-parameters)
+- [Parameter Types](#parameter-types)
+- [.watch() vs @param.depends](#watch-vs-paramdepends)
+- [allow_refs](#allow_refs)
+- [Custom Parameter Types](#custom-parameter-types)
 
 ## Parameterized Classes
 

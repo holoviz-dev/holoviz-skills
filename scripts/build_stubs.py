@@ -6,6 +6,12 @@ subdirectory under ``docs/`` with an auto-generated ``index.md`` and one stub
 per sub-skill.  Standalone skills (a single SKILL.md, no children) get a flat
 page under ``docs/``.
 
+Sub-skills that have a ``references/`` directory alongside their SKILL.md get
+a nested subdirectory in docs: the SKILL.md becomes ``index.md`` and each
+reference ``.md`` file becomes a sibling page.  Links like
+``[name](references/foo.md)`` are rewritten to ``[name](foo.md)`` so they
+resolve within the nested docs directory.
+
 After generating pages, the ``nav`` array in ``zensical.toml`` is rewritten so
 the site navigation always reflects the current repo contents.
 
@@ -53,10 +59,18 @@ SUBSKILL_ORDER: dict[str, list[str]] = {
         "param",
         "hvplot",
         "panel",
-        "panel-material-ui",
-        "panel-holoviews",
-        "panel-custom-components",
-        "panel-pytest-playwright",
+    ],
+}
+
+# Explicit reference order within a sub-skill.  Unlisted references are
+# appended alphabetically after the listed ones.
+REFERENCE_ORDER: dict[str, list[str]] = {
+    "panel": [
+        "widget_mapping",
+        "custom-components",
+        "material-ui",
+        "holoviews",
+        "pytest-playwright",
     ],
 }
 
@@ -67,6 +81,10 @@ FRONT_MATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->\s*\n?", re.DOTALL)
 SKILL_LINK_RE = re.compile(
     r"\[([^\]]+)\]\(([^\)]*?/?([\w][\w-]*)/SKILL\.md)\)",
+)
+# Links to reference files (references/*.md).
+REFERENCE_LINK_RE = re.compile(
+    r"\[([^\]]+)\]\(references/([^\)]+\.md)\)",
 )
 NAV_BLOCK_RE = re.compile(r"^nav\s*=\s*\[.*?^\]", re.MULTILINE | re.DOTALL)
 
@@ -87,6 +105,23 @@ def rewrite_skill_links(text: str) -> str:
     return SKILL_LINK_RE.sub(r"[\1](\3.md)", text)
 
 
+def rewrite_reference_links(text: str) -> str:
+    """Rewrite ``[name](references/foo.md)`` → ``[name](foo.md)``.
+
+    Used for skills that have reference pages in the docs — the reference
+    files sit alongside the skill's ``index.md`` in the output directory.
+    """
+    return REFERENCE_LINK_RE.sub(r"[\1](\2)", text)
+
+
+def strip_reference_links(text: str) -> str:
+    """Convert ``[name](references/foo.md)`` → **name** for docs output.
+
+    Fallback for skills without reference pages in the docs.
+    """
+    return REFERENCE_LINK_RE.sub(r"**\1**", text)
+
+
 def inject_source_meta(text: str, source_rel: str) -> str:
     """Prepend a hidden element with the SKILL.md source path.
 
@@ -101,7 +136,7 @@ def inject_source_meta(text: str, source_rel: str) -> str:
 
 
 def slug_to_title(slug: str) -> str:
-    return slug.replace("-", " ").title()
+    return slug.replace("-", " ").replace("_", " ").title()
 
 
 def extract_h1_title(text: str) -> str | None:
@@ -132,9 +167,27 @@ def find_skill_files(root: Path) -> list[Path]:
     return skills
 
 
+def find_references(skill_md: Path) -> list[Path]:
+    """Find reference .md files alongside a SKILL.md."""
+    refs_dir = skill_md.parent / "references"
+    if not refs_dir.is_dir():
+        return []
+    return sorted(refs_dir.glob("*.md"))
+
+
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
+class Reference:
+    """A reference document alongside a sub-skill."""
+
+    def __init__(self, slug: str, title: str, source: Path, cleaned: str):
+        self.slug = slug
+        self.title = title
+        self.source = source
+        self.cleaned = cleaned
+
 
 class SubSkill:
     """A single sub-skill within a category."""
@@ -144,6 +197,7 @@ class SubSkill:
         self.title = title
         self.source = source
         self.cleaned = cleaned
+        self.references: list[Reference] = []
 
 
 class Category:
@@ -178,6 +232,17 @@ def ordered_children(cat: Category) -> list[SubSkill]:
     return sorted(
         cat.children,
         key=lambda c: (rank.get(c.slug, fallback), c.title.lower()),
+    )
+
+
+def ordered_references(skill: SubSkill) -> list[Reference]:
+    """Return *skill.references* in the preferred order."""
+    explicit = REFERENCE_ORDER.get(skill.slug, [])
+    rank = {slug: i for i, slug in enumerate(explicit)}
+    fallback = len(explicit)
+    return sorted(
+        skill.references,
+        key=lambda r: (rank.get(r.slug, fallback), r.title.lower()),
     )
 
 
@@ -230,7 +295,10 @@ def generate_index_md(cat: Category) -> str:
     for child in children:
         # Use the first non-empty paragraph after the H1 as a short description.
         desc = _first_paragraph(child.cleaned)
-        lines.append(f"| [{child.title}]({child.slug}.md) | {desc} |")
+        if child.references:
+            lines.append(f"| [{child.title}]({child.slug}/index.md) | {desc} |")
+        else:
+            lines.append(f"| [{child.title}]({child.slug}.md) | {desc} |")
     lines.append("")
     return "\n".join(lines)
 
@@ -264,9 +332,22 @@ def build_nav_toml(
             lines.append(f'  {{ "{section.title}" = [')
             lines.append(f'    "{section.dirname}/index.md",')
             for child in ordered_children(section):
-                lines.append(
-                    f'    {{ "{child.title}" = "{section.dirname}/{child.slug}.md" }},'
-                )
+                if child.references:
+                    # Nested sub-section for skill + references.
+                    lines.append(f'    {{ "{child.title}" = [')
+                    lines.append(
+                        f'      "{section.dirname}/{child.slug}/index.md",'
+                    )
+                    for ref in ordered_references(child):
+                        lines.append(
+                            f'      {{ "{ref.title}" = '
+                            f'"{section.dirname}/{child.slug}/{ref.slug}.md" }},'
+                        )
+                    lines.append("    ] },")
+                else:
+                    lines.append(
+                        f'    {{ "{child.title}" = "{section.dirname}/{child.slug}.md" }},'
+                    )
             lines.append("  ] },")
 
     lines.append("]")
@@ -341,7 +422,26 @@ def build() -> int:
                 cleaned = rewrite_skill_links(cleaned)
                 slug = child_md.parent.name
                 child_title = extract_h1_title(cleaned) or slug_to_title(slug)
-                cat.children.append(SubSkill(slug, child_title, child_md, cleaned))
+
+                # Discover reference files.
+                ref_paths = find_references(child_md)
+                refs: list[Reference] = []
+                for ref_path in ref_paths:
+                    ref_raw = ref_path.read_text(encoding="utf-8")
+                    ref_cleaned = strip_frontmatter_and_comments(ref_raw)
+                    ref_slug = ref_path.stem
+                    ref_title = extract_h1_title(ref_cleaned) or slug_to_title(ref_slug)
+                    refs.append(Reference(ref_slug, ref_title, ref_path, ref_cleaned))
+
+                # Rewrite or strip reference links based on whether refs exist.
+                if refs:
+                    cleaned = rewrite_reference_links(cleaned)
+                else:
+                    cleaned = strip_reference_links(cleaned)
+
+                skill = SubSkill(slug, child_title, child_md, cleaned)
+                skill.references = refs
+                cat.children.append(skill)
 
             categories[tld] = cat
         elif roots:
@@ -349,6 +449,7 @@ def build() -> int:
             raw = roots[0].read_text(encoding="utf-8")
             cleaned = strip_frontmatter_and_comments(raw)
             cleaned = rewrite_skill_links(cleaned)
+            cleaned = strip_reference_links(cleaned)
             title = extract_h1_title(cleaned) or slug_to_title(tld)
             standalones[tld] = Standalone(tld, title, roots[0], cleaned)
 
@@ -366,12 +467,33 @@ def build() -> int:
         page_count += 1
 
         for child in cat.children:
-            dest = out_dir / f"{child.slug}.md"
             rel_src = child.source.relative_to(REPO_ROOT)
-            content = inject_source_meta(child.cleaned, str(rel_src))
-            dest.write_text(content, encoding="utf-8")
-            print(f"build_stubs: {rel_src}  ->  docs/{cat.dirname}/{child.slug}.md")
-            page_count += 1
+
+            if child.references:
+                # Nested directory: skill index + reference pages.
+                skill_dir = out_dir / child.slug
+                skill_dir.mkdir(parents=True, exist_ok=True)
+
+                dest = skill_dir / "index.md"
+                content = inject_source_meta(child.cleaned, str(rel_src))
+                dest.write_text(content, encoding="utf-8")
+                print(f"build_stubs: {rel_src}  ->  docs/{cat.dirname}/{child.slug}/index.md")
+                page_count += 1
+
+                for ref in child.references:
+                    ref_dest = skill_dir / f"{ref.slug}.md"
+                    ref_rel_src = ref.source.relative_to(REPO_ROOT)
+                    ref_content = inject_source_meta(ref.cleaned, str(ref_rel_src))
+                    ref_dest.write_text(ref_content, encoding="utf-8")
+                    print(f"build_stubs: {ref_rel_src}  ->  docs/{cat.dirname}/{child.slug}/{ref.slug}.md")
+                    page_count += 1
+            else:
+                # Flat page (no references).
+                dest = out_dir / f"{child.slug}.md"
+                content = inject_source_meta(child.cleaned, str(rel_src))
+                dest.write_text(content, encoding="utf-8")
+                print(f"build_stubs: {rel_src}  ->  docs/{cat.dirname}/{child.slug}.md")
+                page_count += 1
 
     for st in standalones.values():
         dest = DOCS_DIR / f"{st.slug}.md"
