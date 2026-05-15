@@ -43,45 +43,85 @@ panel serve app.py --dev --port 5007 2>&1 | tee /tmp/panel.log &
 
 ## Screenshotting with Playwright
 
-Take screenshots of a running Panel app to review layout without manual browser interaction:
-
-```python
-from playwright.sync_api import sync_playwright
-
-with sync_playwright() as p:
-    browser = p.chromium.launch()
-    page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto("http://localhost:5007/app_name")
-    page.wait_for_timeout(3000)  # Wait for render
-    page.screenshot(path="/tmp/screenshot.png")
-    browser.close()
-```
-
-For multi-step flows, use `wait_until` from `panel.tests.util` to wait for state changes instead of fixed timeouts:
+Run all screenshot checks inside a **single browser session** to avoid repeated launch overhead. Open one page per test scenario, capture, then close at the end:
 
 ```python
 from playwright.sync_api import sync_playwright
 from panel.tests.util import wait_until
 
+BASE = "http://localhost:5007"
+
+tests = [
+    # (url_path, output_path, optional_actions)
+    ("/app_name", "/tmp/initial.png", None),
+    ("/app_name", "/tmp/after_click.png", lambda page: page.click("text=Run")),
+    ("/other_view", "/tmp/other_view.png", None),
+]
+
 with sync_playwright() as p:
     browser = p.chromium.launch()
-    page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto("http://localhost:5007/app_name")
-    page.wait_for_timeout(2000)
-    page.screenshot(path="/tmp/step1.png")
-    
-    # Wait for button to be enabled before clicking
-    wait_until(lambda: page.locator("text=Continue").is_enabled(), page)
-    page.click("text=Continue")
-    
-    # Wait for next step to render
-    page.wait_for_timeout(1000)
-    page.screenshot(path="/tmp/step2.png")
-    
+
+    for path, out, action in tests:
+        page = browser.new_page(viewport={"width": 1400, "height": 900})
+        page.goto(f"{BASE}{path}")
+        page.wait_for_timeout(2000)          # initial render
+
+        if action:
+            action(page)
+            page.wait_for_timeout(1000)      # settle after interaction
+
+        page.screenshot(path=out, full_page=True)   # full_page captures content below the fold
+        print(f"saved {out}")
+        page.close()
+
     browser.close()
 ```
 
-The `wait_until(fn, page)` function polls the callback until it returns `True` or times out (default 5s). Pass the `page` fixture to use Playwright's timeout instead of `time.sleep`.
+**`full_page=True`** is important for Panel apps — the default viewport height (900 px) often clips timeline groups, opportunity tables, and other below-the-fold content.
+
+For interactions that depend on app state rather than fixed delays, replace `wait_for_timeout` with `wait_until`:
+
+```python
+# Wait for a button to become enabled before clicking
+wait_until(lambda: page.locator("text=Continue").is_enabled(), page)
+page.click("text=Continue")
+page.screenshot(path="/tmp/step_after_continue.png", full_page=True)
+```
+
+`wait_until(fn, page)` polls until the callback returns `True` or the default 5 s timeout expires. Prefer it over `time.sleep` so tests fail fast instead of hanging.
+
+### Scroll into view before clicking
+
+Elements that exist in the DOM but are outside the visible area will fail to click. Always call `scroll_into_view_if_needed()` before interacting with anything that might be off-screen:
+
+```python
+el = page.locator("text=Danaher").first
+el.scroll_into_view_if_needed()
+el.click()
+```
+
+This is especially relevant when looping over cards or rows — earlier interactions can shift layout and push later targets out of the viewport.
+
+### Check logs between test steps
+
+Add a log tail after each action to catch server-side errors that don't appear in the screenshot:
+
+```python
+import subprocess
+
+def check_logs(label=""):
+    out = subprocess.run(["tail", "-5", "/tmp/panel.log"], capture_output=True, text=True)
+    if "Error" in out.stdout or "Traceback" in out.stdout:
+        print(f"[{label}] SERVER ERROR:\n{out.stdout}")
+    else:
+        print(f"[{label}] logs clean")
+
+# Use between steps:
+page.click("text=Load briefing")
+page.wait_for_timeout(2000)
+check_logs("after load briefing")
+page.screenshot(path="/tmp/enriched.png", full_page=True)
+```
 
 ## Common Errors
 
