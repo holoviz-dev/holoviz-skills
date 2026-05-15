@@ -26,7 +26,6 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import signal
 import subprocess
 import sys
 import time
@@ -94,6 +93,7 @@ NAV_BLOCK_RE = re.compile(r"^nav\s*=\s*\[.*?^\]", re.MULTILINE | re.DOTALL)
 # ---------------------------------------------------------------------------
 # Text helpers
 # ---------------------------------------------------------------------------
+
 
 def strip_frontmatter_and_comments(text: str) -> str:
     """Remove leading YAML front matter and any HTML comments."""
@@ -181,10 +181,7 @@ def inject_source_meta(text: str, source_rel: str) -> str:
     The companion ``copy-markdown.js`` script reads this to construct the
     raw GitHub URL for the "Copy Markdown" button.
     """
-    meta = (
-        f'<div data-skill-source="{source_rel}" '
-        f'style="display:none"></div>\n\n'
-    )
+    meta = f'<div data-skill-source="{source_rel}" ' f'style="display:none"></div>\n\n'
     return meta + text
 
 
@@ -211,16 +208,15 @@ def generate_example_md(example: Example, source_rel: str, screenshot_path: str 
     lines = [f"# {example.title}", ""]
     if screenshot_path:
         lines.extend([f"![{example.title}]({screenshot_path})", ""])
-    lines.extend([
-        "```python",
-        example.code,
-        "```",
-        "",
-    ])
-    meta = (
-        f'<div data-skill-source="{source_rel}" '
-        f'style="display:none"></div>\n\n'
+    lines.extend(
+        [
+            "```python",
+            example.code,
+            "```",
+            "",
+        ]
     )
+    meta = f'<div data-skill-source="{source_rel}" ' f'style="display:none"></div>\n\n'
     return meta + "\n".join(lines)
 
 
@@ -228,11 +224,17 @@ def generate_example_md(example: Example, source_rel: str, screenshot_path: str 
 # Discovery
 # ---------------------------------------------------------------------------
 
+
 def find_skill_files(root: Path) -> list[Path]:
     """Find every SKILL.md under top-level dirs that aren't excluded."""
     skills: list[Path] = []
     for child in sorted(root.iterdir()):
-        if not child.is_dir() or child.name in EXCLUDE_DIRS or child.name.startswith("."):
+        if (
+            not child.is_dir()
+            or child.name in EXCLUDE_DIRS
+            or child.name.startswith(".")
+            or child.name.startswith("_")
+        ):
             continue
         skills.extend(sorted(child.rglob("SKILL.md")))
     return skills
@@ -240,10 +242,7 @@ def find_skill_files(root: Path) -> list[Path]:
 
 def find_references(skill_md: Path) -> list[Path]:
     """Find sibling .md files alongside a SKILL.md (excluding SKILL.md itself)."""
-    return sorted(
-        p for p in skill_md.parent.glob("*.md")
-        if p.name != "SKILL.md"
-    )
+    return sorted(p for p in skill_md.parent.glob("*.md") if p.name != "SKILL.md")
 
 
 def find_examples(skill_md: Path) -> list[Path]:
@@ -257,6 +256,7 @@ def find_examples(skill_md: Path) -> list[Path]:
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
 
 class Example:
     """A Python example file in an examples/ subdirectory."""
@@ -313,6 +313,7 @@ class Standalone:
 # ---------------------------------------------------------------------------
 # Ordering
 # ---------------------------------------------------------------------------
+
 
 def ordered_children(cat: Category) -> list[SubSkill]:
     """Return *cat.children* in the preferred order."""
@@ -376,6 +377,7 @@ def ordered_sections(
 # Index page generation
 # ---------------------------------------------------------------------------
 
+
 def generate_index_md(cat: Category) -> str:
     """Create a docs-facing index page for a category section."""
     children = ordered_children(cat)
@@ -415,6 +417,7 @@ def _first_paragraph(text: str) -> str:
 # Nav generation
 # ---------------------------------------------------------------------------
 
+
 def build_nav_toml(
     sections: list[Category | Standalone],
 ) -> str:
@@ -430,9 +433,7 @@ def build_nav_toml(
                 if child.references or child.examples:
                     # Nested sub-section for skill + references/examples.
                     lines.append(f'    {{ "{child.title}" = [')
-                    lines.append(
-                        f'      "{section.dirname}/{child.slug}/index.md",'
-                    )
+                    lines.append(f'      "{section.dirname}/{child.slug}/index.md",')
                     for ref in ordered_references(child):
                         lines.append(
                             f'      {{ "{ref.title}" = '
@@ -476,6 +477,7 @@ def update_zensical_nav(nav_toml: str) -> None:
 # Screenshot generation
 # ---------------------------------------------------------------------------
 
+
 def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> dict[str, str]:
     """Serve examples and capture screenshots using Playwright.
 
@@ -498,9 +500,13 @@ def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> di
 
     # Start panel server.
     cmd = [
-        sys.executable, "-m", "panel", "serve",
+        sys.executable,
+        "-m",
+        "panel",
+        "serve",
         *[str(f) for f in example_files],
-        "--port", "5099",
+        "--port",
+        "5099",
     ]
     proc = subprocess.Popen(
         cmd,
@@ -511,12 +517,13 @@ def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> di
 
     # Wait for server to be ready (poll until connection succeeds).
     import socket
+
     for _ in range(30):  # up to 30 seconds
         time.sleep(1)
         try:
             with socket.create_connection(("localhost", 5099), timeout=1):
                 break
-        except (ConnectionRefusedError, socket.timeout, OSError):
+        except (TimeoutError, ConnectionRefusedError, OSError):
             pass
     else:
         print("build_stubs: WARNING — panel server did not start in time")
@@ -541,7 +548,8 @@ def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> di
                     screenshot_file = screenshot_dir / f"{ex.slug}.png"
                     page.screenshot(path=str(screenshot_file))
 
-                    # Return path relative to skill docs dir (e.g., ../../assets/examples/dashboard.png)
+                    # Return path relative to skill docs dir
+                    # (e.g., ../../assets/examples/dashboard.png)
                     rel_path = os.path.relpath(screenshot_file, skill_dir)
                     screenshots[ex.slug] = rel_path
                     print(f"build_stubs: screenshot {ex.slug}.png")
@@ -562,6 +570,7 @@ def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> di
 # ---------------------------------------------------------------------------
 # Main build
 # ---------------------------------------------------------------------------
+
 
 def build() -> int:
     # Clean previous output — remove any generated directories/files under
@@ -647,11 +656,15 @@ def build() -> int:
     for cat in categories.values():
         for child in cat.children:
             child.cleaned = rewrite_internal_links(
-                child.cleaned, child.source, path_map,
+                child.cleaned,
+                child.source,
+                path_map,
             )
             for ref in child.references:
                 ref.cleaned = rewrite_internal_links(
-                    ref.cleaned, ref.source, path_map,
+                    ref.cleaned,
+                    ref.source,
+                    path_map,
                 )
 
     for st in standalones.values():
@@ -665,7 +678,7 @@ def build() -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Section index page (docs-facing, not the routing skill).
-        index_md = generate_index_md(cat)
+        index_md = inject_source_meta(generate_index_md(cat), f"{cat.dirname}/SKILL.md")
         (out_dir / "index.md").write_text(index_md, encoding="utf-8")
         print(f"build_stubs: {cat.dirname}/  ->  docs/{cat.dirname}/index.md")
         page_count += 1
@@ -689,7 +702,10 @@ def build() -> int:
                     ref_rel_src = ref.source.relative_to(REPO_ROOT)
                     ref_content = inject_source_meta(ref.cleaned, str(ref_rel_src))
                     ref_dest.write_text(ref_content, encoding="utf-8")
-                    print(f"build_stubs: {ref_rel_src}  ->  docs/{cat.dirname}/{child.slug}/{ref.slug}.md")
+                    print(
+                        f"build_stubs: {ref_rel_src}  ->  "
+                        f"docs/{cat.dirname}/{child.slug}/{ref.slug}.md"
+                    )
                     page_count += 1
 
                 # Generate screenshots for examples.
@@ -701,7 +717,10 @@ def build() -> int:
                     screenshot_path = screenshots.get(ex.slug)
                     ex_content = generate_example_md(ex, str(ex_rel_src), screenshot_path)
                     ex_dest.write_text(ex_content, encoding="utf-8")
-                    print(f"build_stubs: {ex_rel_src}  ->  docs/{cat.dirname}/{child.slug}/{ex.slug}.md")
+                    print(
+                        f"build_stubs: {ex_rel_src}  ->  "
+                        f"docs/{cat.dirname}/{child.slug}/{ex.slug}.md"
+                    )
                     page_count += 1
             else:
                 # Flat page (no references or examples).

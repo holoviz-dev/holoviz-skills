@@ -24,6 +24,7 @@ pixi.lock
 
 # Build outputs
 /site
+/_build_plugin_tmp/
 docs/skills/
 docs/developing-with-holoviz/
 docs/contributing-to-holoviz/

@@ -1,3 +1,5 @@
+<div data-all-skills-zip style="display:none"></div>
+
 # HoloViz Skills
 
 A curated collection of [Agent Skills](https://www.anthropic.com/news/skills) for the [HoloViz](https://holoviz.org) ecosystem — Panel, hvPlot, HoloViews, Param, and more.
@@ -14,11 +16,13 @@ Agent Skills are folders of instructions, scripts, and references that teach AI 
 
 ## Using Skills
 
-Agent Skills are supported by a growing number of AI coding tools. See your tool's documentation for setup instructions:
+Agent Skills are supported by a growing number of AI coding tools. Use the **Download ZIP** icon at the top of any skill page to download that skill, or grab the whole collection at once. Each category and sub-skill also has its own ZIP — find them nested under `assets/` in the repository.
+
+See your tool's documentation for setup instructions:
 
 [Claude Code / Cowork](https://code.claude.com/docs/en/skills) · [GitHub Copilot](https://code.visualstudio.com/docs/copilot/customization/agent-skills) · [OpenAI Codex](https://developers.openai.com/codex/skills) · [Cursor](https://cursor.com/docs/skills) · [Windsurf](https://docs.windsurf.com/windsurf/cascade/skills) · [Cline](https://docs.cline.bot/customization/skills) · [Continue](https://docs.continue.dev/customize/rules) · [JetBrains AI](https://www.jetbrains.com/help/ai-assistant/settings-reference-skills.html) · [Amazon Q](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/context-project-rules.html) · [Zed](https://zed.dev/docs/ai/rules) · [Augment Code](https://docs.augmentcode.com/using-augment/skills) · [Devin](https://cli.devin.ai/docs/extensibility/skills/overview) · [Gemini CLI](https://geminicli.com/docs/cli/skills/) · [Antigravity](https://antigravity.google/docs/skills) · [Mistral Vibe](https://docs.mistral.ai/mistral-vibe/agents-skills) · [Tabnine](https://docs.tabnine.com/main/getting-started/tabnine-cli/features/agent-skills)
 
-You can also click the **Copy Markdown** icon at the top of each skill page to paste a skill directly into any AI chat.
+You can also click the **Copy Markdown** icon at the top of each skill page to paste a skill directly into any AI chat. Claude Desktop / Cowork users can install all skills at once via the [pre-built plugin](https://github.com/holoviz-dev/holoviz-skills/raw/main/assets/holoviz-skills.plugin).
 
 ## Contributing
 
