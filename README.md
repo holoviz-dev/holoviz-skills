@@ -6,6 +6,25 @@ A curated collection of [Agent Skills](https://www.anthropic.com/news/skills) fo
 
 Agent Skills are folders of instructions, scripts, and references that teach agents how to work effectively with a specific library or workflow. These skills help agents produce correct, idiomatic HoloViz code instead of guessing from stale training data.
 
+## Installation
+
+```bash
+pip install holoviz-skills
+holoviz-skills install        # auto-detects tools on your machine
+```
+
+Or target a specific tool:
+
+```bash
+holoviz-skills install --claude-code   # ~/.claude/skills/
+holoviz-skills install --copilot       # .github/instructions/
+holoviz-skills install --cursor        # .cursor/rules/
+holoviz-skills install --windsurf      # .windsurf/skills/
+holoviz-skills install --cline         # .cline/skills/
+holoviz-skills install --continue      # .continue/rules/
+holoviz-skills install --gemini-cli    # .gemini/skills/
+```
+
 ## Documentation
 
 Visit **[https://holoviz-dev.github.io/holoviz-skills/](https://holoviz-dev.github.io/holoviz-skills/)** for the full list of skills and usage instructions.

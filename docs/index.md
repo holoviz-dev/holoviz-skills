@@ -16,9 +16,28 @@ Agent Skills are folders of instructions, scripts, and references that teach AI 
 
 ## Using Skills
 
-Agent Skills are supported by a growing number of AI coding tools. Use the **Download ZIP** icon at the top of any skill page to download that skill, or grab the whole collection at once. Each category and sub-skill also has its own ZIP — find them nested under `assets/` in the repository.
+Agent Skills are supported by a growing number of AI coding tools. The quickest way to install them is via the CLI:
 
-See your tool's documentation for setup instructions:
+```bash
+pip install holoviz-skills
+holoviz-skills install        # auto-detects tools on your machine
+```
+
+Or target a specific tool:
+
+```bash
+holoviz-skills install --claude-code   # ~/.claude/skills/
+holoviz-skills install --copilot       # .github/instructions/
+holoviz-skills install --cursor        # .cursor/rules/
+holoviz-skills install --windsurf      # .windsurf/skills/
+holoviz-skills install --cline         # .cline/skills/
+holoviz-skills install --continue      # .continue/rules/
+holoviz-skills install --gemini-cli    # .gemini/skills/
+```
+
+Alternatively, use the **Download ZIP** icon at the top of any skill page, or grab the whole collection at once. Each category and sub-skill also has its own ZIP nested under `assets/` in the repository.
+
+See your tool's documentation for manual setup instructions:
 
 [Claude Code / Cowork](https://code.claude.com/docs/en/skills) · [GitHub Copilot](https://code.visualstudio.com/docs/copilot/customization/agent-skills) · [OpenAI Codex](https://developers.openai.com/codex/skills) · [Cursor](https://cursor.com/docs/skills) · [Windsurf](https://docs.windsurf.com/windsurf/cascade/skills) · [Cline](https://docs.cline.bot/customization/skills) · [Continue](https://docs.continue.dev/customize/rules) · [JetBrains AI](https://www.jetbrains.com/help/ai-assistant/settings-reference-skills.html) · [Amazon Q](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/context-project-rules.html) · [Zed](https://zed.dev/docs/ai/rules) · [Augment Code](https://docs.augmentcode.com/using-augment/skills) · [Devin](https://cli.devin.ai/docs/extensibility/skills/overview) · [Gemini CLI](https://geminicli.com/docs/cli/skills/) · [Antigravity](https://antigravity.google/docs/skills) · [Mistral Vibe](https://docs.mistral.ai/mistral-vibe/agents-skills) · [Tabnine](https://docs.tabnine.com/main/getting-started/tabnine-cli/features/agent-skills)
 

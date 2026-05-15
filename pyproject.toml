@@ -8,9 +8,18 @@ requires-python = ">=3.12"
 authors = [{ name = "HoloViz", email = "developers@holoviz.org" }]
 maintainers = [{ name = "HoloViz", email = "developers@holoviz.org" }]
 
+[project.scripts]
+holoviz-skills = "holoviz_skills.cli:main"
+
 [project.urls]
 Homepage = "https://holoviz-dev.github.io/holoviz-skills/"
 Source = "https://github.com/holoviz-dev/holoviz-skills"
+
+[tool.setuptools.packages.find]
+include = ["holoviz_skills*"]
+
+[tool.setuptools.package-data]
+holoviz_skills = ["skills/**/*"]
 
 [tool.ruff]
 target-version = "py312"
