@@ -23,6 +23,8 @@ nav = [
       { "Using Pytest Playwright" = "developing-with-holoviz/panel/using-pytest-playwright.md" },
       { "Reviewing Panel Apps" = "developing-with-holoviz/panel/reviewing-panel-apps.md" },
       { "Using Tabulator" = "developing-with-holoviz/panel/using-tabulator.md" },
+      { "Dashboard Example" = "developing-with-holoviz/panel/dashboard.md" },
+      { "Wizard Example" = "developing-with-holoviz/panel/wizard.md" },
     ] },
     { "Using HoloViews" = "developing-with-holoviz/holoviews.md" },
   ] },

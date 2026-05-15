@@ -20,7 +20,6 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 - [Bokeh Tools](#bokeh-tools)
 - [DynamicMap](#dynamicmap)
 - [Streams](#streams)
-- [Linked Selections / Cross-Filtering](#linked-selections--cross-filtering)
 
 ## Opts System
 
@@ -160,7 +159,7 @@ layout = (source + target).opts(merge_tools=False).cols(1)
 - Always set `source=` on the stream. For bidirectional interaction, create separate streams with separate sources.
 - Don't mix streams and `param.depends`/`pn.bind` for the same plot.
 
-## Linked Selections / Cross-Filtering
+## Cross-Filtering with link_selections
 
 `hv.link_selections` provides automatic cross-filtering across static elements.
 

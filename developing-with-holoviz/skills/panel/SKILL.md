@@ -197,8 +197,7 @@ chart_pane = pn.pane.ECharts(
 
 ## Component Gotchas
 
-- `Tabulator`: prefer over `pn.pane.DataFrame` for displaying DataFrames in apps — sortable, filterable, and paginated. Set `disabled=True` unless editing, `layout="fit_columns"` to fill available width, and `show_index=False`. Prefer Tabulator formatters/editors over Bokeh types. Requires `pn.extension("tabulator")`. Use `add_filter(widget, column)` to wire sidebar widgets directly as table filters — Tabulator watches widget values and shows/hides rows automatically. **Must be called after the table has data** (`value` is set), otherwise raises `AttributeError`.
-- `Tabulator` selection: set `selectable="checkbox"` for row selection with checkboxes. Watch `self._table.param.watch(fn, "selection")` and read `self._table.selected_dataframe` for the selected rows.
+- `Tabulator`: prefer over `pn.pane.DataFrame` for displaying DataFrames in apps — sortable, filterable, and paginated. Requires `pn.extension("tabulator")`. See [Using Tabulator](using-tabulator.md) for `add_filter`, checkbox selection, and row content patterns.
 - `Markdown`: set `disable_anchors=True` to avoid flicker on header hover.
 - `CheckButtonGroup`: use `orientation="vertical"` in sidebars, `button_type="primary"`, `button_style="outline"`.
 - Selector widgets with `default=None`: `RadioBoxGroup`/`RadioButtonGroup` visually highlight the first option even when `value=None`. Clicking that option doesn't fire a change event (UI thinks it's already selected), so users can't select the first option. Also, `@param.depends` and `pn.bind` won't trigger on initial load since the value is `None` and clicking the highlighted option doesn't change it. Always set a real default value for radio widgets, or use `Select` if you need an empty state.
