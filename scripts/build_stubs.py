@@ -6,11 +6,10 @@ subdirectory under ``docs/`` with an auto-generated ``index.md`` and one stub
 per sub-skill.  Standalone skills (a single SKILL.md, no children) get a flat
 page under ``docs/``.
 
-Sub-skills that have a ``references/`` directory alongside their SKILL.md get
-a nested subdirectory in docs: the SKILL.md becomes ``index.md`` and each
-reference ``.md`` file becomes a sibling page.  Links like
-``[name](references/foo.md)`` are rewritten to ``[name](foo.md)`` so they
-resolve within the nested docs directory.
+Sub-skills that have sibling ``.md`` files alongside their SKILL.md get a
+nested subdirectory in docs: the SKILL.md becomes ``index.md`` and each
+sibling ``.md`` file becomes a page.  Links like ``[name](foo.md)`` resolve
+naturally within the nested docs directory.
 
 After generating pages, the ``nav`` array in ``zensical.toml`` is rewritten so
 the site navigation always reflects the current repo contents.
@@ -66,11 +65,14 @@ SUBSKILL_ORDER: dict[str, list[str]] = {
 # appended alphabetically after the listed ones.
 REFERENCE_ORDER: dict[str, list[str]] = {
     "panel": [
-        "widget_mapping",
-        "custom-components",
-        "material-ui",
-        "holoviews",
-        "pytest-playwright",
+        "iterating-on-panel-apps",
+        "mapping-widgets",
+        "building-custom-components",
+        "applying-material-ui",
+        "branding-material-ui",
+        "interacting-with-holoviews",
+        "using-pytest-playwright",
+        "reviewing-panel-apps",
     ],
 }
 
@@ -81,10 +83,6 @@ FRONT_MATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->\s*\n?", re.DOTALL)
 SKILL_LINK_RE = re.compile(
     r"\[([^\]]+)\]\(([^\)]*?/?([\w][\w-]*)/SKILL\.md)\)",
-)
-# Links to reference files (references/*.md).
-REFERENCE_LINK_RE = re.compile(
-    r"\[([^\]]+)\]\(references/([^\)]+\.md)\)",
 )
 NAV_BLOCK_RE = re.compile(r"^nav\s*=\s*\[.*?^\]", re.MULTILINE | re.DOTALL)
 
@@ -103,23 +101,6 @@ def strip_frontmatter_and_comments(text: str) -> str:
 def rewrite_skill_links(text: str) -> str:
     """Rewrite ``[name](…/slug/SKILL.md)`` → ``[name](slug.md)``."""
     return SKILL_LINK_RE.sub(r"[\1](\3.md)", text)
-
-
-def rewrite_reference_links(text: str) -> str:
-    """Rewrite ``[name](references/foo.md)`` → ``[name](foo.md)``.
-
-    Used for skills that have reference pages in the docs — the reference
-    files sit alongside the skill's ``index.md`` in the output directory.
-    """
-    return REFERENCE_LINK_RE.sub(r"[\1](\2)", text)
-
-
-def strip_reference_links(text: str) -> str:
-    """Convert ``[name](references/foo.md)`` → **name** for docs output.
-
-    Fallback for skills without reference pages in the docs.
-    """
-    return REFERENCE_LINK_RE.sub(r"**\1**", text)
 
 
 def inject_source_meta(text: str, source_rel: str) -> str:
@@ -168,11 +149,11 @@ def find_skill_files(root: Path) -> list[Path]:
 
 
 def find_references(skill_md: Path) -> list[Path]:
-    """Find reference .md files alongside a SKILL.md."""
-    refs_dir = skill_md.parent / "references"
-    if not refs_dir.is_dir():
-        return []
-    return sorted(refs_dir.glob("*.md"))
+    """Find sibling .md files alongside a SKILL.md (excluding SKILL.md itself)."""
+    return sorted(
+        p for p in skill_md.parent.glob("*.md")
+        if p.name != "SKILL.md"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -423,7 +404,7 @@ def build() -> int:
                 slug = child_md.parent.name
                 child_title = extract_h1_title(cleaned) or slug_to_title(slug)
 
-                # Discover reference files.
+                # Discover sibling .md files (references).
                 ref_paths = find_references(child_md)
                 refs: list[Reference] = []
                 for ref_path in ref_paths:
@@ -432,12 +413,6 @@ def build() -> int:
                     ref_slug = ref_path.stem
                     ref_title = extract_h1_title(ref_cleaned) or slug_to_title(ref_slug)
                     refs.append(Reference(ref_slug, ref_title, ref_path, ref_cleaned))
-
-                # Rewrite or strip reference links based on whether refs exist.
-                if refs:
-                    cleaned = rewrite_reference_links(cleaned)
-                else:
-                    cleaned = strip_reference_links(cleaned)
 
                 skill = SubSkill(slug, child_title, child_md, cleaned)
                 skill.references = refs
@@ -449,7 +424,6 @@ def build() -> int:
             raw = roots[0].read_text(encoding="utf-8")
             cleaned = strip_frontmatter_and_comments(raw)
             cleaned = rewrite_skill_links(cleaned)
-            cleaned = strip_reference_links(cleaned)
             title = extract_h1_title(cleaned) or slug_to_title(tld)
             standalones[tld] = Standalone(tld, title, roots[0], cleaned)
 

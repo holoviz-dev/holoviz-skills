@@ -121,25 +121,28 @@ these on demand (L3) — they consume zero context tokens until actually read.
 ```
 panel/
   SKILL.md                        # Core instructions (always loaded when skill triggers)
+  mapping-widgets.md              # Reference — Param type → Panel widget table
+  custom-components.md            # Reference — JSComponent, ReactComponent, CDN guide
+  material-ui.md                  # Reference — pmui.Page, layouts, component gotchas
   examples/
     basic_app.py                  # Runnable example — agent can read or execute
     streaming_app.py
-  references/
-    widget_mapping.md             # Param type → Panel widget table
-    template_options.md           # Detailed template comparison
   scripts/
     validate_app.py               # Agent runs this; only stdout enters context
 ```
 
+Place reference `.md` files flat alongside SKILL.md — not in a subdirectory.
+The agent loads these on demand; they consume zero context tokens until read.
+
 Use resource files when:
 
+- **Sibling `.md` files** — Detailed lookup tables, API surfaces, or extended
+  docs that would bloat SKILL.md. The agent reads these only when it needs
+  specifics. Good for: widget mapping tables, full parameter lists, template
+  comparisons. Each reference file should have its own Contents TOC at the top.
 - **examples/** — Runnable code the agent can copy, adapt, or execute. Better
   than inline code blocks for multi-file apps or examples over ~30 lines.
   Reference from SKILL.md: "See `examples/basic_app.py` for a working starter."
-- **references/** — Detailed lookup tables, API surfaces, or extended docs
-  that would bloat SKILL.md. The agent reads these only when it needs specifics.
-  Good for: widget mapping tables, full parameter lists, template comparisons.
-  Each reference file should have its own Contents TOC at the top.
 - **scripts/** — Executable scripts the agent runs via Bash. The script code
   itself never enters the context window — only its output does. Use for
   validation, linting, scaffolding, or any deterministic operation.
@@ -176,12 +179,11 @@ Panel + HoloViews Integration
 
 ### Docs nesting
 
-When `build_stubs.py` finds a skill with a `references/` directory, it
+When `build_stubs.py` finds sibling `.md` files alongside a SKILL.md, it
 automatically creates a nested docs section: the SKILL.md becomes
-`panel/index.md` and each reference becomes a sibling page
-(`panel/custom-components.md`, etc.). Links like `[name](references/foo.md)`
-in SKILL.md are rewritten to `[name](foo.md)` so they resolve correctly in
-the docs. No manual nav configuration needed.
+`panel/index.md` and each sibling becomes a page (`panel/custom-components.md`,
+etc.). Links like `[name](foo.md)` in SKILL.md resolve naturally in both the
+source directory and the docs output. No manual nav configuration needed.
 
 ## Routing skills
 
@@ -204,8 +206,8 @@ agent-facing frontmatter) and the docs (which need clean Markdown):
 1. Finds every SKILL.md under non-excluded top-level directories.
 2. Strips YAML frontmatter and HTML comments.
 3. Rewrites internal `[name](…/SKILL.md)` links to point at sibling docs pages.
-4. For skills with `references/`, creates a nested directory (`panel/index.md`
-   + `panel/custom-components.md`, etc.) and rewrites `references/` links.
+4. For skills with sibling `.md` files, creates a nested directory
+   (`panel/index.md` + `panel/custom-components.md`, etc.).
 5. Updates the `nav` block in `zensical.toml` with hierarchical sections.
 
 You don't need to edit `zensical.toml` or `docs/` by hand — the script

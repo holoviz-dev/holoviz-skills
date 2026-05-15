@@ -16,7 +16,8 @@ Correct patterns and common pitfalls for Param — the reactive parameter librar
 - [Reactive Dependencies (@param.depends)](#reactive-dependencies-paramdepends)
 - [Dependent Parameters](#dependent-parameters)
 - [Parameter Types](#parameter-types)
-- [.watch() vs @param.depends](#watch-vs-paramdepends)
+- [Reactive Expressions (rx)](#reactive-expressions-rx)
+- [.watch() vs @param.depends vs .link()](#watch-vs-paramdepends-vs-link)
 - [allow_refs](#allow_refs)
 - [Custom Parameter Types](#custom-parameter-types)
 
@@ -88,12 +89,14 @@ class CountrySelector(param.Parameterized):
 
 ## Parameter Types
 
-- `param.update()` applies multiple changes atomically — watchers fire once, not once per change. Also works as a context manager: `with self.param.update(): self.x = 1; self.y = 2`.
+- `param.update()` applies multiple changes atomically on one object — watchers fire once, not once per change. Also works as a context manager: `with self.param.update(): self.x = 1; self.y = 2`.
 - Use the most specific type (`param.Integer` not `Number`, `param.Selector` not `String`). Specificity drives widget selection in Panel's `.from_param()`.
 - `softbounds` suggests a range for UI sliders without hard enforcement. `step` hints the increment. `label` overrides the display name. `precedence` controls ordering (lower = first).
 - `param.List(item_type=str)` validates contents. `param.Dict` does not validate values.
 - `param.DataFrame()` accepts pandas only. For Polars, use `param.Parameter()`.
-- `param.Event()` resets to `False` after firing watchers. Use for "run now" buttons.
+- `param.Event()` resets to `False` after firing watchers. Use with `Button.from_param()` + `@param.depends(watch=True)` when you need a declarative trigger.
+- **Single source of truth**: For navigation buttons (back/next), have handlers modify one shared parameter (e.g., `active_step`), then watch that parameter once. All UI state derives from one place.
+- **Reassign, don't mutate**: In-place operations (`+=`, `list.append()`, `dict.update()`) don't trigger watchers. Always reassign: `self.x = self.x + 1`, `self.items = self.items + [new]`, `self.data = {**self.data, key: val}`.
 - `default_factory` for mutable/dynamic defaults — without it, all instances share the same object. Alternative: `instantiate=True`.
 - Param does **not** auto-coerce types (unlike Pydantic). `param.Integer(value="25")` raises `ValueError`.
 
@@ -117,17 +120,125 @@ config.param.update(source="Parquet", limit=500)  # one notification, not two
 with config.param.update():
     config.source = "SQL"
     config.limit = 200
+
+# param.Event for buttons — use with @param.depends(watch=True)
+class Wizard(param.Parameterized):
+    go_next = param.Event()
+    step = param.Integer(default=0)
+
+    @param.depends("go_next", watch=True)
+    def _on_go_next(self):
+        self.step = self.step + 1
+
+# Then in Panel: pmui.Button.from_param(wizard.param.go_next, label="Continue")
 ```
 
-## .watch() vs @param.depends
+## Reactive Expressions (rx)
 
-`self.param.watch(callback, ["param_name"])` is the imperative equivalent of `@param.depends(watch=True)`. Prefer the decorator for methods on your own class. Use `.watch()` when: you're reacting to parameters on an instance you didn't define, you need to wire watchers conditionally at runtime, or you need the `Event` object (`.name`, `.old`, `.new`) for logging or undo logic.
+`param.rx()` / `.rx()` creates reactive expressions that automatically update when dependencies change. **A `lambda` is to a Python function as `rx` is to `pn.bind`.** Use rx instead of lambdas and `pn.bind` for cleaner, more declarative code.
 
 ```python
+import panel as pn
+
+# ✅ Concise rx — replaces verbose pn.bind callback
+button = pn.widgets.Button(name="Add " + select.param.value.rx())
+
+# ❌ Verbose pn.bind equivalent
+button = pn.widgets.Button(name=pn.bind(lambda x: f"Add {x}", select))
+```
+
+### Core Operations
+
+```python
+# Chain operations — indexing, slicing, methods all work
+menu = MenuList(active=(0,))
+step = menu.param.active.rx()[0]  # extract first element reactively
+
+# Conditional with rx.where (replaces if/else lambdas)
+bar_color = toggle.param.value.rx.where("success", "warning")
+
+# Boolean operations
+visible = items.param.value.rx.len() > 0
+hidden = toggle.param.value.rx.not_()
+
+# Transform with rx.pipe — passes value as first arg
+formatted = value.rx.pipe(format_func, extra_arg)
+
+# Side effects with rx.watch (use sparingly)
+expr.rx.watch(callback_func)  # callback receives the value, not an event
+```
+
+### Syncing Parameters
+
+For syncing widget parameters to class parameters, use `pn.bind(..., watch=True)`:
+
+```python
+class Wizard(pn.viewable.Viewer):
+    active_step = param.Integer(default=0)
+
+    def __init__(self, **params):
+        self._menu = MenuList(items=[...], active=(0,))
+        pn.bind(self._on_menu_select, self._menu.param.active, watch=True)
+        super().__init__(**params)
+
+    def _on_menu_select(self, active):
+        if active and active[0] != self.active_step:
+            self.active_step = active[0]
+```
+
+Avoid `allow_refs=True` with rx binding (`self.x = widget.param.value.rx()`) when you also need to directly assign to that parameter — the binding breaks on direct assignment.
+
+### Gotchas
+
+- **Update via namespace**: `expr.rx.value = new_value` — direct assignment `expr = new_value` breaks reactivity
+- **Accessor vs method**: `.rx.value` gets current value, `.rx()` returns reactive expression for chaining
+- **String concat**: `"prefix " + widget.param.value.rx()` works; for complex cases wrap literals with `pn.rx("text")`
+- **Dict access for conflicts**: Use `obj.param["objects"].rx.len()` when parameter name conflicts with rx methods
+
+## .watch() vs @param.depends vs .link()
+
+Prefer `@param.depends("param_name", watch=True)` over `.watch()` — it's declarative and avoids callback signatures with `event` arguments. Use `.watch()` only when reacting to parameters on an external instance or wiring watchers conditionally at runtime. If you need `.old`/`.new` for logging or undo, `.watch()` is appropriate.
+
+For syncing parameters between objects, use `.link()` or `.rx()`:
+
+```python
+# Direct property sync — no callback needed
+text_input.link(markdown_pane, value='object')
+
+# Bind parameter to rx expression (requires allow_refs=True)
+class Wizard(param.Parameterized):
+    active_step = param.Integer(default=0, allow_refs=True)
+
+    def __init__(self, **params):
+        self._menu = MenuList(items=[...], active=(0,))
+        super().__init__(**params)
+        self.active_step = self._menu.param.active.rx()[0]  # menu -> step sync
+```
+
+For inline reactive expressions, use `.rx()` instead of lambdas:
+
+```python
+# ✅ Preferred — rx for reactive string formatting
+button = pn.widgets.Button(name="Add " + select.param.value.rx())
+
+# ❌ Avoid — lambda callback
+button = pn.widgets.Button(name=pn.bind(lambda x: f"Add {x}", select))
+```
+
+```python
+# ✅ Preferred — declarative, no event argument
+class Wizard(param.Parameterized):
+    go_next = param.Event()
+    step = param.Integer(default=0)
+
+    @param.depends("go_next", watch=True)
+    def _on_go_next(self):
+        self.step = self.step + 1
+
+# ❌ Avoid — imperative, requires event argument
 def on_change(event):
     print(f"{event.name}: {event.old} → {event.new}")
 
-config = DataConfig()
 config.param.watch(on_change, ["source", "limit"])
 ```
 
