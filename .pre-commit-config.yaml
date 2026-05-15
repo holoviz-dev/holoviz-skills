@@ -23,6 +23,16 @@ repos:
         args: [--fix]
       - id: ruff-format
 
+  - repo: local
+    hooks:
+      - id: build-plugin
+        name: Build Claude plugin and skill zips
+        entry: python scripts/build_plugin.py --stage
+        language: system
+        pass_filenames: false
+        files: ^(developing-with-holoviz|contributing-to-holoviz|creating-custom-holoviz-skills)/
+        stages: [pre-commit]
+
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:

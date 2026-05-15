@@ -19,6 +19,7 @@ pip = "*"
 setup-dev = { depends-on = [
     "lint-install",
 ], description = "Set up development environment" }
+build-plugin = { cmd = "python scripts/build_plugin.py", description = "Build the Claude Cowork plugin and per-skill zips (assets/)" }
 
 # =================== DOCS ====================
 
@@ -43,6 +44,7 @@ docs = { cmd = "zensical serve", depends-on = [
 ], description = "Serve documentation locally" }
 docs-build = { cmd = "zensical build", depends-on = [
     "build-stubs",
+    "build-plugin",
 ], description = "Build static documentation" }
 
 # =================== DEV ===================
