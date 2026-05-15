@@ -15,6 +15,7 @@ Before plotting, consider: what story does the data tell? What comparison matter
 ## Contents
 
 - [Dependencies](#dependencies)
+- [Serving and Iterating](#serving-and-iterating)
 - [Plot Labels](#plot-labels)
 - [Geographic Plots](#geographic-plots)
 - [Hover Tooltips](#hover-tooltips)
@@ -30,7 +31,7 @@ Before plotting, consider: what story does the data tell? What comparison matter
 
 Activate the `.hvplot` accessor with the appropriate backend import: `import hvplot.pandas`, `hvplot.polars`, `hvplot.xarray`, `hvplot.duckdb`, or `hvplot.dask`. Backends like Polars and DuckDB must be installed separately. Optional: `datashader` for resampling, `geoviews` or `geopandas` for geographic data. Prefer the Bokeh backend (default) for interactivity, Matplotlib for static/print output, Plotly as a last resort.
 
-Do NOT add `import holoviews as hv` or `hv.extension('bokeh')` to hvplot-only code. `import hvplot.pandas` activates the Bokeh backend automatically. Only import holoviews when you need HoloViews elements or containers like VLine, HLine, Text, Overlay, etc.
+Do NOT add `import holoviews as hv` or `hv.extension('bokeh')` to hvplot-only code. `import hvplot.pandas` activates the Bokeh backend automatically. Only import holoviews when you need HoloViews elements or containers like VLine, HLine, Text, Overlay, etc. For `.opts()` system, formatters, Bokeh tools, streams, and other HoloViews concepts, see the [HoloViews skill](../holoviews/SKILL.md).
 
 ```python
 # WRONG — redundant import, do not do this
@@ -40,6 +41,22 @@ import hvplot.pandas
 # CORRECT — hvplot.pandas is sufficient
 import hvplot.pandas
 ```
+
+## Serving and Iterating
+
+To serve an hvPlot visualization as a Panel app for interactive development:
+
+```python
+import hvplot.pandas  # noqa
+import panel as pn
+
+pn.extension()
+
+plot = df.hvplot.scatter(x="col_a", y="col_b")
+pn.pane.HoloViews(plot).servable()
+```
+
+Run with `panel serve app.py --dev --show`. See the [Panel skill](../panel/SKILL.md) for the full Viewer class pattern and [Iterating on Panel Apps](../panel/iterating-on-panel-apps.md) for the serve → screenshot → debug loop.
 
 ## Plot Labels
 

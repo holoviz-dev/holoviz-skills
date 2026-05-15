@@ -14,7 +14,7 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 
 ## Contents
 
-- [References](#references) — detailed docs on Material UI, HoloViews, custom components, Playwright testing, widget mapping
+- [References](#references) — iterative development, Material UI, HoloViews, custom components, Playwright testing, widget mapping, cleanup
 - [Viewer Class Pattern](#viewer-class-pattern)
 - [Widgets and Extensions](#widgets-and-extensions)
 - [Templates and Layouts](#templates-and-layouts)
@@ -27,18 +27,27 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 
 Read these for specialized topics. Each is a standalone document you can load with the `view` tool.
 
-- [Mapping Widgets](references/widget-mapping.md) — which Panel/pmui widget to use for each Param type, with `.from_param()` patterns
-- [Building Custom Components](references/custom-components.md) — building JSComponent, ReactComponent, AnyWidgetComponent, and MaterialUIComponent; CDN selection, event handling, state sync lifecycle
-- [Applying Material UI](references/material-ui.md) — `pmui.Page` template, `theme_config` palettes, `sx` styling, `Grid` responsive layouts, chart theming, component gotchas
-- [Interacting with HoloViews](references/holoviews.md) — DynamicMap for preserving zoom/pan, responsive sizing, Selection1D/Tap/Pipe/Buffer streams, `link_selections` cross-filtering, `jslink` client-side interactions
-- [Using Pytest Playwright](references/pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components
+- [Iterating on Panel Apps](iterating-on-panel-apps.md) — serve with logging, screenshot with Playwright, review and debug agentic loop
+- [Mapping Widgets](mapping-widgets.md) — which Panel/pmui widget to use for each Param type, with `.from_param()` patterns
+- [Building Custom Components](building-custom-components.md) — building JSComponent, ReactComponent, AnyWidgetComponent, and MaterialUIComponent; CDN selection, event handling, state sync lifecycle
+- [Applying Material UI](applying-material-ui.md) — `pmui.Page` template, `Container`/`Grid` layouts, centering, component gotchas
+- [Branding Material UI](branding-material-ui.md) — `theme_config` palettes, typography, icons, brand assets, chart theming
+- [Interacting with HoloViews](interacting-with-holoviews.md) — DynamicMap for preserving zoom/pan, `pn.pane.HoloViews` config (`theme=`, `linked_axes=`), responsive sizing
+- [Using Tabulator](using-tabulator.md) — `add_filter` with widgets, checkbox selection, row content, function-based filtering
+- [Using Pytest Playwright](using-pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components
+- [Reviewing Panel Apps](reviewing-panel-apps.md) — anti-pattern checklist for code review: flickering, missing hold, watcher gaps, bind vs watch, mutation bugs
 
 ## Viewer Class Pattern
 
 - Recreating panes or layouts inside `@param.depends` causes flickering. Create them once in `__init__`, bind to reactive content.
 - `on_init=True` watchers fire during `super().__init__()`. Create any panes they reference *before* the `super().__init__(**params)` call.
 - Use `pn.pane.Placeholder` when the content type varies (string → plot → widget). Swap with `.update()` or `.object =`.
-- Implement `__panel__` to return the layout. When served, wrap in `pmui.Page` (see [Material UI](references/material-ui.md)); otherwise return the bare component.
+- Implement `__panel__` to return the layout. When served, wrap in `pmui.Page` (see [Material UI](applying-material-ui.md)); otherwise return the bare component.
+- **Shared UI state**: Add a param (`disabled`, `loading`, `visible`) to a base class and bind widgets to it (e.g., `disabled=self.param.disabled`). Set once to update all widgets — useful for form submit, loading states, or toggling visibility.
+- **Organize `__init__`**: Separate component instantiation from wiring. First create all widgets/panes, then group `on_click`, `pn.bind`, and `.watch()` calls together. Makes it clear what exists vs. how it's connected.
+- **Method naming**: `_on_*` for event handlers (`_on_click`, `_on_submit`), `_update_*` for watchers that sync state (`_update_view`, `_update_button_state`), `_sync_*` for bidirectional syncs.
+- **Wizard/pipeline pattern**: For multi-step flows, see `examples/wizard.py` — Breadcrumbs, Placeholder step swapping, shared `disabled` state, `pn.io.hold()` batching, and `pmui.Page`.
+- **KPI dashboard pattern**: For metric dashboards, see `examples/dashboard.py` — `pn.indicators.Trend` KPI cards, `pmui.Grid` responsive layout, DynamicMap with trigger pattern, Tabulator `add_filter` + checkbox selection cross-filtering, `pn.bind(watch=True)` widget wiring, `param.DataFrame` as single source of truth, and `pmui.Page`.
 
 ```python
 import hvplot.pandas  # noqa
@@ -102,12 +111,13 @@ class BadDashboard(pn.viewable.Viewer):
 ## Widgets and Extensions
 
 - Call `pn.extension(throttled=True)` with any needed JS extensions (`"tabulator"`, `"plotly"`). Never add `"bokeh"`.
-- `.from_param()` auto-creates the right widget type from a parameter — syncs value, bounds, and objects.
+- `.from_param()` auto-creates the right widget type from a parameter — syncs value, bounds, and objects. **Caveat**: some pmui widgets (e.g. `pmui.CheckBoxGroup`) may not sync changes back to the param. If widgets appear disconnected, create them directly and use `pn.bind(fn, widget.param.value, watch=True)` to wire updates.
+- Prefer `pn.bind(self._update, widget1.param.value, widget2.param.value, watch=True)` over lambda-based `.param.watch()` for wiring multiple widgets to a single update method.
 - Default to `sizing_mode="stretch_width"` via `pn.config.set`.
 
 ## Templates and Layouts
 
-For new apps, use `pmui.Page` from panel-material-ui (see [Material UI](references/material-ui.md)). If an existing codebase already uses a different template (e.g. `FastListTemplate`), keep it rather than migrating.
+For new apps, use `pmui.Page` from panel-material-ui (see [Material UI](applying-material-ui.md)). If an existing codebase already uses a different template (e.g. `FastListTemplate`), keep it rather than migrating.
 
 - Sidebar order: logo → description → widgets → docs.
 - Use `FlexBox`, `GridSpec`, or `GridBox` for complex layouts instead of nested Rows/Columns.
@@ -136,7 +146,9 @@ with pn.io.hold():
 
 ## Plotting Integration
 
-For HoloViews/hvPlot plots in Panel (DynamicMap, streams, responsive sizing), see [HoloViews integration](references/holoviews.md).
+For HoloViews/hvPlot plots in Panel (DynamicMap, streams, responsive sizing), see [HoloViews integration](interacting-with-holoviews.md). For standalone HoloViews concepts (elements, `.opts()`, streams, formatters), see the [HoloViews skill](../holoviews/SKILL.md).
+
+- `pn.pane.HoloViews(plot, theme="light_minimal")` — set `theme=` on the pane, not globally. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, etc.
 
 ### Matplotlib
 
@@ -185,9 +197,11 @@ chart_pane = pn.pane.ECharts(
 
 ## Component Gotchas
 
-- `Tabulator`: prefer over `pn.pane.DataFrame` for displaying DataFrames in apps — sortable, filterable, and paginated. Set `disabled=True` unless editing. Prefer Tabulator formatters/editors over Bokeh types. Requires `pn.extension("tabulator")`.
+- `Tabulator`: prefer over `pn.pane.DataFrame` for displaying DataFrames in apps — sortable, filterable, and paginated. Requires `pn.extension("tabulator")`. See [Using Tabulator](using-tabulator.md) for `add_filter`, checkbox selection, and row content patterns.
 - `Markdown`: set `disable_anchors=True` to avoid flicker on header hover.
 - `CheckButtonGroup`: use `orientation="vertical"` in sidebars, `button_type="primary"`, `button_style="outline"`.
+- Selector widgets with `default=None`: `RadioBoxGroup`/`RadioButtonGroup` visually highlight the first option even when `value=None`. Clicking that option doesn't fire a change event (UI thinks it's already selected), so users can't select the first option. Also, `@param.depends` and `pn.bind` won't trigger on initial load since the value is `None` and clicking the highlighted option doesn't change it. Always set a real default value for radio widgets, or use `Select` if you need an empty state.
+- Bokeh tools: use `default_tools=["reset"]` to strip all default Bokeh toolbar tools except reset, then add specific tools via `tools=["hover", "xwheel_zoom"]`. Use `active_tools=["xwheel_zoom"]` to set which tools are active by default. For cumulative/monotonic curves, `hover_mode="vline"` gives a better tooltip experience.
 - Date widgets: convert to `pd.Timestamp` before comparing to DataFrame columns.
 
 ```python
@@ -198,5 +212,13 @@ filtered = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
 ```
 
 ## Lookup
+
+### Component Reference
+
+Look up component docs at `https://panel.holoviz.org/reference/{section}/{Component}.html`
+
+Sections: `panes`, `widgets`, `layouts`, `chat`, `global`, `indicators`, `templates`, `custom_components`
+
+### Search
 
 Search the web at `https://panel.holoviz.org/search.html?q=<topic>` for additional information.

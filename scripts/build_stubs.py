@@ -6,11 +6,10 @@ subdirectory under ``docs/`` with an auto-generated ``index.md`` and one stub
 per sub-skill.  Standalone skills (a single SKILL.md, no children) get a flat
 page under ``docs/``.
 
-Sub-skills that have a ``references/`` directory alongside their SKILL.md get
-a nested subdirectory in docs: the SKILL.md becomes ``index.md`` and each
-reference ``.md`` file becomes a sibling page.  Links like
-``[name](references/foo.md)`` are rewritten to ``[name](foo.md)`` so they
-resolve within the nested docs directory.
+Sub-skills that have sibling ``.md`` files alongside their SKILL.md get a
+nested subdirectory in docs: the SKILL.md becomes ``index.md`` and each
+sibling ``.md`` file becomes a page.  Links like ``[name](foo.md)`` resolve
+naturally within the nested docs directory.
 
 After generating pages, the ``nav`` array in ``zensical.toml`` is rewritten so
 the site navigation always reflects the current repo contents.
@@ -24,14 +23,19 @@ environment where Zensical runs.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
+import signal
+import subprocess
 import sys
+import time
 from collections import OrderedDict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = REPO_ROOT / "docs"
+ASSETS_DIR = DOCS_DIR / "assets"
 ZENSICAL_TOML = REPO_ROOT / "zensical.toml"
 
 # Top-level directories to skip when scanning for skills.
@@ -59,6 +63,7 @@ SUBSKILL_ORDER: dict[str, list[str]] = {
         "param",
         "hvplot",
         "panel",
+        "holoviews",
     ],
 }
 
@@ -66,11 +71,14 @@ SUBSKILL_ORDER: dict[str, list[str]] = {
 # appended alphabetically after the listed ones.
 REFERENCE_ORDER: dict[str, list[str]] = {
     "panel": [
-        "widget_mapping",
-        "custom-components",
-        "material-ui",
-        "holoviews",
-        "pytest-playwright",
+        "iterating-on-panel-apps",
+        "mapping-widgets",
+        "building-custom-components",
+        "applying-material-ui",
+        "branding-material-ui",
+        "interacting-with-holoviews",
+        "using-pytest-playwright",
+        "reviewing-panel-apps",
     ],
 }
 
@@ -79,13 +87,7 @@ REFERENCE_ORDER: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 FRONT_MATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->\s*\n?", re.DOTALL)
-SKILL_LINK_RE = re.compile(
-    r"\[([^\]]+)\]\(([^\)]*?/?([\w][\w-]*)/SKILL\.md)\)",
-)
-# Links to reference files (references/*.md).
-REFERENCE_LINK_RE = re.compile(
-    r"\[([^\]]+)\]\(references/([^\)]+\.md)\)",
-)
+MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 NAV_BLOCK_RE = re.compile(r"^nav\s*=\s*\[.*?^\]", re.MULTILINE | re.DOTALL)
 
 
@@ -100,26 +102,77 @@ def strip_frontmatter_and_comments(text: str) -> str:
     return text.lstrip()
 
 
-def rewrite_skill_links(text: str) -> str:
-    """Rewrite ``[name](…/slug/SKILL.md)`` → ``[name](slug.md)``."""
-    return SKILL_LINK_RE.sub(r"[\1](\3.md)", text)
+def build_path_map(
+    categories: dict[str, Category],
+    standalones: dict[str, Standalone],
+) -> dict[Path, Path]:
+    """Map every source .md/.py path (relative to REPO_ROOT) to its docs path."""
+    mapping: dict[Path, Path] = {}
+    for cat in categories.values():
+        for child in cat.children:
+            src = child.source.relative_to(REPO_ROOT)
+            if child.references or child.examples:
+                mapping[src] = Path(cat.dirname) / child.slug / "index.md"
+            else:
+                mapping[src] = Path(cat.dirname) / f"{child.slug}.md"
+            for ref in child.references:
+                rsrc = ref.source.relative_to(REPO_ROOT)
+                mapping[rsrc] = Path(cat.dirname) / child.slug / f"{ref.slug}.md"
+            for ex in child.examples:
+                esrc = ex.source.relative_to(REPO_ROOT)
+                mapping[esrc] = Path(cat.dirname) / child.slug / f"{ex.slug}.md"
+    for st in standalones.values():
+        mapping[st.source.relative_to(REPO_ROOT)] = Path(f"{st.slug}.md")
+    return mapping
 
 
-def rewrite_reference_links(text: str) -> str:
-    """Rewrite ``[name](references/foo.md)`` → ``[name](foo.md)``.
+def rewrite_internal_links(
+    text: str,
+    source_path: Path,
+    path_map: dict[Path, Path],
+) -> str:
+    """Rewrite all internal ``.md`` links to use correct docs-relative paths.
 
-    Used for skills that have reference pages in the docs — the reference
-    files sit alongside the skill's ``index.md`` in the output directory.
+    Resolves each link target against the source file's directory, looks up the
+    corresponding docs path in *path_map*, and emits the correct relative link
+    from the current file's docs location.
     """
-    return REFERENCE_LINK_RE.sub(r"[\1](\2)", text)
+    source_rel = source_path.relative_to(REPO_ROOT)
+    source_dir = source_rel.parent
+    docs_path = path_map.get(source_rel)
+    if docs_path is None:
+        return text
+    docs_dir = docs_path.parent
 
+    def _replace(m: re.Match) -> str:
+        label, raw_target = m.group(1), m.group(2)
 
-def strip_reference_links(text: str) -> str:
-    """Convert ``[name](references/foo.md)`` → **name** for docs output.
+        # Split anchor fragment.
+        if "#" in raw_target:
+            path_part, anchor = raw_target.split("#", 1)
+            anchor = "#" + anchor
+        else:
+            path_part, anchor = raw_target, ""
 
-    Fallback for skills without reference pages in the docs.
-    """
-    return REFERENCE_LINK_RE.sub(r"**\1**", text)
+        # Only rewrite relative .md links.
+        if not path_part.endswith(".md") or path_part.startswith("http"):
+            return m.group(0)
+
+        # Resolve against source directory.
+        target_abs = (REPO_ROOT / source_dir / path_part).resolve()
+        try:
+            target_rel = target_abs.relative_to(REPO_ROOT.resolve())
+        except ValueError:
+            return m.group(0)
+
+        target_docs = path_map.get(target_rel)
+        if target_docs is None:
+            return m.group(0)
+
+        rel = Path(os.path.relpath(target_docs, docs_dir))
+        return f"[{label}]({rel.as_posix()}{anchor})"
+
+    return MD_LINK_RE.sub(_replace, text)
 
 
 def inject_source_meta(text: str, source_rel: str) -> str:
@@ -153,6 +206,24 @@ def extract_description(text: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+def generate_example_md(example: Example, source_rel: str, screenshot_path: str | None) -> str:
+    """Generate markdown content for a Python example."""
+    lines = [f"# {example.title}", ""]
+    if screenshot_path:
+        lines.extend([f"![{example.title}]({screenshot_path})", ""])
+    lines.extend([
+        "```python",
+        example.code,
+        "```",
+        "",
+    ])
+    meta = (
+        f'<div data-skill-source="{source_rel}" '
+        f'style="display:none"></div>\n\n'
+    )
+    return meta + "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Discovery
 # ---------------------------------------------------------------------------
@@ -168,16 +239,34 @@ def find_skill_files(root: Path) -> list[Path]:
 
 
 def find_references(skill_md: Path) -> list[Path]:
-    """Find reference .md files alongside a SKILL.md."""
-    refs_dir = skill_md.parent / "references"
-    if not refs_dir.is_dir():
+    """Find sibling .md files alongside a SKILL.md (excluding SKILL.md itself)."""
+    return sorted(
+        p for p in skill_md.parent.glob("*.md")
+        if p.name != "SKILL.md"
+    )
+
+
+def find_examples(skill_md: Path) -> list[Path]:
+    """Find .py files in an examples/ subdirectory alongside a SKILL.md."""
+    examples_dir = skill_md.parent / "examples"
+    if not examples_dir.is_dir():
         return []
-    return sorted(refs_dir.glob("*.md"))
+    return sorted(examples_dir.glob("*.py"))
 
 
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
+class Example:
+    """A Python example file in an examples/ subdirectory."""
+
+    def __init__(self, slug: str, title: str, source: Path, code: str):
+        self.slug = slug
+        self.title = title
+        self.source = source
+        self.code = code
+
 
 class Reference:
     """A reference document alongside a sub-skill."""
@@ -198,6 +287,7 @@ class SubSkill:
         self.source = source
         self.cleaned = cleaned
         self.references: list[Reference] = []
+        self.examples: list[Example] = []
 
 
 class Category:
@@ -244,6 +334,11 @@ def ordered_references(skill: SubSkill) -> list[Reference]:
         skill.references,
         key=lambda r: (rank.get(r.slug, fallback), r.title.lower()),
     )
+
+
+def ordered_examples(skill: SubSkill) -> list[Example]:
+    """Return *skill.examples* alphabetically by title."""
+    return sorted(skill.examples, key=lambda e: e.title.lower())
 
 
 def ordered_sections(
@@ -332,8 +427,8 @@ def build_nav_toml(
             lines.append(f'  {{ "{section.title}" = [')
             lines.append(f'    "{section.dirname}/index.md",')
             for child in ordered_children(section):
-                if child.references:
-                    # Nested sub-section for skill + references.
+                if child.references or child.examples:
+                    # Nested sub-section for skill + references/examples.
                     lines.append(f'    {{ "{child.title}" = [')
                     lines.append(
                         f'      "{section.dirname}/{child.slug}/index.md",'
@@ -342,6 +437,11 @@ def build_nav_toml(
                         lines.append(
                             f'      {{ "{ref.title}" = '
                             f'"{section.dirname}/{child.slug}/{ref.slug}.md" }},'
+                        )
+                    for ex in ordered_examples(child):
+                        lines.append(
+                            f'      {{ "{ex.title} Example" = '
+                            f'"{section.dirname}/{child.slug}/{ex.slug}.md" }},'
                         )
                     lines.append("    ] },")
                 else:
@@ -370,6 +470,93 @@ def update_zensical_nav(nav_toml: str) -> None:
         return
     ZENSICAL_TOML.write_text(updated, encoding="utf-8")
     print("build_stubs: updated nav in zensical.toml")
+
+
+# ---------------------------------------------------------------------------
+# Screenshot generation
+# ---------------------------------------------------------------------------
+
+def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> dict[str, str]:
+    """Serve examples and capture screenshots using Playwright.
+
+    Returns a mapping from example slug to the relative path of the screenshot
+    (relative to the skill's docs directory).
+    """
+    if not examples:
+        return {}
+
+    # Check if playwright is available.
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print("build_stubs: playwright not installed — skipping screenshots")
+        return {}
+
+    # Collect .py files to serve.
+    example_files = [ex.source for ex in examples]
+    examples_dir = example_files[0].parent
+
+    # Start panel server.
+    cmd = [
+        sys.executable, "-m", "panel", "serve",
+        *[str(f) for f in example_files],
+        "--port", "5099",
+    ]
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(examples_dir),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    # Wait for server to be ready (poll until connection succeeds).
+    import socket
+    for _ in range(30):  # up to 30 seconds
+        time.sleep(1)
+        try:
+            with socket.create_connection(("localhost", 5099), timeout=1):
+                break
+        except (ConnectionRefusedError, socket.timeout, OSError):
+            pass
+    else:
+        print("build_stubs: WARNING — panel server did not start in time")
+        proc.terminate()
+        return {}
+
+    screenshots: dict[str, str] = {}
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page(viewport={"width": 1400, "height": 900})
+
+            for ex in examples:
+                url = f"http://localhost:5099/{ex.slug}"
+                try:
+                    page.goto(url, timeout=10000)
+                    page.wait_for_timeout(3000)
+
+                    # Save screenshot to docs/assets/examples/
+                    screenshot_dir = ASSETS_DIR / "examples"
+                    screenshot_dir.mkdir(parents=True, exist_ok=True)
+                    screenshot_file = screenshot_dir / f"{ex.slug}.png"
+                    page.screenshot(path=str(screenshot_file))
+
+                    # Return path relative to skill docs dir (e.g., ../../assets/examples/dashboard.png)
+                    rel_path = os.path.relpath(screenshot_file, skill_dir)
+                    screenshots[ex.slug] = rel_path
+                    print(f"build_stubs: screenshot {ex.slug}.png")
+                except Exception as e:
+                    print(f"build_stubs: WARNING — failed to screenshot {ex.slug}: {e}")
+
+            browser.close()
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+    return screenshots
 
 
 # ---------------------------------------------------------------------------
@@ -419,11 +606,10 @@ def build() -> int:
             for child_md in children:
                 raw = child_md.read_text(encoding="utf-8")
                 cleaned = strip_frontmatter_and_comments(raw)
-                cleaned = rewrite_skill_links(cleaned)
                 slug = child_md.parent.name
                 child_title = extract_h1_title(cleaned) or slug_to_title(slug)
 
-                # Discover reference files.
+                # Discover sibling .md files (references).
                 ref_paths = find_references(child_md)
                 refs: list[Reference] = []
                 for ref_path in ref_paths:
@@ -433,14 +619,18 @@ def build() -> int:
                     ref_title = extract_h1_title(ref_cleaned) or slug_to_title(ref_slug)
                     refs.append(Reference(ref_slug, ref_title, ref_path, ref_cleaned))
 
-                # Rewrite or strip reference links based on whether refs exist.
-                if refs:
-                    cleaned = rewrite_reference_links(cleaned)
-                else:
-                    cleaned = strip_reference_links(cleaned)
+                # Discover .py files in examples/ subdirectory.
+                example_paths = find_examples(child_md)
+                examples: list[Example] = []
+                for ex_path in example_paths:
+                    ex_code = ex_path.read_text(encoding="utf-8")
+                    ex_slug = ex_path.stem
+                    ex_title = slug_to_title(ex_slug)
+                    examples.append(Example(ex_slug, ex_title, ex_path, ex_code))
 
                 skill = SubSkill(slug, child_title, child_md, cleaned)
                 skill.references = refs
+                skill.examples = examples
                 cat.children.append(skill)
 
             categories[tld] = cat
@@ -448,10 +638,24 @@ def build() -> int:
             # Standalone skill.
             raw = roots[0].read_text(encoding="utf-8")
             cleaned = strip_frontmatter_and_comments(raw)
-            cleaned = rewrite_skill_links(cleaned)
-            cleaned = strip_reference_links(cleaned)
             title = extract_h1_title(cleaned) or slug_to_title(tld)
             standalones[tld] = Standalone(tld, title, roots[0], cleaned)
+
+    # ---- Rewrite internal links ----
+    path_map = build_path_map(categories, standalones)
+
+    for cat in categories.values():
+        for child in cat.children:
+            child.cleaned = rewrite_internal_links(
+                child.cleaned, child.source, path_map,
+            )
+            for ref in child.references:
+                ref.cleaned = rewrite_internal_links(
+                    ref.cleaned, ref.source, path_map,
+                )
+
+    for st in standalones.values():
+        st.cleaned = rewrite_internal_links(st.cleaned, st.source, path_map)
 
     # ---- Write output files ----
     page_count = 0
@@ -469,8 +673,8 @@ def build() -> int:
         for child in cat.children:
             rel_src = child.source.relative_to(REPO_ROOT)
 
-            if child.references:
-                # Nested directory: skill index + reference pages.
+            if child.references or child.examples:
+                # Nested directory: skill index + reference/example pages.
                 skill_dir = out_dir / child.slug
                 skill_dir.mkdir(parents=True, exist_ok=True)
 
@@ -487,8 +691,20 @@ def build() -> int:
                     ref_dest.write_text(ref_content, encoding="utf-8")
                     print(f"build_stubs: {ref_rel_src}  ->  docs/{cat.dirname}/{child.slug}/{ref.slug}.md")
                     page_count += 1
+
+                # Generate screenshots for examples.
+                screenshots = generate_example_screenshots(child.examples, skill_dir)
+
+                for ex in child.examples:
+                    ex_dest = skill_dir / f"{ex.slug}.md"
+                    ex_rel_src = ex.source.relative_to(REPO_ROOT)
+                    screenshot_path = screenshots.get(ex.slug)
+                    ex_content = generate_example_md(ex, str(ex_rel_src), screenshot_path)
+                    ex_dest.write_text(ex_content, encoding="utf-8")
+                    print(f"build_stubs: {ex_rel_src}  ->  docs/{cat.dirname}/{child.slug}/{ex.slug}.md")
+                    page_count += 1
             else:
-                # Flat page (no references).
+                # Flat page (no references or examples).
                 dest = out_dir / f"{child.slug}.md"
                 content = inject_source_meta(child.cleaned, str(rel_src))
                 dest.write_text(content, encoding="utf-8")
