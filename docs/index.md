@@ -26,8 +26,9 @@ holoviz-skills install        # auto-detects tools on your machine
 Or target a specific tool:
 
 ```bash
-holoviz-skills install --claude-code   # ~/.claude/skills/
-holoviz-skills install --copilot       # .github/instructions/
+holoviz-skills install --claude-code   # ~/.claude/skills/       (global)
+holoviz-skills install --repo          # .agents/skills/          (cross-tool, commit to git)
+holoviz-skills install --copilot       # .github/skills/
 holoviz-skills install --cursor        # .cursor/rules/
 holoviz-skills install --windsurf      # .windsurf/skills/
 holoviz-skills install --cline         # .cline/skills/

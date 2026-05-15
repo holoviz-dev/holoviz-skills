@@ -3,8 +3,9 @@
 Usage::
 
     holoviz-skills install                # auto-detect all tools
-    holoviz-skills install --claude-code  # ~/.claude/skills/
-    holoviz-skills install --copilot      # .github/instructions/
+    holoviz-skills install --claude-code  # ~/.claude/skills/  (global)
+    holoviz-skills install --repo         # .agents/skills/    (cross-tool, commit to git)
+    holoviz-skills install --copilot      # .github/skills/
     holoviz-skills install --cursor       # .cursor/rules/
     holoviz-skills install --windsurf     # .windsurf/skills/
     holoviz-skills install --cline        # .cline/skills/
@@ -223,12 +224,20 @@ def _make_tools() -> dict[str, Tool]:
             install_fn=_install_dirs,
         ),
         Tool(
+            key="repo",
+            name="Repo skills (.agents/skills/)",
+            scope="project",
+            install_path=cwd / ".agents" / "skills",
+            detect_fn=lambda: (cwd / ".git").exists(),
+            install_fn=_install_dirs,
+        ),
+        Tool(
             key="copilot",
             name="GitHub Copilot",
             scope="project",
-            install_path=cwd / ".github" / "instructions",
+            install_path=cwd / ".github" / "skills",
             detect_fn=lambda: shutil.which("code") or (cwd / ".github").exists(),
-            install_fn=_install_flat_files("instructions.md"),
+            install_fn=_install_dirs,
         ),
         Tool(
             key="cursor",
@@ -380,6 +389,9 @@ def main(argv: list[str] | None = None) -> int:
 
     def _add_tool_flags(p: argparse.ArgumentParser) -> None:
         p.add_argument("--claude-code", action="store_true", help="~/.claude/skills/  (global)")
+        p.add_argument(
+            "--repo", action="store_true", help=".agents/skills/  (cross-tool, commit to git)"
+        )
         p.add_argument("--copilot", action="store_true", help=".github/instructions/  (project)")
         p.add_argument("--cursor", action="store_true", help=".cursor/rules/  (project)")
         p.add_argument("--windsurf", action="store_true", help=".windsurf/skills/  (project)")
