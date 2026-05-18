@@ -51,10 +51,21 @@ jobs:
 
             if (context.eventName === "workflow_dispatch") {
               const inputs = context.payload.inputs || {};
-              shouldRun = true;
               checkoutRef = inputs.ref || context.ref;
-              prNumber = inputs.pull_number || "";
-              reason = "Manual dispatch";
+              const inputPullNumber = (inputs.pull_number || "").trim();
+              if (inputPullNumber === "") {
+                shouldRun = true;
+                prNumber = "";
+                reason = "Manual dispatch";
+              } else if (!/^\d+$/.test(inputPullNumber)) {
+                shouldRun = false;
+                prNumber = "";
+                reason = `Invalid pull_number input '${inputPullNumber}': expected an integer`;
+              } else {
+                shouldRun = true;
+                prNumber = String(Number(inputPullNumber));
+                reason = "Manual dispatch";
+              }
             } else if (context.eventName === "issue_comment") {
               const issue = context.payload.issue;
               const comment = context.payload.comment;
@@ -191,8 +202,14 @@ jobs:
             const fs = require("fs");
 
             const prNumber = Number(process.env.PR_NUMBER);
-            const status = process.env.JOB_STATUS === "success" ? "success" : "failure";
-            const icon = status === "success" ? ":white_check_mark:" : ":x:";
+            const rawStatus = process.env.JOB_STATUS || "unknown";
+            const statusMap = {
+              success:   { label: "success",   icon: ":white_check_mark:" },
+              failure:   { label: "failure",   icon: ":x:" },
+              cancelled: { label: "cancelled", icon: ":warning:" },
+              skipped:   { label: "skipped",   icon: ":fast_forward:" },
+            };
+            const { label: status, icon } = statusMap[rawStatus] || { label: rawStatus, icon: ":grey_question:" };
             const runUrl = `https://github.com/${process.env.REPOSITORY}/actions/runs/${process.env.RUN_ID}`;
 
             let summaryText = "No evaluation summary file was generated.";
