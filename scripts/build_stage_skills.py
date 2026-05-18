@@ -1,20 +1,23 @@
-"""Custom build step: stage top-level skill directories into the package.
+"""Stage top-level skill directories into the package for building.
 
 The skill content (developing-with-holoviz/, contributing-to-holoviz/, etc.)
 lives at the repo root for a friendly contributor experience, but must be
 copied into ``holoviz_skills/skills/`` so that ``pip install`` bundles them
 as package data and the CLI can locate them at runtime.
+
+Usage::
+
+    python scripts/build_stage_skills.py   # copy skills into holoviz_skills/skills/
+    python scripts/build_stage_skills.py --clean  # remove the staged directory
 """
 
 from __future__ import annotations
 
+import argparse
 import shutil
 from pathlib import Path
 
-from setuptools import setup
-from setuptools.command.build_py import build_py as _build_py
-
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).resolve().parent.parent
 STAGED_SKILLS = REPO_ROOT / "holoviz_skills" / "skills"
 
 
@@ -31,7 +34,7 @@ def _find_skill_dirs() -> list[Path]:
     )
 
 
-def _stage_skills() -> None:
+def stage() -> None:
     """Copy skill directories into holoviz_skills/skills/."""
     if STAGED_SKILLS.exists():
         shutil.rmtree(STAGED_SKILLS)
@@ -47,12 +50,26 @@ def _stage_skills() -> None:
                 "__pycache__",
             ),
         )
+        print(f"  + {skill_dir.name}/")
+
+    print(f"\nStaged {len(_find_skill_dirs())} skill(s) into {STAGED_SKILLS}")
 
 
-class build_py(_build_py):
-    def run(self) -> None:
-        _stage_skills()
-        super().run()
+def clean() -> None:
+    """Remove the staged skills directory."""
+    if STAGED_SKILLS.exists():
+        shutil.rmtree(STAGED_SKILLS)
+        print(f"Removed {STAGED_SKILLS}")
+    else:
+        print("Nothing to clean")
 
 
-setup(cmdclass={"build_py": build_py})
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--clean", action="store_true", help="Remove staged skills")
+    args = parser.parse_args()
+
+    if args.clean:
+        clean()
+    else:
+        stage()
