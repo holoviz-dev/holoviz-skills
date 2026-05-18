@@ -8,6 +8,7 @@ default = ["docs", "lint", "dev"]
 docs = ["docs"]
 lint = ["lint"]
 eval = ["eval"]
+build = ["build"]
 
 # =================== BASE ===================
 
@@ -20,6 +21,17 @@ setup-dev = { depends-on = [
     "lint-install",
 ], description = "Set up development environment" }
 build-plugin = { cmd = "python scripts/build_plugin.py", description = "Build the Claude Cowork plugin and per-skill zips (assets/)" }
+
+# =================== BUILD ===================
+
+[feature.build.dependencies]
+python-build = "*"
+conda-build = "*"
+
+[feature.build.tasks]
+_stage-skills = 'python scripts/build_stage_skills.py'
+build-conda = { cmd = 'bash scripts/conda/build.sh', depends-on = ['_stage-skills'] }
+build-pip = { cmd = 'python -m build .', depends-on = ['_stage-skills'] }
 
 # =================== DOCS ====================
 

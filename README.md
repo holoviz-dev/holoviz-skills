@@ -6,6 +6,31 @@ A curated collection of [Agent Skills](https://www.anthropic.com/news/skills) fo
 
 Agent Skills are folders of instructions, scripts, and references that teach agents how to work effectively with a specific library or workflow. These skills help agents produce correct, idiomatic HoloViz code instead of guessing from stale training data.
 
+## Installation
+
+```bash
+pip install holoviz-skills
+holoviz-skills install        # auto-detects tools on your machine
+holoviz-skills install --global  # install to global (~/) paths instead
+```
+
+Or target a specific tool:
+
+```bash
+holoviz-skills install --claude-code   # .claude/skills/
+holoviz-skills install --agent         # .agents/skills/          (cross-tool standard, commit to git)
+holoviz-skills install --codex         # .codex/skills/            (OpenAI Codex)
+holoviz-skills install --copilot       # .github/skills/           (GitHub Copilot)
+holoviz-skills install --cursor        # .cursor/skills/
+holoviz-skills install --windsurf      # .windsurf/skills/
+holoviz-skills install --cline         # .cline/skills/
+holoviz-skills install --jetbrains     # .junie/skills/            (JetBrains / Junie)
+holoviz-skills install --gemini-cli    # .gemini/skills/
+holoviz-skills install --antigravity   # .agents/skills/           (Google Antigravity)
+holoviz-skills install --kiro          # .kiro/skills/
+holoviz-skills install --mistral-vibe  # .vibe/skills/
+```
+
 ## Documentation
 
 Visit **[https://holoviz-dev.github.io/holoviz-skills/](https://holoviz-dev.github.io/holoviz-skills/)** for the full list of skills and usage instructions.

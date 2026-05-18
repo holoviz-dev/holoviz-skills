@@ -23,6 +23,7 @@ venv/
 pixi.lock
 
 # Build outputs
+/dist/
 /site
 /_build_plugin_tmp/
 docs/skills/
@@ -30,9 +31,15 @@ docs/developing-with-holoviz/
 docs/contributing-to-holoviz/
 docs/creating-custom-holoviz-skills.md
 
+# Staged skills (generated at build time by scripts/build_stage_skills.py)
+holoviz_skills/skills/
+
 # Notebooks
 *.ipynb
 .ipynb_checkpoints/
 
 # Evals
 eval_results/
+
+.github/instructions/
+.*/skills/*

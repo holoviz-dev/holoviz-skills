@@ -1,0 +1,44 @@
+{% set pyproject = load_file_data('../../../pyproject.toml', from_recipe_dir=True) %}
+{% set project = pyproject['project'] %}
+
+package:
+  name: {{ project["name"] }}
+  version: {{ VERSION }}
+
+source:
+  url: ../../../dist/{{ project["name"] }}-{{ VERSION }}.tar.gz
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install --no-deps -vv .
+  entry_points:
+    {% for name, ref in project.get("scripts", {}).items() %}
+    - {{ name }} = {{ ref }}
+    {% endfor %}
+
+requirements:
+  build:
+    - python {{ project['requires-python'] }}
+    - pip
+    {% for dep in pyproject['build-system']['requires'] %}
+    - {{ dep }}
+    {% endfor %}
+  run:
+    - python {{ project['requires-python'] }}
+    {% for dep in project.get('dependencies', []) %}
+    - {{ dep }}
+    {% endfor %}
+
+test:
+  imports:
+    - holoviz_skills
+  commands:
+    - pip check
+    - holoviz-skills --help
+  requires:
+    - pip
+
+about:
+  home: {{ project['urls']['Homepage'] }}
+  summary: {{ project['description'] }}
+  license: {{ project['license']['text'] }}
