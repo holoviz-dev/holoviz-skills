@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "holoviz-skills"
-version = "0.0.0"
+dynamic = ["version"]
 description = "A curated collection of Skills for the HoloViz ecosystem — Panel, hvPlot, HoloViews, Param, and more."
 readme = "README.md"
 license = { text = "BSD" }
@@ -19,11 +19,15 @@ holoviz-skills = "holoviz_skills.cli:main"
 Homepage = "https://holoviz-dev.github.io/holoviz-skills/"
 Source = "https://github.com/holoviz-dev/holoviz-skills"
 
-[tool.setuptools.packages.find]
-include = ["holoviz_skills*"]
+[tool.hatch.version]
+source = "vcs"
+raw-options = { version_scheme = "no-guess-dev" }
 
-[tool.setuptools.package-data]
-holoviz_skills = ["skills/**/*"]
+[tool.hatch.build.targets.wheel]
+include = ["holoviz_skills"]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "holoviz_skills/_version.py"
 
 [tool.ruff]
 target-version = "py312"

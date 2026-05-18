@@ -26,6 +26,8 @@ build-plugin = { cmd = "python scripts/build_plugin.py", description = "Build th
 
 [feature.build.dependencies]
 python-build = "*"
+hatchling = "*"
+hatch-vcs = "*"
 
 [feature.build.tasks]
 _stage-skills = 'python scripts/build_stage_skills.py'

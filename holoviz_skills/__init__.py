@@ -1,5 +1,5 @@
 """HoloViz Skills — install Agent Skills into your AI coding tools."""
 
-from importlib.metadata import version as _version
+from holoviz_skills._version import __version__
 
-__version__ = _version("holoviz-skills")
+__all__ = ["__version__"]

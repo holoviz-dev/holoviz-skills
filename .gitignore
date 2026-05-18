@@ -34,6 +34,9 @@ docs/creating-custom-holoviz-skills.md
 # Staged skills (generated at build time by scripts/build_stage_skills.py)
 holoviz_skills/skills/
 
+# Version file (generated at build time by hatch-vcs)
+holoviz_skills/_version.py
+
 # Notebooks
 *.ipynb
 .ipynb_checkpoints/
