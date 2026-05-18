@@ -30,6 +30,9 @@ docs/developing-with-holoviz/
 docs/contributing-to-holoviz/
 docs/creating-custom-holoviz-skills.md
 
+# Staged skills (generated at build time by setup.py)
+holoviz_skills/skills/
+
 # Notebooks
 *.ipynb
 .ipynb_checkpoints/
