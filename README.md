@@ -11,19 +11,24 @@ Agent Skills are folders of instructions, scripts, and references that teach age
 ```bash
 pip install holoviz-skills
 holoviz-skills install        # auto-detects tools on your machine
+holoviz-skills install --global  # install to global (~/) paths instead
 ```
 
 Or target a specific tool:
 
 ```bash
-holoviz-skills install --claude-code   # ~/.claude/skills/       (global)
-holoviz-skills install --repo          # .agents/skills/          (cross-tool, commit to git)
-holoviz-skills install --copilot       # .github/skills/
-holoviz-skills install --cursor        # .cursor/rules/
+holoviz-skills install --claude-code   # .claude/skills/
+holoviz-skills install --agent         # .agents/skills/          (cross-tool standard, commit to git)
+holoviz-skills install --codex         # .codex/skills/            (OpenAI Codex)
+holoviz-skills install --copilot       # .github/skills/           (GitHub Copilot)
+holoviz-skills install --cursor        # .cursor/skills/
 holoviz-skills install --windsurf      # .windsurf/skills/
 holoviz-skills install --cline         # .cline/skills/
-holoviz-skills install --continue      # .continue/rules/
+holoviz-skills install --jetbrains     # .junie/skills/            (JetBrains / Junie)
 holoviz-skills install --gemini-cli    # .gemini/skills/
+holoviz-skills install --antigravity   # .agents/skills/           (Google Antigravity)
+holoviz-skills install --kiro          # .kiro/skills/
+holoviz-skills install --mistral-vibe  # .vibe/skills/
 ```
 
 ## Documentation

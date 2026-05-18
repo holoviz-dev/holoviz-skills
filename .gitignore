@@ -42,3 +42,4 @@ holoviz_skills/skills/
 eval_results/
 
 .github/instructions/
+.*/skills/*
