@@ -1,0 +1,236 @@
+name: Eval Command
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref (branch, tag, or SHA) to evaluate
+        required: false
+        type: string
+      pull_number:
+        description: Optional PR number to post a result comment to
+        required: false
+        type: string
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: eval-command-${{ github.event.issue.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Validate trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.decide.outputs.should_run }}
+      reason: ${{ steps.decide.outputs.reason }}
+      checkout_ref: ${{ steps.decide.outputs.checkout_ref }}
+      pr_number: ${{ steps.decide.outputs.pr_number }}
+      trigger_source: ${{ steps.decide.outputs.trigger_source }}
+    steps:
+      - name: Decide whether to run
+        id: decide
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const fullName = `${owner}/${repo}`;
+
+            let shouldRun = false;
+            let reason = "";
+            let checkoutRef = "";
+            let prNumber = "";
+            let triggerSource = context.eventName;
+
+            if (context.eventName === "workflow_dispatch") {
+              const inputs = context.payload.inputs || {};
+              shouldRun = true;
+              checkoutRef = inputs.ref || context.ref;
+              prNumber = inputs.pull_number || "";
+              reason = "Manual dispatch";
+            } else if (context.eventName === "issue_comment") {
+              const issue = context.payload.issue;
+              const comment = context.payload.comment;
+
+              if (!issue?.pull_request) {
+                reason = "Comment is not on a pull request";
+              } else if (!comment?.body?.trim().toLowerCase().startsWith("@eval")) {
+                reason = "Comment does not start with @eval";
+              } else {
+                const trusted = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+                const association = comment.author_association || "";
+                if (!trusted.has(association)) {
+                  reason = `Commenter association '${association}' is not allowed`;
+                } else {
+                  prNumber = String(issue.number);
+                  const pr = await github.rest.pulls.get({
+                    owner,
+                    repo,
+                    pull_number: issue.number,
+                  });
+
+                  const headRepoFullName = pr.data.head?.repo?.full_name || "";
+                  if (headRepoFullName !== fullName) {
+                    reason = "Fork pull requests are not allowed for @eval";
+                  } else {
+                    shouldRun = true;
+                    checkoutRef = pr.data.head.sha;
+                    reason = "Maintainer-triggered @eval command";
+                  }
+                }
+              }
+            } else {
+              reason = `Unsupported event: ${context.eventName}`;
+            }
+
+            core.setOutput("should_run", shouldRun ? "true" : "false");
+            core.setOutput("reason", reason);
+            core.setOutput("checkout_ref", checkoutRef);
+            core.setOutput("pr_number", prNumber);
+            core.setOutput("trigger_source", triggerSource);
+
+      - name: Show gate decision
+        run: |
+          echo "should_run=${{ steps.decide.outputs.should_run }}"
+          echo "reason=${{ steps.decide.outputs.reason }}"
+          echo "checkout_ref=${{ steps.decide.outputs.checkout_ref }}"
+          echo "pr_number=${{ steps.decide.outputs.pr_number }}"
+
+  eval:
+    name: Run evaluation pipeline
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.gate.outputs.checkout_ref }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot
+
+      - name: Validate Copilot token configuration
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          if [[ -z "${COPILOT_GITHUB_TOKEN}" ]]; then
+            echo "::error::Missing required secret COPILOT_GITHUB_TOKEN"
+            exit 1
+          fi
+          mkdir -p "$HOME/.copilot"
+          # Copilot CLI requires the workspace directory to be listed in
+          # trustedFolders inside ~/.copilot/config.json before it will run
+          # non-interactively. This inline script adds GITHUB_WORKSPACE to
+          # that list, preserving any existing entries.
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          cfg_dir = Path.home() / ".copilot"
+          cfg_path = cfg_dir / "config.json"
+          cfg = {}
+          if cfg_path.exists():
+              try:
+                  cfg = json.loads(cfg_path.read_text())
+              except Exception:
+                  cfg = {}
+          trusted = set(cfg.get("trustedFolders", []))
+          trusted.add(os.environ["GITHUB_WORKSPACE"])
+          cfg["trustedFolders"] = sorted(trusted)
+          cfg_path.write_text(json.dumps(cfg, indent=2))
+          PY
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
+        with:
+          environments: eval
+
+      - name: Preflight checks
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: pixi run -e eval eval-check
+
+      - name: Run full eval pipeline
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: pixi run -e eval python scripts/eval.py
+
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-results-${{ github.run_id }}
+          path: eval_results/
+          if-no-files-found: ignore
+
+      - name: Post PR summary comment
+        if: always() && needs.gate.outputs.pr_number != ''
+        uses: actions/github-script@v9
+        env:
+          JOB_STATUS: ${{ job.status }}
+          PR_NUMBER: ${{ needs.gate.outputs.pr_number }}
+          RUN_ID: ${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+          SUMMARY_PATH: eval_results/evaluation_summary.md
+        with:
+          script: |
+            const fs = require("fs");
+
+            const prNumber = Number(process.env.PR_NUMBER);
+            const status = process.env.JOB_STATUS === "success" ? "success" : "failure";
+            const icon = status === "success" ? ":white_check_mark:" : ":x:";
+            const runUrl = `https://github.com/${process.env.REPOSITORY}/actions/runs/${process.env.RUN_ID}`;
+
+            let summaryText = "No evaluation summary file was generated.";
+            if (fs.existsSync(process.env.SUMMARY_PATH)) {
+              summaryText = fs.readFileSync(process.env.SUMMARY_PATH, "utf8").trim();
+              if (!summaryText) {
+                summaryText = "Evaluation summary file exists but is empty.";
+              }
+            }
+
+            if (summaryText.length > 60000) {
+              summaryText = `${summaryText.slice(0, 60000)}\n\n... (truncated)`;
+            }
+
+            const body = [
+              "## Eval Command",
+              `${icon} Status: **${status}**`,
+              `Run: ${runUrl}`,
+              "Artifacts: Download the `eval-results-*` artifact from the run page.",
+              "",
+              "## Evaluation summary",
+              "",
+              summaryText,
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body,
+            });
+
+  skipped:
+    name: Skip report
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.should_run != 'true'
+    steps:
+      - name: Show skip reason
+        run: |
+          echo "Skipping eval workflow: ${{ needs.gate.outputs.reason }}"
