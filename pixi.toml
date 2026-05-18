@@ -30,8 +30,7 @@ hatchling = "*"
 hatch-vcs = "*"
 
 [feature.build.tasks]
-_stage-skills = 'python scripts/build_stage_skills.py'
-build-pip = { cmd = 'python -m build .', depends-on = ['_stage-skills'] }
+build-pip = 'python -m build --wheel .'
 
 # =================== DOCS ====================
 

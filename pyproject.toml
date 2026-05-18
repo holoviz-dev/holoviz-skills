@@ -26,6 +26,16 @@ raw-options = { version_scheme = "no-guess-dev" }
 [tool.hatch.build.targets.wheel]
 include = ["holoviz_skills"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"contributing-to-holoviz" = "holoviz_skills/skills/contributing-to-holoviz"
+"creating-custom-holoviz-skills" = "holoviz_skills/skills/creating-custom-holoviz-skills"
+"developing-with-holoviz" = "holoviz_skills/skills/developing-with-holoviz"
+
+[tool.hatch.build.targets.sdist.force-include]
+"contributing-to-holoviz" = "holoviz_skills/skills/contributing-to-holoviz"
+"creating-custom-holoviz-skills" = "holoviz_skills/skills/creating-custom-holoviz-skills"
+"developing-with-holoviz" = "holoviz_skills/skills/developing-with-holoviz"
+
 [tool.hatch.build.hooks.vcs]
 version-file = "holoviz_skills/_version.py"
 
