@@ -72,8 +72,8 @@ jobs:
 
               if (!issue?.pull_request) {
                 reason = "Comment is not on a pull request";
-              } else if (!comment?.body?.trim().toLowerCase().startsWith("@eval")) {
-                reason = "Comment does not start with @eval";
+              } else if (!comment?.body?.trim().toLowerCase().startsWith("@run-eval")) {
+                reason = "Comment does not start with @run-eval";
               } else {
                 const trusted = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
                 const association = comment.author_association || "";
@@ -89,11 +89,11 @@ jobs:
 
                   const headRepoFullName = pr.data.head?.repo?.full_name || "";
                   if (headRepoFullName !== fullName) {
-                    reason = "Fork pull requests are not allowed for @eval";
+                    reason = "Fork pull requests are not allowed for @run-eval";
                   } else {
                     shouldRun = true;
                     checkoutRef = pr.data.head.sha;
-                    reason = "Maintainer-triggered @eval command";
+                    reason = "Maintainer-triggered @run-eval command";
                   }
                 }
               }

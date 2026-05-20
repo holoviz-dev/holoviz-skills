@@ -27,7 +27,7 @@ pixi run eval-no-screenshots
 
 The repository includes an `Eval Command` workflow at `.github/workflows/eval.yml`.
 
-- Trigger from a pull request comment: `@eval`
+- Trigger from a pull request comment: `@run-eval`
 - Trigger manually from the Actions tab: `Eval Command` workflow (`workflow_dispatch`)
 
 Security and scope:
