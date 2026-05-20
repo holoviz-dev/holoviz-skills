@@ -39,6 +39,8 @@ Visit **[https://holoviz-dev.github.io/holoviz-skills/](https://holoviz-dev.gith
 
 The `scripts/` directory contains an automated evaluation system that measures whether the skills improve Copilot's code generation quality. See [`scripts/README.md`](scripts/README.md) for details.
 
+CI support for evaluations is also available through the `Eval Command` GitHub Actions workflow, including a maintainer `@run-eval` pull request comment trigger. See the GitHub Actions section in [`scripts/README.md`](scripts/README.md#github-actions-eval-command).
+
 ## Contributing
 
 Contributions are welcome. See the [documentation](https://holoviz-dev.github.io/holoviz-skills/) for details on how skills are structured and how to add a new one.

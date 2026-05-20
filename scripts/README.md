@@ -23,6 +23,28 @@ pixi run evals
 pixi run eval-no-screenshots
 ```
 
+## GitHub Actions Eval Command
+
+The repository includes an `Eval Command` workflow at `.github/workflows/eval.yml`.
+
+- Trigger from a pull request comment: `@run-eval`
+- Trigger manually from the Actions tab: `Eval Command` workflow (`workflow_dispatch`)
+
+Security and scope:
+
+- Comment-triggered runs are limited to trusted users (`OWNER`, `MEMBER`, `COLLABORATOR`)
+- Comment-triggered runs only support same-repository pull requests (fork PRs are rejected)
+- The workflow checks out the PR head SHA and runs the full pipeline by default
+
+Required repository secret:
+
+- `COPILOT_GITHUB_TOKEN`: a fine-grained PAT with `Copilot Requests` permission, tied to a user with Copilot CLI access
+
+Workflow outputs:
+
+- Uploads `eval_results/` as an Actions artifact
+- Posts a PR comment with run status and `evaluation_summary.md` (or a fallback message if missing)
+
 ## `eval.py` Reference
 
 All steps are combined in a single script. Each step can be skipped independently.
