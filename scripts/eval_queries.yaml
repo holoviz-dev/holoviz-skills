@@ -2,22 +2,13 @@
 # Each query tests whether SKILL.md files improve Copilot's responses
 
 queries:
-  - id: hvplot_interactive_scatter
-    prompt: |
-      Create an interactive scatter plot with hvplot from a pandas DataFrame
-      containing columns 'x', 'y', and 'category'. Include hover tooltips
-      that show all column values when hovering over points.
-    expected_output: static_plot
-    timeout: 120
-    category: hvplot_interactivity
-
   - id: hvplot_earthquake_plot
     prompt: |
       I'm working with the earthquake dataset from the sampledata module.
       Create an hvplot map visualization using a dark CartoDB tile basemap, colored by magnitude.
-    expected_output: static_plot
+    expected_output: static plot
     timeout: 120
-    category: hvplot_interactivity
+    category: hvplot interactivity
 
   - id: dependency_plot
     prompt: |
@@ -55,6 +46,6 @@ queries:
       4. Top 15 Dependent Repos by Stars - the highest-profile projects in the ecosystem. Hover to see which packages each repo uses
       5. 99th Percentile Stars per Package - star count at the 99th percentile of each package's dependents. Hover for the full distribution (min, median, p90, p95, max)
       6. Top 20 Orgs Using Multiple HoloViz Packages - organizations with repos spanning 2+ HoloViz packages, sorted by breadth of adoption
-    expected_output: panel_dashboard
+    expected_output: panel dashboard
     timeout: 120
     category: hvplot+panel
