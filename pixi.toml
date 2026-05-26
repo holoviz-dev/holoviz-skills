@@ -100,8 +100,8 @@ _eval-setup = { cmd = "playwright install chromium", description = "Install Play
 _eval-check-no-screenshots = { cmd = "python scripts/test_setup.py --skip-screenshots", cwd = ".", description = "Verify evaluation system (without Playwright check)" }
 eval-check = { cmd = "python scripts/test_setup.py", cwd = ".", description = "Verify evaluation system is set up correctly" }
 evals = { cmd = "python scripts/eval.py", cwd = ".", depends-on = [
-    "eval-check",
     "_eval-setup",
+    "eval-check",
 ], description = "Run full evaluation pipeline" }
 eval-no-screenshots = { cmd = "python scripts/eval.py --skip-screenshots", cwd = ".", depends-on = [
     "_eval-check-no-screenshots",
