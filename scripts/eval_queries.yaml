@@ -18,3 +18,43 @@ queries:
     expected_output: static_plot
     timeout: 120
     category: hvplot_interactivity
+
+  - id: dependency_plot
+    prompt: |
+      Using panel and hvplot, create a dashboard of all the public and private GitHub repositories that depend on the HoloViz packages.
+      The data for the dashboard can be found in this directory https://github.com/holoviz-topics/holoviz-dependents-stats/tree/main/json
+
+      Each JSON file follows this schema:
+      {
+        "all_public_dependent_repos": [
+          {
+            "name": "owner/repo",
+            "stars": 6,
+            "owner": "some-org",
+            "repo_name": "some-repo",
+            "img": "https://avatars.githubusercontent.com/..."
+          }
+        ],
+        "total_dependents_number": 100,
+        "public_dependents_number": 60,
+        "private_dependents_number": 40,
+        "public_dependents_stars": 1234
+      }
+
+      Notes on the schema:
+      - "all_public_dependent_repos" is the only array of repo records; it contains only public repos.
+      - Each repo record uses "name" for the full "owner/repo" slug and "owner" for the org/user.
+      - Each repo record uses "stars" for the star count.
+      - Private repos are not listed individually; only their aggregate count is available via "private_dependents_number".
+      - The package name should be derived from the filename by stripping the "-usage.json" suffix.
+
+      The dashboard should show six views of the HoloViz ecosystem:
+      1. Total Dependents by Package - total public repos depending on each package, colored by package name
+      2. Total Dependent Stars by Package - aggregate GitHub stars across all public dependents per package
+      3. Top Cross-Package Users - repos using the most HoloViz libraries simultaneously (power users)
+      4. Top 15 Dependent Repos by Stars - the highest-profile projects in the ecosystem. Hover to see which packages each repo uses
+      5. 99th Percentile Stars per Package - star count at the 99th percentile of each package's dependents. Hover for the full distribution (min, median, p90, p95, max)
+      6. Top 20 Orgs Using Multiple HoloViz Packages - organizations with repos spanning 2+ HoloViz packages, sorted by breadth of adoption
+    expected_output: panel_dashboard
+    timeout: 120
+    category: hvplot+panel
