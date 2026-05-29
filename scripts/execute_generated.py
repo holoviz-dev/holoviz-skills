@@ -296,12 +296,22 @@ def find_generated_code_files(eval_results_dir: Path) -> list:
 
             code_file = query_dir / "generated_code.py"
             if code_file.exists():
+                # Read expected_output from metadata if available
+                metadata_file = query_dir / "metadata.json"
+                expected_output = None
+                if metadata_file.exists():
+                    with open(metadata_file) as mf:
+                        try:
+                            expected_output = json.load(mf).get("expected_output")
+                        except Exception:
+                            pass
                 code_files.append(
                     {
                         "code_file": code_file,
                         "query_dir": query_dir,
                         "query_id": query_dir.name,
                         "condition": condition_dir,
+                        "expected_output": expected_output,
                     }
                 )
 
@@ -313,15 +323,17 @@ def execute_all_code(
     timeout: int = 30,
     query_ids: list[str] | None = None,
     skip_screenshots: bool = False,
+    query_timeouts: dict[str, int] | None = None,
 ):
     """
     Execute all generated code files.
 
     Args:
         eval_results_dir: Directory containing evaluation results
-        timeout: Execution timeout in seconds
+        timeout: Default execution timeout in seconds
         query_ids: Optional list of specific query IDs to execute
         skip_screenshots: Skip screenshot capture
+        query_timeouts: Optional per-query timeout overrides {query_id: seconds}
     """
     code_files = find_generated_code_files(eval_results_dir)
 
@@ -339,16 +351,24 @@ def execute_all_code(
         f" (timeout: {timeout}s, screenshots: {screenshots})\n"
     )
 
-    executor = CodeExecutor(timeout=timeout, capture_screenshots=not skip_screenshots)
     results_summary = []
 
     for i, cf in enumerate(code_files, 1):
         query_id = cf["query_id"]
         condition = cf["condition"]
 
-        print(f"[{i}/{len(code_files)}] {query_id} ({condition})")
+        # Use per-query timeout if available, else fall back to global default
+        effective_timeout = (query_timeouts or {}).get(query_id, timeout)
+        executor = CodeExecutor(timeout=effective_timeout, capture_screenshots=not skip_screenshots)
 
-        result = executor.execute(cf["code_file"], cf["query_dir"])
+        print(
+            f"[{i}/{len(code_files)}] {query_id} ({condition})"
+            + (f" [timeout: {effective_timeout}s]" if effective_timeout != timeout else "")
+        )
+
+        result = executor.execute(
+            cf["code_file"], cf["query_dir"], expected_output=cf.get("expected_output")
+        )
 
         # Update metadata
         metadata_file = cf["query_dir"] / "metadata.json"

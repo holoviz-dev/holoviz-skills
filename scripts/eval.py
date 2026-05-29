@@ -120,7 +120,13 @@ def run_copilot_query(query: str, timeout: int = 180) -> tuple[str, float]:
         return f"[ERROR: {str(e)}]", time.time() - start_time
 
 
-def save_results(query_id: str, response: CopilotResponse, output_dir: Path, skills_enabled: bool):
+def save_results(
+    query_id: str,
+    response: CopilotResponse,
+    output_dir: Path,
+    skills_enabled: bool,
+    expected_output: str | None = None,
+):
     subdir = "with_skills" if skills_enabled else "without_skills"
     query_dir = output_dir / subdir / query_id
     query_dir.mkdir(parents=True, exist_ok=True)
@@ -129,6 +135,8 @@ def save_results(query_id: str, response: CopilotResponse, output_dir: Path, ski
 
     metadata = response.to_dict()
     metadata["skills_enabled"] = skills_enabled
+    if expected_output is not None:
+        metadata["expected_output"] = expected_output
     with open(query_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
 
@@ -165,7 +173,13 @@ def run_generation(
                 response = CopilotResponse(raw_output, prompt, exec_time)
                 tok = response.tokens
                 print(f"  Completed in {exec_time:.2f}s | Tokens: ↑{tok['input']} ↓{tok['output']}")
-                save_results(query_id, response, output_dir, skills_enabled=False)
+                save_results(
+                    query_id,
+                    response,
+                    output_dir,
+                    skills_enabled=False,
+                    expected_output=query.get("expected_output"),
+                )
             finally:
                 enable_skills(REPO_ROOT)
 
@@ -175,7 +189,13 @@ def run_generation(
             response = CopilotResponse(raw_output, prompt, exec_time)
             tok = response.tokens
             print(f"  Completed in {exec_time:.2f}s | Tokens: ↑{tok['input']} ↓{tok['output']}")
-            save_results(query_id, response, output_dir, skills_enabled=True)
+            save_results(
+                query_id,
+                response,
+                output_dir,
+                skills_enabled=True,
+                expected_output=query.get("expected_output"),
+            )
 
         print(f"{'─' * 60}")
 
@@ -185,6 +205,7 @@ def run_execution(
     query_ids: list[str] | None,
     timeout: int,
     skip_screenshots: bool,
+    query_timeouts: dict[str, int] | None = None,
 ):
     # Import here so execute_generated.py remains independently runnable
     sys.path.insert(0, str(SCRIPTS_DIR))
@@ -195,6 +216,7 @@ def run_execution(
         timeout=timeout,
         query_ids=query_ids,
         skip_screenshots=skip_screenshots,
+        query_timeouts=query_timeouts,
     )
 
 
@@ -309,11 +331,13 @@ Examples:
     # Step 2: Execute
     if not args.skip_execution:
         print("\n→ Executing generated code...")
+        query_timeouts = {q["id"]: q["timeout"] for q in queries if "timeout" in q}
         run_execution(
             output_dir=args.output,
             query_ids=args.queries,
             timeout=args.timeout,
             skip_screenshots=args.skip_screenshots,
+            query_timeouts=query_timeouts or None,
         )
 
     # Step 3: Aggregate
