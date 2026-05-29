@@ -31,6 +31,25 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 | Playwright UI testing for Panel components | `developing-with-holoviz/skills/panel/building-custom-components.md` + `developing-with-holoviz/skills/panel/using-pytest-playwright.md` |
 | Review or audit a Panel app | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/reviewing-panel-apps.md` |
 
+## Fetching Data from GitHub
+
+When the task requires loading data files from a GitHub repository, always use the **GitHub Contents API** — never construct `raw.githubusercontent.com` URLs directly, as these can be intercepted by proxies and return non-JSON content.
+
+```python
+import base64, json, requests
+
+# 1. List files in a directory
+files = requests.get("https://api.github.com/repos/OWNER/REPO/contents/PATH").json()
+
+# 2. Fetch each file's content via its "url" field (not "download_url")
+for f in files:
+    raw = base64.b64decode(requests.get(f["url"]).json()["content"].replace("\n", "")).decode()
+    # Strip any non-JSON prefix injected by proxies — do NOT wrap in try/except.
+    # If "{" is not found, the API response is corrupt and the IndexError should surface.
+    raw = raw[raw.index("{"):]
+    data = json.loads(raw)
+```
+
 ## Skill Map
 
 | Sub-skill | Covers |
