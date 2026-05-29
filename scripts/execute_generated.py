@@ -101,9 +101,13 @@ class CodeExecutor:
         self.timeout = timeout
         self.capture_screenshots = capture_screenshots
 
-    def execute(self, code_file: Path, query_dir: Path) -> dict:
+    def execute(self, code_file: Path, query_dir: Path, expected_output: str | None = None) -> dict:
         """
         Execute a Python file and capture results.
+
+        For Panel dashboard apps (expected_output="panel dashboard"), skips running
+        the script directly (which would block on pn.serve()) and instead launches
+        via `panel serve` to capture a screenshot.
 
         The code runs inside a temporary working directory so it cannot
         overwrite files in the repository. Only known output files
@@ -117,6 +121,27 @@ class CodeExecutor:
             Dictionary with execution results
         """
         start_time = time.time()
+
+        # Panel dashboard apps block on pn.serve() — skip direct execution and
+        # go straight to panel serve + screenshot.
+        if expected_output == "panel dashboard":
+            screenshot_path = None
+            if self.capture_screenshots:
+                screenshot_path = self._screenshot_panel_app(query_dir)
+            execution_time = time.time() - start_time
+            success = screenshot_path is not None
+            result_dict = {
+                "success": success,
+                "returncode": 0 if success else -1,
+                "execution_time": execution_time,
+                "stdout": "",
+                "stderr": "" if success else "Panel app screenshot failed or timed out",
+                "has_output": success,
+                "screenshot": success,
+            }
+            log_content = f"=== PANEL DASHBOARD MODE ===\nScreenshot: {screenshot_path}\n"
+            (query_dir / "execution.log").write_text(log_content)
+            return result_dict
 
         # Modify code to save plots
         code_content = code_file.read_text()
@@ -204,7 +229,7 @@ class CodeExecutor:
         """
         # Comment out any display calls
         modified_code = code.replace("plt.show()", "# plt.show() # commented by eval")
-        modified_code = re.sub(r"(?<!\w)show\(\)", "# show() # commented by eval", modified_code)
+        modified_code = re.sub(r"(?<![.\w])show\(\)", "# show() # commented by eval", modified_code)
 
         # Use AST to detect a bare expression as the last statement and assign it
         # to _last_plot so the globals scan can find it. This correctly handles
@@ -278,7 +303,87 @@ class CodeExecutor:
                 print(f"Screenshot capture failed: {e}")
                 return None
 
-        return None
+        # If no static output, try to screenshot as a live Panel app
+        return self._screenshot_panel_app(query_dir)
+
+    def _screenshot_panel_app(self, query_dir: Path) -> Path | None:
+        """
+        Launch the generated code as a Panel app via `panel serve`, wait for it
+        to be ready, capture a screenshot with Playwright, then stop the server.
+
+        Args:
+            query_dir: Directory containing generated_code.py
+
+        Returns:
+            Path to screenshot file, or None if capture failed
+        """
+        code_file = query_dir / "generated_code.py"
+        if not code_file.exists():
+            return None
+
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            print("Playwright not installed, skipping Panel screenshot")
+            return None
+
+        import socket
+
+        def _free_port() -> int:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("", 0))
+                return s.getsockname()[1]
+
+        port = _free_port()
+        app_name = code_file.stem  # e.g. "generated_code"
+        url = f"http://localhost:{port}/{app_name}"
+
+        server_proc = subprocess.Popen(
+            [sys.executable, "-m", "panel", "serve", str(code_file), "--port", str(port)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env={**os.environ, "MPLBACKEND": "Agg"},
+        )
+
+        screenshot_path = query_dir / "screenshot.png"
+        try:
+            # Wait up to 30s for the server to accept connections
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                try:
+                    with socket.create_connection(("localhost", port), timeout=1):
+                        break
+                except OSError:
+                    time.sleep(0.5)
+            else:
+                print(f"Panel server did not start in time on port {port}")
+                return None
+
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page(viewport={"width": 1280, "height": 900})
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                # Wait for at least one Bokeh canvas to appear in the DOM
+                try:
+                    page.wait_for_selector(".bk-canvas", timeout=20000)
+                except Exception:
+                    pass
+                # Extra wait for all Bokeh/Panel plots to finish rendering
+                page.wait_for_timeout(25000)
+                page.screenshot(path=screenshot_path, full_page=True)
+                browser.close()
+
+            return screenshot_path
+
+        except Exception as e:
+            print(f"Panel screenshot failed: {e}")
+            return None
+        finally:
+            server_proc.terminate()
+            try:
+                server_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                server_proc.kill()
 
 
 def find_generated_code_files(eval_results_dir: Path) -> list:
