@@ -2,6 +2,9 @@
 name: contributing-to-holoviz
 description: Maintain and contribute to HoloViz packages. Use when reviewing PRs, refactoring code, writing tests, or updating docs in HoloViz repositories (Panel, hvPlot, HoloViews, Param, etc.).
 user-invocable: false
+metadata:
+  version: "0.1.0"
+  author: holoviz
 ---
 
 # Contributing to HoloViz
