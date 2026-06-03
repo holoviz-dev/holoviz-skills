@@ -114,8 +114,18 @@ pmui.Page(
 
 - `pn.layout.HSpacer()` pushes items left/right in a Row
 - `pn.layout.VSpacer()` pushes items top/bottom in a Column
-- Always set `sizing_mode` on components unless intentionally fixed-size
-- Use `margin` to prevent widgets touching container edges (default margins often suffice)
+- Set `sizing_mode="stretch_width"` on widgets — fixed default widths are why widgets "aren't responsive".
+- Default margins are inconsistent (most `10`; `Typography` `(5,10)`; `Chip`/`Avatar`/containers `0`), so loose text/buttons won't align with margin-0 `Grid`/`Paper` blocks. Pick one baseline.
+- Align a whole body: make each section an item of ONE `Grid(container=True, spacing=2)` with children `margin=0` — shared padding aligns them and `spacing` makes the gaps (also stops cards touching).
+
+  ```python
+  pmui.Grid(pmui.Grid(title, size={"xs": 12}),
+            pmui.Grid(card, size={"xs": 12, "sm": 6, "md": 3}), ...,
+            container=True, spacing=2, sizing_mode="stretch_width")
+  ```
+
+- Slider thumb hits the edge → add horizontal margin, e.g. `margin=(10, 20)`.
+- Mixed-height rows: `align="center"`; set gaps with `sx={"gap": "12px"}`, not per-item margins.
 
 ### Layouts
 
