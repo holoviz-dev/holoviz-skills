@@ -105,11 +105,18 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: artifacts-*
           path: artifacts/
           merge-multiple: true
+      - name: Build plugin and skill zips
+        # Stdlib-only script; writes the .plugin and flat .zip files into artifacts/
+        # alongside the PyPI dist so they are attached to the GitHub release.
+        run: python scripts/build_plugin.py
       - name: Extract changelog section
         run: |
           awk -v ver="## Version ${TAG#v}" '

@@ -56,6 +56,7 @@ class MyApp(pn.viewable.Viewer):
 - `header` is only 100px — buttons, indicators, nav links only.
 - Add `margin=10` to outer `main` layouts so they stand out from sidebar.
 - Only use a sidebar when there are multiple control widgets. For a single selector, use inline `RadioButtonGroup` or `Select` in the main area with `pmui.Container` — avoids wasting viewport on a near-empty sidebar.
+- **Page not rendering (no header/sidebar)**: if `__panel__` returns the `Page` only under `if pn.state.served:`, that guard can evaluate `False` when `__panel__` runs, silently giving you the bare fallback layout with no top bar. For an app that is always served, build the `Page` once in `__init__` and return it unconditionally from `__panel__`.
 
 ```python
 # ✅ Lists
@@ -127,6 +128,24 @@ pmui.Page(
 - `Card`: prefer `Paper`. Set `collapsible=False` unless needed.
 - `Tabulator`: use `"materialize"` theme, not `"material"`.
 - `Box` → `Column`, `TextField` → `TextInput` (neither exists).
+- Button groups (`RadioButtonGroup`, `CheckButtonGroup`): `.from_param()` may not write the widget value back to the bound param — clicking changes the buttons but the param never updates, so `@param.depends`/watchers never fire. Create the widget directly and wire it explicitly:
+
+  ```python
+  # ❌ clicks don't propagate — dependent views never update
+  self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
+
+  # ✅ direct widget + explicit watcher
+  self._toggle = pmui.RadioButtonGroup(options=["bars", "lines"], value="bars")
+  self._toggle.param.watch(lambda e: setattr(self, "chart_type", e.new), "value")
+  ```
+- `Rating` (and other icon widgets): stretch to fill their container under the default `sizing_mode="stretch_width"`, rendering enormous. Pin them: `pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed")`.
+- `Dialog`: for secondary detail that would crowd the page (or overflow the narrow `Page` contextbar), use a dialog and toggle `.open`. `close_on_click=True` dismisses on backdrop click:
+
+  ```python
+  self._details = pmui.Dialog(content, title="Details",
+                              width_option="md", open=False, close_on_click=True)
+  # open from a button: self._details.open = True
+  ```
 
 ## Lookup
 

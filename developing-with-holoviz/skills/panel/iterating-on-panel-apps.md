@@ -5,6 +5,7 @@ Agentic workflow for developing and debugging Panel apps. For agents with shell 
 ## Contents
 
 - [Development Loop](#development-loop)
+- [Decouple from the Backend](#decouple-from-the-backend)
 - [Serving with Logs](#serving-with-logs)
 - [Screenshotting with Playwright](#screenshotting-with-playwright)
 - [Common Errors](#common-errors)
@@ -17,6 +18,32 @@ Agentic workflow for developing and debugging Panel apps. For agents with shell 
 4. **Check logs** for Python errors (tracebacks show invalid params and valid options)
 5. **Edit** the code to fix issues
 6. **Repeat** — the `--dev` flag auto-reloads on file changes
+
+## Decouple from the Backend
+
+When the app reads from a slow or unavailable backend (a database, an internal service, an external API), put data access behind a small source interface and inject a **mock source** via an env flag. You can then serve, screenshot, and test the full UI without the live system.
+
+```python
+class BaseSource:
+    def list_items(self): ...
+    def load(self, key): ...
+
+class MockSource(BaseSource):   # synthetic rows + tiny inline assets
+    ...
+
+SOURCE = MockSource() if os.environ.get("APP_MOCK") == "1" else LiveSource()
+```
+
+Then drive a headless smoke test by setting widget/param values and asserting the panes updated — no browser needed:
+
+```python
+app = MyApp()
+app._toggle.value = "lines"                 # simulate a click
+assert app.chart_type == "lines"            # watcher fired
+assert "lines" in app._chart_pane.object    # render propagated
+```
+
+Serve it the same way — `APP_MOCK=1 panel serve app.py --dev --show` — so the real UI renders with fake data.
 
 ## Serving with Logs
 
@@ -69,15 +96,15 @@ with sync_playwright() as p:
     page.goto("http://localhost:5007/app_name")
     page.wait_for_timeout(2000)
     page.screenshot(path="/tmp/step1.png")
-    
+
     # Wait for button to be enabled before clicking
     wait_until(lambda: page.locator("text=Continue").is_enabled(), page)
     page.click("text=Continue")
-    
+
     # Wait for next step to render
     page.wait_for_timeout(1000)
     page.screenshot(path="/tmp/step2.png")
-    
+
     browser.close()
 ```
 
