@@ -1,9 +1,10 @@
-"""Build the Claude Cowork plugin and per-skill zip archives.
+"""Build per-category Claude Cowork plugins and per-skill zip archives.
 
 Outputs are written flat to ``artifacts/`` so they can be uploaded directly
 as GitHub release assets (which cannot be nested in folders):
 
-* ``holoviz-skills.plugin``        — all skills bundled for Claude Desktop / Cowork
+* ``<category>.plugin``            — one Claude Desktop / Cowork plugin per
+  top-level category (e.g. ``developing-with-holoviz.plugin``)
 * ``holoviz-skills.zip``           — all skills together, any tool
 * ``<category>.zip``               — one zip per top-level category
   (e.g. ``developing-with-holoviz.zip``)
@@ -29,6 +30,7 @@ dependencies, matching the convention established by ``build_stubs.py``.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -38,25 +40,40 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
+# Name for the generic all-skills zip (not Claude-specific). Plugins are built
+# per category, so there is no single combined plugin.
 PLUGIN_NAME = "holoviz-skills"
-PLUGIN_OUTPUT = ARTIFACTS_DIR / f"{PLUGIN_NAME}.plugin"
 
 # Sub-skill directory name (one level below a category SKILL.md).
 SUBSKILLS_DIRNAME = "skills"
 
-PLUGIN_JSON: dict = {
-    "name": PLUGIN_NAME,
+# Shared manifest fields; ``name`` and ``description`` are filled in per category.
+PLUGIN_JSON_BASE: dict = {
     "version": "0.1.0",
-    "description": (
-        "A curated collection of skills for the HoloViz ecosystem — "
-        "Panel, hvPlot, HoloViews, Param, and more."
-    ),
     "author": {"name": "HoloViz"},
     "homepage": "https://holoviz-dev.github.io/holoviz-skills/",
     "repository": "https://github.com/holoviz-dev/holoviz-skills",
     "license": "BSD",
     "keywords": ["holoviz", "panel", "hvplot", "holoviews", "param", "dataviz"],
 }
+
+
+def _read_description(skill_md: Path) -> str | None:
+    """Return the YAML ``description:`` value from a SKILL.md, if present."""
+    if not skill_md.exists():
+        return None
+    m = re.search(r"^description:\s*(.+)$", skill_md.read_text(encoding="utf-8"), re.MULTILINE)
+    return m.group(1).strip().strip('"').strip("'") if m else None
+
+
+def _plugin_manifest(category_dir: Path) -> dict:
+    """Build the plugin.json manifest for a single category."""
+    name = category_dir.name
+    description = _read_description(category_dir / "SKILL.md") or (
+        f"HoloViz skills for {name.replace('-', ' ')}."
+    )
+    return {"name": name, "description": description, **PLUGIN_JSON_BASE}
+
 
 # Names to omit from every output archive.
 EXCLUDE_NAMES: set[str] = {".DS_Store", ".gitkeep", "__pycache__"}
@@ -153,7 +170,10 @@ def _git_stage(path: Path) -> None:
 
 
 def build_plugin(stage: bool = False) -> list[Path]:
-    """Package all skill dirs into ``artifacts/holoviz-skills.plugin``.
+    """Build one ``artifacts/<category>.plugin`` per top-level category.
+
+    Each plugin bundles a single category (its routing SKILL.md plus any
+    nested sub-skills) for Claude Desktop / Cowork.
 
     Returns the list of output paths written.
     """
@@ -162,42 +182,45 @@ def build_plugin(stage: bool = False) -> list[Path]:
         print("build_plugin: no skill directories found — nothing to build.", file=sys.stderr)
         return []
 
-    print(f"build_plugin: packaging {len(skill_dirs)} skill(s): {[d.name for d in skill_dirs]}")
+    print(f"build_plugin: packaging {len(skill_dirs)} plugin(s): {[d.name for d in skill_dirs]}")
 
-    with tempfile.TemporaryDirectory() as _tmp:
-        tmp_dir = Path(_tmp)
+    ARTIFACTS_DIR.mkdir(exist_ok=True)
+    outputs: list[Path] = []
 
-        # Manifest.
-        manifest_dir = tmp_dir / ".claude-plugin"
-        manifest_dir.mkdir()
-        (manifest_dir / "plugin.json").write_text(
-            json.dumps(PLUGIN_JSON, indent=2) + "\n", encoding="utf-8"
-        )
+    for cat_dir in skill_dirs:
+        output = ARTIFACTS_DIR / f"{cat_dir.name}.plugin"
+        with tempfile.TemporaryDirectory() as _tmp:
+            tmp_dir = Path(_tmp)
 
-        # Skills.
-        skills_out = tmp_dir / "skills"
-        skills_out.mkdir()
-        for skill_dir in skill_dirs:
-            shutil.copytree(skill_dir, skills_out / skill_dir.name, ignore=_ignore)
-            print(f"build_plugin:   + {skill_dir.name}/")
+            # Manifest for this category.
+            manifest_dir = tmp_dir / ".claude-plugin"
+            manifest_dir.mkdir()
+            (manifest_dir / "plugin.json").write_text(
+                json.dumps(_plugin_manifest(cat_dir), indent=2) + "\n", encoding="utf-8"
+            )
 
-        # Write plugin zip then move into place atomically.
-        ARTIFACTS_DIR.mkdir(exist_ok=True)
-        tmp_zip = Path(_tmp) / f"{PLUGIN_NAME}.plugin"
-        with zipfile.ZipFile(tmp_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            for path in sorted(tmp_dir.rglob("*")):
-                if _should_skip(path) or path == tmp_zip:
-                    continue
-                zf.write(path, path.relative_to(tmp_dir))
-        shutil.copy2(tmp_zip, PLUGIN_OUTPUT)
+            # The category (with its nested sub-skills) under skills/.
+            skills_out = tmp_dir / "skills"
+            skills_out.mkdir()
+            shutil.copytree(cat_dir, skills_out / cat_dir.name, ignore=_ignore)
 
-    size_kb = PLUGIN_OUTPUT.stat().st_size // 1024
-    print(f"build_plugin: wrote {PLUGIN_OUTPUT.relative_to(REPO_ROOT)}  ({size_kb} KB)")
+            # Write plugin zip then move into place atomically.
+            tmp_zip = tmp_dir / f"{cat_dir.name}.plugin"
+            with zipfile.ZipFile(tmp_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for path in sorted(tmp_dir.rglob("*")):
+                    if _should_skip(path) or path == tmp_zip:
+                        continue
+                    zf.write(path, path.relative_to(tmp_dir))
+            shutil.copy2(tmp_zip, output)
 
-    outputs = [PLUGIN_OUTPUT]
+        size_kb = output.stat().st_size // 1024
+        print(f"build_plugin: wrote {output.relative_to(REPO_ROOT)}  ({size_kb} KB)")
+        outputs.append(output)
+        if stage:
+            _git_stage(output)
+
     if stage:
-        _git_stage(PLUGIN_OUTPUT)
-        print(f"build_plugin: staged {PLUGIN_OUTPUT.relative_to(REPO_ROOT)}")
+        print(f"build_plugin: staged {len(outputs)} plugin(s)")
 
     return outputs
 
