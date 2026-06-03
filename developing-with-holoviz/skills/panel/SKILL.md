@@ -18,6 +18,7 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 - [Viewer Class Pattern](#viewer-class-pattern)
 - [Widgets and Extensions](#widgets-and-extensions)
 - [Templates and Layouts](#templates-and-layouts)
+- [UX Heuristics](#ux-heuristics)
 - [Serving Workflow](#serving-workflow)
 - [Performance](#performance)
 - [Plotting Integration](#plotting-integration)
@@ -111,7 +112,7 @@ class BadDashboard(pn.viewable.Viewer):
 ## Widgets and Extensions
 
 - Call `pn.extension(throttled=True)` with any needed JS extensions (`"tabulator"`, `"plotly"`). Never add `"bokeh"`.
-- `.from_param()` auto-creates the right widget type from a parameter — syncs value, bounds, and objects. **Caveat**: some pmui widgets (e.g. `pmui.CheckBoxGroup`) may not sync changes back to the param. If widgets appear disconnected, create them directly and use `pn.bind(fn, widget.param.value, watch=True)` to wire updates.
+- `.from_param()` auto-creates the right widget type from a parameter — syncs value, bounds, and objects. **Caveat**: button-group widgets (`pmui.RadioButtonGroup`, `CheckButtonGroup`, `CheckBoxGroup`) may not sync the widget's value back to the param — clicks change the buttons but watchers never fire. Create them directly and wire `widget.param.watch(handler, "value")` (see [Applying Material UI](applying-material-ui.md)).
 - Prefer `pn.bind(self._update, widget1.param.value, widget2.param.value, watch=True)` over lambda-based `.param.watch()` for wiring multiple widgets to a single update method.
 - Default to `sizing_mode="stretch_width"` via `pn.config.set`.
 
@@ -122,6 +123,14 @@ For new apps, use `pmui.Page` from panel-material-ui (see [Material UI](applying
 - Sidebar order: logo → description → widgets → docs.
 - Use `FlexBox`, `GridSpec`, or `GridBox` for complex layouts instead of nested Rows/Columns.
 - Set `min_width`/`max_width`/`min_height`/`max_height` to prevent layout collapse.
+
+## UX Heuristics
+
+General layout and interaction patterns for data apps and interactive tools.
+
+- **Context before controls**: show the data a control acts on *before* the control itself — users shouldn't scroll back up to act after scrolling down to look. Applies to forms, dashboards, and review screens alike.
+- **Neutral defaults for captured input**: don't preselect an answer the user is meant to provide, and keep submit disabled until they choose — a default silently skews the data. (See the radio `default=None` gotcha; a directly-created widget makes an unset state real.)
+- **Group controls with what they affect**: place action controls adjacent to their content rather than in a distant sidebar.
 
 ## Serving Workflow
 
@@ -134,6 +143,7 @@ For new apps, use `pmui.Page` from panel-material-ui (see [Material UI](applying
 - `pn.extension(defer_load=True, loading_indicator=True)` for heavy components.
 - `pn.io.hold()` to batch multiple updates into a single redraw.
 - Async/await for I/O; threads for CPU-intensive work.
+- Loading spinner: wrap a slow update in the component's `loading` flag — `with self._main.param.update(loading=True): ...` sets it on enter and reverts on exit. **Caveat**: a synchronous callback won't flush the spinner until it returns; make the slow work `async` if you need it visible *during* the load.
 - `@pn.io.profiler` to find bottlenecks.
 - Memory: cap streaming history, `pn.state.clear_caches()`, schedule restarts.
 
@@ -201,6 +211,8 @@ chart_pane = pn.pane.ECharts(
 - `Markdown`: set `disable_anchors=True` to avoid flicker on header hover.
 - `CheckButtonGroup`: use `orientation="vertical"` in sidebars, `button_type="primary"`, `button_style="outline"`.
 - Selector widgets with `default=None`: `RadioBoxGroup`/`RadioButtonGroup` visually highlight the first option even when `value=None`. Clicking that option doesn't fire a change event (UI thinks it's already selected), so users can't select the first option. Also, `@param.depends` and `pn.bind` won't trigger on initial load since the value is `None` and clicking the highlighted option doesn't change it. Always set a real default value for radio widgets, or use `Select` if you need an empty state.
+- `Selector.objects` as a dict: assigning a **dict** to `param.Selector.objects` after construction can leave the widget's display labels unpopulated, so a `Select` renders blank. Drive the widget's `options` (a `{label: value}` dict) directly and keep the param's `objects` a plain list of values; sync `value` both ways with a guarded watcher.
+- Unintended stretch: under the default `sizing_mode="stretch_width"`, fixed-size widgets scale to fill width (`Rating` renders giant stars) and inline `Markdown`/`HTML` labels in a `Row` with `HSpacer`s collapse and wrap one character per line. Give inline widgets and labels a fixed `width` + `sizing_mode="fixed"`.
 - Bokeh tools: use `default_tools=["reset"]` to strip all default Bokeh toolbar tools except reset, then add specific tools via `tools=["hover", "xwheel_zoom"]`. Use `active_tools=["xwheel_zoom"]` to set which tools are active by default. For cumulative/monotonic curves, `hover_mode="vline"` gives a better tooltip experience.
 - Date widgets: convert to `pd.Timestamp` before comparing to DataFrame columns.
 

@@ -3,20 +3,22 @@
  *
  * Skill pages: build_stubs.py injects a hidden <div data-skill-source="...">
  * element.  This script reads that element, resolves the correct zip from
- * assets/, and injects a download button.
+ * the latest GitHub release, and injects a download button.
  *
  * Home page: docs/index.md contains a hidden <div data-all-skills-zip> marker.
  * This script detects it and injects a button that downloads holoviz-skills.zip.
  *
- * Zip path resolution (mirrors build_plugin.py build_zips layout):
- *   category/skills/<sub>/SKILL.md  →  assets/<category>/<sub>.zip
- *   category/SKILL.md               →  assets/<category>/<category>.zip
- *   (home page marker)              →  assets/holoviz-skills.zip
+ * Zip name resolution (mirrors build_plugin.py build_zips flat layout):
+ *   category/skills/<sub>/SKILL.md  →  <category>-<sub>.zip
+ *   category/SKILL.md               →  <category>.zip
+ *   (home page marker)              →  holoviz-skills.zip
+ *
+ * All assets live on the latest GitHub release (built by .github/workflows/build.yml):
+ *   https://github.com/<repo>/releases/latest/download/<name>.zip
  */
 document.addEventListener("DOMContentLoaded", function () {
   var repo = "holoviz-dev/holoviz-skills";
-  var branch = "main";
-  var base = "https://raw.githubusercontent.com/" + repo + "/" + branch + "/";
+  var base = "https://github.com/" + repo + "/releases/latest/download/";
 
   var zipUrl, zipName;
 
@@ -26,26 +28,26 @@ document.addEventListener("DOMContentLoaded", function () {
   if (allMeta) {
     // Home page — download the full collection.
     zipName = "holoviz-skills.zip";
-    zipUrl = base + "assets/" + zipName;
+    zipUrl = base + zipName;
   } else if (skillMeta) {
     // Skill page — resolve the per-skill or per-category zip.
     // Reference pages (e.g. iterating-on-panel-apps.md) are skipped —
     // they live inside a sub-skill but don't have their own zip.
     // sourcePath examples:
     //   "developing-with-holoviz/skills/hvplot/SKILL.md"
-    //       → assets/developing-with-holoviz/hvplot.zip
+    //       → developing-with-holoviz-hvplot.zip
     //   "developing-with-holoviz/SKILL.md"
-    //       → assets/developing-with-holoviz/developing-with-holoviz.zip
+    //       → developing-with-holoviz.zip
     var sourcePath = skillMeta.getAttribute("data-skill-source");
     if (!sourcePath.endsWith("SKILL.md")) return; // reference page — no zip
     var parts = sourcePath.split("/");
     var category = parts[0];
     if (parts.length >= 4 && parts[1] === "skills") {
-      zipName = parts[2] + ".zip";
+      zipName = category + "-" + parts[2] + ".zip";
     } else {
       zipName = category + ".zip";
     }
-    zipUrl = base + "assets/" + category + "/" + zipName;
+    zipUrl = base + zipName;
   } else {
     return; // neither marker present — do nothing
   }

@@ -1,11 +1,15 @@
 """Build the Claude Cowork plugin and per-skill zip archives.
 
-Outputs written to ``assets/``:
+Outputs are written flat to ``artifacts/`` so they can be uploaded directly
+as GitHub release assets (which cannot be nested in folders):
 
-* ``holoviz-skills.plugin``  — all skills bundled for Claude Desktop / Cowork
-* ``<skill>.zip``            — one zip per sub-skill (e.g. ``hvplot.zip``)
-* ``<category>.zip``         — one zip per top-level category
+* ``holoviz-skills.plugin``        — all skills bundled for Claude Desktop / Cowork
+* ``holoviz-skills.zip``           — all skills together, any tool
+* ``<category>.zip``               — one zip per top-level category
   (e.g. ``developing-with-holoviz.zip``)
+* ``<category>-<sub-skill>.zip``   — one zip per sub-skill, prefixed with its
+  category to keep names unique when flattened
+  (e.g. ``developing-with-holoviz-hvplot.zip``)
 
 Run directly::
 
@@ -33,9 +37,9 @@ import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ASSETS_DIR = REPO_ROOT / "assets"
+ARTIFACTS_DIR = REPO_ROOT / "artifacts"
 PLUGIN_NAME = "holoviz-skills"
-PLUGIN_OUTPUT = ASSETS_DIR / f"{PLUGIN_NAME}.plugin"
+PLUGIN_OUTPUT = ARTIFACTS_DIR / f"{PLUGIN_NAME}.plugin"
 
 # Sub-skill directory name (one level below a category SKILL.md).
 SUBSKILLS_DIRNAME = "skills"
@@ -149,7 +153,7 @@ def _git_stage(path: Path) -> None:
 
 
 def build_plugin(stage: bool = False) -> list[Path]:
-    """Package all skill dirs into ``assets/holoviz-skills.plugin``.
+    """Package all skill dirs into ``artifacts/holoviz-skills.plugin``.
 
     Returns the list of output paths written.
     """
@@ -178,7 +182,7 @@ def build_plugin(stage: bool = False) -> list[Path]:
             print(f"build_plugin:   + {skill_dir.name}/")
 
         # Write plugin zip then move into place atomically.
-        ASSETS_DIR.mkdir(exist_ok=True)
+        ARTIFACTS_DIR.mkdir(exist_ok=True)
         tmp_zip = Path(_tmp) / f"{PLUGIN_NAME}.plugin"
         with zipfile.ZipFile(tmp_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for path in sorted(tmp_dir.rglob("*")):
@@ -204,15 +208,19 @@ def build_plugin(stage: bool = False) -> list[Path]:
 
 
 def build_zips(stage: bool = False) -> list[Path]:
-    """Build per-skill and per-category zip archives into ``assets/``.
+    """Build per-skill and per-category zip archives into ``artifacts/``.
 
-    Layout mirrors the repo structure::
+    All archives are written flat so they can be uploaded directly as GitHub
+    release assets (which cannot be nested in folders). Sub-skill zips are
+    prefixed with their category to keep filenames unique::
 
-        assets/
+        artifacts/
           holoviz-skills.zip                   ← all skills, any tool
-          <category>/
-            <category>.zip                     ← whole category
-            <sub-skill>.zip                    ← individual sub-skill
+          <category>.zip                       ← whole category
+          <category>-<sub-skill>.zip           ← individual sub-skill
+
+    The folder *inside* each archive is still named after the skill itself
+    (e.g. ``hvplot/``), so only the output filename carries the prefix.
 
     Returns the list of output paths written.
     """
@@ -221,24 +229,22 @@ def build_zips(stage: bool = False) -> list[Path]:
         print("build_zips: no skill directories found.", file=sys.stderr)
         return []
 
-    ASSETS_DIR.mkdir(exist_ok=True)
+    ARTIFACTS_DIR.mkdir(exist_ok=True)
     outputs: list[Path] = []
 
     for cat_dir in skill_dirs:
         sub_dirs = find_sub_skill_dirs(cat_dir)
-        cat_assets = ASSETS_DIR / cat_dir.name
-        cat_assets.mkdir(exist_ok=True)
 
         # Category-level zip.
-        cat_zip = cat_assets / f"{cat_dir.name}.zip"
+        cat_zip = ARTIFACTS_DIR / f"{cat_dir.name}.zip"
         _write_zip(cat_dir, cat_dir.name, cat_zip)
         size_kb = cat_zip.stat().st_size // 1024
         print(f"build_zips:   {cat_zip.relative_to(REPO_ROOT)}  ({size_kb} KB)")
         outputs.append(cat_zip)
 
-        # Per-sub-skill zips.
+        # Per-sub-skill zips, prefixed with the category name.
         for sub_dir in sub_dirs:
-            sub_zip = cat_assets / f"{sub_dir.name}.zip"
+            sub_zip = ARTIFACTS_DIR / f"{cat_dir.name}-{sub_dir.name}.zip"
             _write_zip(sub_dir, sub_dir.name, sub_zip)
             size_kb = sub_zip.stat().st_size // 1024
             print(f"build_zips:     {sub_zip.relative_to(REPO_ROOT)}  ({size_kb} KB)")
@@ -246,7 +252,7 @@ def build_zips(stage: bool = False) -> list[Path]:
 
     # All-skills zip: every category together, no plugin manifest.
     # This is the generic download for any AI tool (not Claude-specific).
-    all_zip = ASSETS_DIR / f"{PLUGIN_NAME}.zip"
+    all_zip = ARTIFACTS_DIR / f"{PLUGIN_NAME}.zip"
     _write_zip_multi(skill_dirs, all_zip)
 
     size_kb = all_zip.stat().st_size // 1024
@@ -270,7 +276,7 @@ def main(stage: bool = False) -> int:
     plugin_out = build_plugin(stage=stage)
     zip_out = build_zips(stage=stage)
     total = len(plugin_out) + len(zip_out)
-    print(f"\nbuild_plugin: done — {total} file(s) written to assets/")
+    print(f"\nbuild_plugin: done — {total} file(s) written to artifacts/")
     return 0 if total > 0 else 1
 
 
