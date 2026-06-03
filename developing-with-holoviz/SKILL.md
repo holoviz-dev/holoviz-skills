@@ -1,7 +1,6 @@
 ---
 name: developing-with-holoviz
 description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param).
-user-invocable: false
 metadata:
   version: "0.1.1"
   author: holoviz
