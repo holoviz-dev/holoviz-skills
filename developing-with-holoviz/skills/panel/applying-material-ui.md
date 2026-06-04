@@ -4,11 +4,35 @@ Layout and structure for panel-material-ui apps. For theming (palette, typograph
 
 ## Contents
 
+- [Lookup](#lookup) — where to fetch pmui docs as markdown
 - [Key Differences from Panel](#key-differences-from-panel)
 - [Page](#page)
 - [Layouts](#layouts)
 - [Component Gotchas](#component-gotchas)
-- [Lookup](#lookup)
+
+## Lookup
+
+pmui publishes clean markdown for every doc page — prefer it over the rendered HTML (same content, no nav chrome). Convert ANY pmui doc URL, including links found *inside* a page, to markdown: prefix the path with `/markdown/` and change `.html`/`.ipynb` → `.md`. If a converted URL comes back empty, the page was renamed — fall back to the index below.
+
+### Index
+
+Full doc map: `https://panel-material-ui.holoviz.org/llms.txt`
+
+### Component Reference
+
+`https://panel-material-ui.holoviz.org/markdown/reference/{section}/{Component}.md`
+
+Sections: `widgets`, `menus`, `layouts`, `panes`, `wrappers`, `page`, `chat`, `indicators`, `global`
+
+Unsure of the exact component name? Fetch the section index first — `…/markdown/reference/{section}/index.md` lists every component as a `.md` link.
+
+### How-To Guides
+
+Theming, styling, and customization guides: `https://panel-material-ui.holoviz.org/markdown/how_to/{guide}.md` (index: `…/markdown/how_to/index.md`).
+
+### Search
+
+Web-search the topic, then rewrite the resulting `.html` hit to its `/markdown/…​.md` URL.
 
 ## Key Differences from Panel
 
@@ -146,15 +170,3 @@ pmui.Page(
                               width_option="md", open=False, close_on_click=True)
   # open from a button: self._details.open = True
   ```
-
-## Lookup
-
-### Component Reference
-
-Look up component docs at `https://panel-material-ui.holoviz.org/reference/{section}/{Component}.html`
-
-Sections: `widgets`, `menus`, `layouts`, `panes`, `page`, `chat`, `indicators`, `global`
-
-### Search
-
-Search the web at `https://panel-material-ui.holoviz.org/search.html?q=<topic>` for pmui docs.

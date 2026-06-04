@@ -263,3 +263,16 @@ pmui.Page(
     main=[pmui.Typography("Welcome", variant="h4")],
 ).servable()
 ```
+
+## Deep Dives
+
+Full theming references as clean markdown — fetch directly:
+
+- Palette tokens, `contrastThreshold`, `tonalOffset`: `https://panel-material-ui.holoviz.org/markdown/how_to/customize_palette.md`
+- Typography: `…/markdown/how_to/customize_typography.md`
+- Per-component theming (`components` key): `…/markdown/how_to/theme_components.md`
+- Dark mode: `…/markdown/how_to/control_dark_mode.md`
+- Theme-aware plots (Bokeh/hvPlot/HoloViews/Plotly): `…/markdown/how_to/theme_plotting_libraries.md`
+- Material icons: `…/markdown/how_to/using_mui_icons.md`
+
+Full guide index: `https://panel-material-ui.holoviz.org/markdown/how_to/index.md`.
