@@ -12,7 +12,7 @@ Layout and structure for panel-material-ui apps. For theming (palette, typograph
 
 ## Lookup
 
-pmui publishes clean markdown for every doc page — prefer it over the rendered HTML (same content, no nav chrome). Convert ANY pmui doc URL, including links found *inside* a page, to markdown: prefix the path with `/markdown/` and change `.html`/`.ipynb` → `.md`. If a converted URL comes back empty, the page was renamed — fall back to the index below.
+Fetch pmui docs as markdown, not HTML: prefix any pmui doc path with `/markdown/` and change `.html`/`.ipynb` → `.md` (also for links found inside pages). If the result is empty, the page moved — use the index below.
 
 ### Index
 
