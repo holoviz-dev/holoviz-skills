@@ -12,27 +12,16 @@ Layout and structure for panel-material-ui apps. For theming (palette, typograph
 
 ## Lookup
 
-Fetch pmui docs as markdown, not HTML: prefix any pmui doc path with `/markdown/` and change `.html`/`.ipynb` → `.md` (also for links found inside pages). If the result is empty, the page moved — use the index below.
+Fetch pmui docs as markdown, not HTML: prefix any pmui doc path with `/markdown/` and change `.html`/`.ipynb` → `.md` (also for links found inside pages). If the result is empty, the page moved — use the index.
 
-### Index
+Base: `https://panel-material-ui.holoviz.org/markdown/` — append the endpoints below.
 
-Full doc map: `https://panel-material-ui.holoviz.org/llms.txt`
-
-### Component Reference
-
-`https://panel-material-ui.holoviz.org/markdown/reference/{section}/{Component}.md`
-
-Sections: `widgets`, `menus`, `layouts`, `panes`, `wrappers`, `page`, `chat`, `indicators`, `global`
-
-Unsure of the exact component name? Fetch the section index first — `…/markdown/reference/{section}/index.md` lists every component as a `.md` link.
-
-### How-To Guides
-
-Theming, styling, and customization guides: `https://panel-material-ui.holoviz.org/markdown/how_to/{guide}.md` (index: `…/markdown/how_to/index.md`).
-
-### Search
-
-Web-search the topic, then rewrite the resulting `.html` hit to its `/markdown/…​.md` URL.
+- **Doc map / index**: `https://panel-material-ui.holoviz.org/llms.txt` (site root, *not* under `markdown/`)
+- **Component**: `reference/{section}/{Component}.md`
+  Sections: `widgets`, `menus`, `layouts`, `panes`, `wrappers`, `page`, `chat`, `indicators`, `global`
+- **Section index** (lists every component): `reference/{section}/index.md`
+- **How-to guides**: `how_to/{guide}.md` (index: `how_to/index.md`)
+- **Search**: web-search the topic, then convert the `.html` hit to its `/markdown/…​.md` URL.
 
 ## Key Differences from Panel
 

@@ -12,6 +12,7 @@ Customize panel-material-ui apps with consistent theming, colors, typography, an
 - [Icons](#icons)
 - [Brand Assets](#brand-assets)
 - [Chart Theming](#chart-theming)
+- [Deep Dives](#deep-dives) — full theming guides as markdown
 
 ## Styling Layers
 
@@ -266,13 +267,12 @@ pmui.Page(
 
 ## Deep Dives
 
-Full theming references as clean markdown — fetch directly:
+Full theming guides as markdown. Base: `https://panel-material-ui.holoviz.org/markdown/how_to/` — append:
 
-- Palette tokens, `contrastThreshold`, `tonalOffset`: `https://panel-material-ui.holoviz.org/markdown/how_to/customize_palette.md`
-- Typography: `…/markdown/how_to/customize_typography.md`
-- Per-component theming (`components` key): `…/markdown/how_to/theme_components.md`
-- Dark mode: `…/markdown/how_to/control_dark_mode.md`
-- Theme-aware plots (Bokeh/hvPlot/HoloViews/Plotly): `…/markdown/how_to/theme_plotting_libraries.md`
-- Material icons: `…/markdown/how_to/using_mui_icons.md`
-
-Full guide index: `https://panel-material-ui.holoviz.org/markdown/how_to/index.md`.
+- `customize_palette.md` — palette tokens, `contrastThreshold`, `tonalOffset`
+- `customize_typography.md` — typography
+- `theme_components.md` — per-component theming (`components` key)
+- `control_dark_mode.md` — dark mode
+- `theme_plotting_libraries.md` — theme-aware plots (Bokeh/hvPlot/HoloViews/Plotly)
+- `using_mui_icons.md` — Material icons
+- `index.md` — full guide index
