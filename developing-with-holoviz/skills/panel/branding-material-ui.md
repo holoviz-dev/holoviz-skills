@@ -12,6 +12,7 @@ Customize panel-material-ui apps with consistent theming, colors, typography, an
 - [Icons](#icons)
 - [Brand Assets](#brand-assets)
 - [Chart Theming](#chart-theming)
+- [Deep Dives](#deep-dives) — full theming guides as markdown
 
 ## Styling Layers
 
@@ -263,3 +264,15 @@ pmui.Page(
     main=[pmui.Typography("Welcome", variant="h4")],
 ).servable()
 ```
+
+## Deep Dives
+
+Full theming guides as markdown. Base: `https://panel-material-ui.holoviz.org/markdown/how_to/` — append:
+
+- `customize_palette.md` — palette tokens, `contrastThreshold`, `tonalOffset`
+- `customize_typography.md` — typography
+- `theme_components.md` — per-component theming (`components` key)
+- `control_dark_mode.md` — dark mode
+- `theme_plotting_libraries.md` — theme-aware plots (Bokeh/hvPlot/HoloViews/Plotly)
+- `using_mui_icons.md` — Material icons
+- `index.md` — full guide index
