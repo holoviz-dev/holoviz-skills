@@ -2,7 +2,7 @@
 name: developing-with-holoviz
 description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param).
 metadata:
-  version: "0.1.1"
+  version: "0.1.2"
   author: holoviz
 ---
 
@@ -26,12 +26,14 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 |---|---|
 | Typed, validated, reactive parameters | `developing-with-holoviz/skills/param/SKILL.md` |
 | Quick exploratory plots from DataFrames / xarray | `developing-with-holoviz/skills/hvplot/SKILL.md` |
-| Dashboard, data app, or interactive tool | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/applying-material-ui.md` |
+| Dashboard, data app, or interactive tool | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` |
 | HoloViews elements, opts, tooltips, formatters, tools | `developing-with-holoviz/skills/holoviews/SKILL.md` |
-| HoloViews/hvPlot plots embedded in Panel (DynamicMap, responsive sizing) | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/interacting-with-holoviews.md` + `developing-with-holoviz/skills/holoviews/SKILL.md` |
+| Embedding plots in Panel (HoloViews/hvPlot, Matplotlib, Plotly, ECharts; DynamicMap, responsive sizing) | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/plotting-in-panel.md` + `developing-with-holoviz/skills/holoviews/SKILL.md` |
 | Custom JS/React/AnyWidget components | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/building-custom-components.md` |
 | Playwright UI testing for Panel components | `developing-with-holoviz/skills/panel/building-custom-components.md` + `developing-with-holoviz/skills/panel/using-pytest-playwright.md` |
 | Review or audit a Panel app | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/reviewing-panel-apps.md` |
+| Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/designing-panel-architecture.md` |
+| Migrate an existing plain-Panel app to Material UI / pmui | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/migrating-to-material-ui.md` |
 
 ## Skill Map
 
@@ -47,11 +49,11 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 | Reference | Covers |
 |---|---|
 | [iterating-on-panel-apps](skills/panel/iterating-on-panel-apps.md) | Serve with logging, screenshot with Playwright, debug loop |
-| [applying-material-ui](skills/panel/applying-material-ui.md) | `pmui.Page`, `Container`/`Grid` layouts, centering, component gotchas |
-| [branding-material-ui](skills/panel/branding-material-ui.md) | `theme_config` palettes, typography, icons, brand assets, chart theming |
-| [interacting-with-holoviews](skills/panel/interacting-with-holoviews.md) | DynamicMap trigger pattern in Panel, `pn.pane.HoloViews` config, responsive sizing |
+| [using-material-ui](skills/panel/using-material-ui.md) | Building pmui apps (`pmui.Page`, `Container`/`Grid` layouts, centering, gotchas) and theming (`theme_config` palette, typography, icons, brand assets, chart theming) |
+| [migrating-to-material-ui](skills/panel/migrating-to-material-ui.md) | Converting a plain-Panel app to pmui: template→Page, widget/pane swaps, new components, what to leave alone |
+| [plotting-in-panel](skills/panel/plotting-in-panel.md) | Embedding plots in Panel: HoloViews/hvPlot (DynamicMap, responsive sizing), Matplotlib, Plotly, ECharts, Bokeh tools |
 | [using-tabulator](skills/panel/using-tabulator.md) | `add_filter` with widgets, checkbox selection, row content, function-based filtering |
 | [building-custom-components](skills/panel/building-custom-components.md) | JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent, CDN gotchas |
 | [using-pytest-playwright](skills/panel/using-pytest-playwright.md) | Playwright UI tests, `serve_component`, `wait_until`, state sync tests |
-| [mapping-widgets](skills/panel/mapping-widgets.md) | Param type → Panel/pmui widget table |
 | [reviewing-panel-apps](skills/panel/reviewing-panel-apps.md) | Review checklist: flickering, missing hold, watcher gaps, bind vs watch, mutation bugs |
+| [designing-panel-architecture](skills/panel/designing-panel-architecture.md) | Composing larger apps (State/DataStore/View/App, `ClassSelector`, cross-object `@param.depends`, `from_data`, `pn.rx`) and runtime/scale (per-session model, `pn.state` scheduling, generator streaming, caching tiers, `nthreads`, profiling) |

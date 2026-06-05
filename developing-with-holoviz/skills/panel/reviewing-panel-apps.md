@@ -13,6 +13,8 @@ Checklist for reviewing Panel applications. Focus on anti-patterns that cause fl
 - [Spacer vs Margin](#spacer-vs-margin)
 - [Mutating Instead of Reassigning](#mutating-instead-of-reassigning)
 - [Watch vs Depends Misuse](#watch-vs-depends-misuse)
+- [Component Gotchas](#component-gotchas)
+- [UX Heuristics](#ux-heuristics)
 
 ## Flickering from Recreated Components
 
@@ -223,3 +225,26 @@ def _run_query(self):
 def results_view(self):
     return f"**{len(self.result)} rows**"
 ```
+
+## Component Gotchas
+
+Per-component traps that produce silent bugs rather than errors:
+
+- **Radio with `default=None`**: `RadioBoxGroup`/`RadioButtonGroup` visually highlight the first option even when `value=None`. Clicking that option fires no change event (the UI thinks it's already selected), so users can't select the first option and `@param.depends`/`pn.bind` never trigger on load. Always set a real default, or use `Select` if you need an empty state.
+- **`Selector.objects` as a dict**: assigning a **dict** to `param.Selector.objects` after construction can leave the widget's display labels unpopulated, so a `Select` renders blank. Drive the widget's `options` (a `{label: value}` dict) directly and keep the param's `objects` a plain list of values; sync `value` both ways with a guarded watcher.
+- **Date widgets**: convert to `pd.Timestamp` before comparing to DataFrame columns.
+
+  ```python
+  start_date, end_date = self.date_range
+  filtered = df[(df["date"] >= pd.Timestamp(start_date)) & (df["date"] <= pd.Timestamp(end_date))]
+  ```
+
+- **`Markdown` header flicker**: set `disable_anchors=True` to avoid flicker on header hover.
+
+## UX Heuristics
+
+Layout and interaction patterns for data apps and interactive tools:
+
+- **Context before controls**: show the data a control acts on *before* the control itself — users shouldn't scroll back up to act after scrolling down to look. Applies to forms, dashboards, and review screens alike.
+- **Neutral defaults for captured input**: don't preselect an answer the user is meant to provide, and keep submit disabled until they choose — a default silently skews the data. (See the radio `default=None` gotcha above; a directly-created widget makes an unset state real.)
+- **Group controls with what they affect**: place action controls adjacent to their content rather than in a distant sidebar.
