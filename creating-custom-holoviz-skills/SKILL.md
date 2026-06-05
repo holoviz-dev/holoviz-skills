@@ -1,17 +1,19 @@
 ---
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
+metadata:
+  version: "0.1.0"
 ---
 
 # Creating Custom Skills
 
 Guide for adding a new skill to the holoviz-skills repository. This covers
 what's specific to *this repo* — for general skill-authoring advice (drafting,
-testing, iterating, description optimization), see the `skill-creator` skill.
+testing, iterating, description optimization), see the [`skill-creator` skill](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md).
 
 ## Contents
 
-- [When a new skill makes sense](#when-a-new-skill-makes-sense)
+- [Deciding to add a skill](#deciding-to-add-a-skill)
 - [Repo layout](#repo-layout)
 - [Adding a sub-skill](#adding-a-sub-skill)
 - [SKILL.md structure](#skillmd-structure)
@@ -21,7 +23,7 @@ testing, iterating, description optimization), see the `skill-creator` skill.
 - [Evaluation](#evaluation)
 - [Resources](#resources)
 
-## When a new skill makes sense
+## Deciding to add a skill
 
 Add a skill when agents consistently get something wrong about a HoloViz
 library or workflow and the fix can be expressed as concise, opinionated
@@ -63,9 +65,13 @@ to* a HoloViz package (testing, docs, releases), it goes under
 
 1. Create a directory: `<category>/skills/<your-skill-name>/SKILL.md`
 2. Write the SKILL.md (see structure below).
-3. Optionally add `references/*.md` files for detailed lookup material.
+3. Optionally add sibling `*.md` reference files for detailed lookup material.
 4. Add an entry to the parent routing skill's Loading Table and Skill Map so
-   agents know when to load your skill.
+   agents know when to load your skill. If you added reference files, register
+   them too — a routing skill may keep a dedicated references sub-table (e.g.
+   the "Panel References" table in `developing-with-holoviz/SKILL.md`).
+   An unlisted reference file still ships in the docs, but agents won't know to
+   load it.
 5. Run `python scripts/build_stubs.py` — this regenerates all docs pages and
    updates `zensical.toml` automatically. **Do not edit `zensical.toml` by
    hand** — the script manages the nav, including nested sections for skills
@@ -122,11 +128,11 @@ these on demand (L3) — they consume zero context tokens until actually read.
 panel/
   SKILL.md                        # Core instructions (always loaded when skill triggers)
   mapping-widgets.md              # Reference — Param type → Panel widget table
-  custom-components.md            # Reference — JSComponent, ReactComponent, CDN guide
-  material-ui.md                  # Reference — pmui.Page, layouts, component gotchas
+  building-custom-components.md   # Reference — JSComponent, ReactComponent, CDN guide
+  applying-material-ui.md         # Reference — pmui.Page, layouts, component gotchas
   examples/
-    basic_app.py                  # Runnable example — agent can read or execute
-    streaming_app.py
+    dashboard.py                  # Runnable example — agent can read or execute
+    wizard.py
   scripts/
     validate_app.py               # Agent runs this; only stdout enters context
 ```
@@ -154,6 +160,35 @@ why), while resource files hold the *reference material* (exact APIs, working
 examples, executable tools). This keeps the core instructions lean while
 giving the agent access to deep detail when it needs it.
 
+### Splitting references
+
+There's a real tension to balance, not a fixed rule:
+
+- **Each reference is a separate read** — a tool call the agent must make, which
+  adds latency. Lots of tiny files means lots of round-trips.
+- **But an over-long file may not be read in full** — an agent often reads only
+  the first ~100 lines and then decides. That's *fine* as long as the file opens
+  with a complete Contents TOC, so the agent can see everything the file covers
+  and jump to the relevant section even without reading linearly.
+
+So aim for a moderate number of **focused-but-substantial** references, each
+opening with a full TOC — not a swarm of stubs, and not one monolith.
+
+Decide splits by **user story / trigger**, because the routing skill matches a
+user's need to a file. Concretely:
+
+- **Merge two references when they answer the same "I want to…".** Splitting
+  layout from theming, or a build-loop from its review checklist, just creates
+  two reads for one intent. (e.g. `applying-` + `branding-material-ui` →
+  `using-material-ui`; `structuring-` + `scaling-panel-apps` →
+  `designing-panel-architecture`.)
+- **Keep them separate when the trigger differs.** "Build a new app" vs "migrate
+  an existing one" vs "test it" are distinct moments — merging them forces
+  irrelevant material into context and muddies routing.
+
+When you merge, give the combined file a grouped TOC (e.g. "Building:" then
+"Theming:") so the broadened scope stays scannable.
+
 ### Naming references
 
 Use lowercase-with-hyphens for filenames (`custom-components.md`, not
@@ -177,7 +212,7 @@ Using Panel Material UI effectively
 Panel + HoloViews Integration
 ```
 
-### Docs nesting
+### Nesting in docs
 
 When `build_stubs.py` finds sibling `.md` files alongside a SKILL.md, it
 automatically creates a nested docs section: the SKILL.md becomes
@@ -196,6 +231,11 @@ routing skill's two tables:
   agent-facing paths in backtick code spans).
 - **Skill Map** — maps sub-skill names to what they cover (these are
   doc-facing Markdown links).
+
+A routing skill may also keep a **references sub-table** (e.g. "Panel
+References") listing the sibling `.md` files of a heavily-referenced sub-skill.
+When you add a reference file to such a skill, add a row there too — otherwise
+agents have no signal to load it.
 
 ## Docs pipeline
 

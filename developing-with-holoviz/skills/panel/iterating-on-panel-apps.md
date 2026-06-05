@@ -82,11 +82,17 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     browser = p.chromium.launch()
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto("http://localhost:5007/app_name")
-    page.wait_for_timeout(3000)  # Wait for render
+    page.goto("http://localhost:5007/app_name", wait_until="networkidle")
+    # defer_load / loading_indicator (and any pane with loading=True) overlay a
+    # spinner on a grey box until content renders — a fixed sleep races it and
+    # captures the spinner. Wait for every Panel loading overlay to clear.
+    page.wait_for_function("() => !document.querySelector('.pn-loading')", timeout=30000)
+    page.wait_for_timeout(300)  # brief settle for final paint
     page.screenshot(path="/tmp/screenshot.png")
     browser.close()
 ```
+
+Don't rely on a fixed `wait_for_timeout` for render — it's the usual cause of a screenshot showing a half-loaded app (see [Common Errors](#common-errors)).
 
 For multi-step flows, use `wait_until` from `panel.tests.util` to wait for state changes instead of fixed timeouts:
 
@@ -97,16 +103,16 @@ from panel.tests.util import wait_until
 with sync_playwright() as p:
     browser = p.chromium.launch()
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto("http://localhost:5007/app_name")
-    page.wait_for_timeout(2000)
+    page.goto("http://localhost:5007/app_name", wait_until="networkidle")
+    page.wait_for_function("() => !document.querySelector('.pn-loading')", timeout=30000)
     page.screenshot(path="/tmp/step1.png")
 
     # Wait for button to be enabled before clicking
     wait_until(lambda: page.locator("text=Continue").is_enabled(), page)
     page.click("text=Continue")
 
-    # Wait for next step to render
-    page.wait_for_timeout(1000)
+    # Wait for the next step to finish rendering (spinner cleared) before capture
+    page.wait_for_function("() => !document.querySelector('.pn-loading')", timeout=30000)
     page.screenshot(path="/tmp/step2.png")
 
     browser.close()
@@ -144,3 +150,14 @@ AttributeError: 'MyViewer' object has no attribute '_some_widget'
 ### Selector with default=None
 
 Radio widgets (`RadioBoxGroup`, `RadioButtonGroup`) visually highlight the first option even when `value=None`. Clicking that option doesn't fire a change event — users can't select the first option and `@param.depends` callbacks never trigger. Always set a real default value for radio widgets.
+
+### Screenshot shows a loading spinner
+
+A grey box with a spinner (often over a chart) means the capture beat the render — you waited on a fixed `wait_for_timeout` instead of the app's actual loading state. `defer_load=True`, `loading_indicator=True`, and any pane with `loading=True` add the `pn-loading` class to an overlay while content renders, then remove it once done. Wait for that to clear rather than guessing a duration:
+
+```python
+page.goto(url, wait_until="networkidle")
+page.wait_for_function("() => !document.querySelector('.pn-loading')", timeout=30000)
+```
+
+For plots that draw to a `<canvas>` (Bokeh/HoloViews), `page.wait_for_selector("canvas")` is another good signal. Raise the timeout when the data source is slow.
