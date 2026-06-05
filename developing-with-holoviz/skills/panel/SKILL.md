@@ -47,8 +47,8 @@ Read these for specialized topics. Each is a standalone document you can load wi
 - **Shared UI state**: Add a param (`disabled`, `loading`, `visible`) to a base class and bind widgets to it (e.g., `disabled=self.param.disabled`). Set once to update all widgets — useful for form submit, loading states, or toggling visibility.
 - **Organize `__init__`**: Separate component instantiation from wiring. First create all widgets/panes, then group `on_click`, `pn.bind`, and `.watch()` calls together. Makes it clear what exists vs. how it's connected.
 - **Method naming**: `_on_*` for event handlers (`_on_click`, `_on_submit`), `_update_*` for watchers that sync state (`_update_view`, `_update_button_state`), `_sync_*` for bidirectional syncs.
-- **Wizard/pipeline pattern**: For multi-step flows, see `examples/wizard.py` — Breadcrumbs, Placeholder step swapping, shared `disabled` state, `pn.io.hold()` batching, and `pmui.Page`.
-- **KPI dashboard pattern**: For metric dashboards, see `examples/dashboard.py` — `pn.indicators.Trend` KPI cards, `pmui.Grid` responsive layout, DynamicMap with trigger pattern, Tabulator `add_filter` + checkbox selection cross-filtering, `pn.bind(watch=True)` widget wiring, `param.DataFrame` as single source of truth, and `pmui.Page`.
+- **Wizard/pipeline pattern**: For multi-step flows, see `examples/wizard.py` — `pmui.StepperMenu` driving navigation and per-step state (completed/error/active, `non_linear`), `pn.pane.Placeholder` step swapping, shared `disabled` state, `pn.io.hold()` batching, inline `pmui.Alert` validation, `pmui.Tooltip`, and `pmui.Page`.
+- **KPI dashboard pattern**: For metric dashboards, see `examples/dashboard.py` — `pn.indicators.Trend` KPI cards, `pmui.Badge` selection counter, `pmui.SpeedDial` quick actions, `pmui.Alert` empty-state, `pmui.Tooltip` hints, `pmui.Grid` responsive layout, DynamicMap with trigger pattern, Tabulator `add_filter` + checkbox selection cross-filtering, `pn.bind(watch=True)` wiring, `param.DataFrame` as single source of truth, and `pmui.Page`.
 
 ```python
 import hvplot.pandas  # noqa
