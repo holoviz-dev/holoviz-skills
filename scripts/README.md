@@ -1,6 +1,6 @@
 # HoloViz Skills Evaluation
 
-Automated system to measure whether SKILL.md files improve Copilot's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces a comparison report.
+Automated system to measure whether SKILL.md files improve Copilot's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces a comparison report. Supports running multiple models in a single pass to compare their outputs side by side.
 
 ## Requirements
 
@@ -21,6 +21,12 @@ pixi run evals
 
 # Run without screenshots (faster, no Playwright needed)
 pixi run eval-no-screenshots
+
+# Run across multiple models
+pixi run eval-multi
+
+# Open the comparison dashboard after running evals
+pixi run eval-dashboard
 ```
 
 ## GitHub Actions Eval Command
@@ -54,6 +60,9 @@ python scripts/eval.py [options]
 
 Options:
   --queries ID [ID ...]     Run specific query IDs only (default: all)
+  --models MODEL [MODEL ...]
+                            Model(s) to evaluate (default: Copilot's default).
+                            E.g. --models claude-sonnet-4.6 gpt-5.4-mini
   --skills both|with|without
                             Which condition(s) to evaluate (default: both)
   --skip-generation         Skip Copilot queries; use existing generated_code.py files
@@ -82,7 +91,49 @@ python scripts/eval.py --skip-execution --skip-aggregation
 
 # Full pipeline, longer timeout, no screenshots
 python scripts/eval.py --timeout 60 --skip-screenshots
+
+# Run with specific models
+python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-mini
+
+# Compare two models, with-skills only
+python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-mini --skills with
 ```
+
+### Available models
+
+Run `copilot --allow-all -p "list available model IDs"` to see current models. At time of writing:
+
+- `claude-sonnet-4.6` (default)
+- `claude-sonnet-4.5`
+- `claude-haiku-4.5`
+- `gpt-5.4`
+- `gpt-5.4-mini`
+- `gpt-5.3-codex`
+- `gpt-5-mini`
+- `gemini-3.1-pro-preview`
+- `gemini-3.5-flash`
+
+When `--models` is not specified, Copilot uses its own default model. The `model` field is always recorded in `metadata.json` as `"default"` in this case.
+
+## Comparison Dashboard
+
+After running evals, launch the interactive comparison dashboard:
+
+```bash
+panel serve scripts/compare_results.py --args eval_results/ --show
+```
+
+Or using pixi:
+
+```bash
+pixi run -e eval eval-dashboard
+```
+
+The dashboard loads `eval_results/evaluation_results.json` and shows:
+
+- A bar chart comparing the selected metric across queries, models, and conditions
+- A filterable table with the raw per-query/model/condition values
+- Sidebar filters for queries, models, conditions, and metric selection
 
 ## Other Scripts
 
@@ -92,6 +143,7 @@ These scripts are still independently runnable in addition to being called by `e
 |---|---|
 | `execute_generated.py` | Execute saved `generated_code.py` files and capture outputs |
 | `aggregate_metrics.py` | Read `metadata.json` files and produce the comparison report |
+| `compare_results.py` | Panel dashboard — `panel serve scripts/compare_results.py --args eval_results/` |
 | `toggle_skills.py` | Enable or disable skill files (rename AGENTS.md / SKILL.md) |
 | `test_setup.py` | Pre-flight environment check before running evaluations |
 
@@ -99,19 +151,23 @@ These scripts are still independently runnable in addition to being called by `e
 
 ```
 eval_results/
-├── with_skills/
-│   └── [query_id]/
-│       ├── response.txt        # Raw Copilot output
-│       ├── metadata.json       # Tokens, timing, execution result
-│       ├── generated_code.py   # Extracted code block
-│       ├── execution.log       # stdout/stderr from code run
-│       ├── plot_output.html    # Saved plot (if generated)
-│       └── screenshot.png      # Visual screenshot (if captured)
-├── without_skills/
-│   └── (same structure)
-├── evaluation_results.json     # Full metrics comparison (machine-readable)
-└── evaluation_summary.md       # Human-readable summary table
+├── <model>/                         # e.g. claude-sonnet-4.6, gpt-5.4-mini, default
+│   ├── with_skills/
+│   │   └── [query_id]/
+│   │       ├── response.txt        # Raw Copilot output
+│   │       ├── metadata.json       # Model, tokens, timing, execution result
+│   │       ├── generated_code.py   # Extracted code block
+│   │       ├── execution.log       # stdout/stderr from code run
+│   │       ├── plot_output.html    # Saved plot (if generated)
+│   │       └── screenshot.png      # Visual screenshot (if captured)
+│   └── without_skills/
+│       └── (same structure)
+├── evaluation_results.json          # Full metrics comparison (machine-readable)
+└── evaluation_summary.md            # Human-readable summary table
 ```
+
+`metadata.json` always includes a `"model"` field — either the model name passed via
+`--models` or `"default"` when no model flag was used.
 
 ## Adding Queries
 
@@ -136,8 +192,17 @@ Fields:
 
 ## Troubleshooting
 
+**Tokens and execution time show 0**
+The Copilot CLI token format changed. The parser in `eval.py` handles the current format:
+`Tokens  ↑ 13.0k (6.8k cached) • ↓ 170 (128 reasoning)`. If you see zeros, capture
+a raw `response.txt` and check the `Tokens` line format matches this pattern.
+
 **Code execution fails**
 Check `execution.log` in the query result directory for the full traceback.
 
 **Warning in execution.log**
 If a `DeprecationWarning` or similar appears, the relevant SKILL.md section needs a stronger anti-pattern example. Add a `# WRONG` / `# CORRECT` code pair to the relevant skill file.
+
+**Dashboard shows "No evaluation results found"**
+Run `python scripts/eval.py` first to generate `eval_results/evaluation_results.json`,
+then re-launch the dashboard.

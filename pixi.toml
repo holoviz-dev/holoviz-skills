@@ -90,6 +90,8 @@ pandas = "*"
 matplotlib = "*"
 geoviews = "*"
 hvsampledata = "*"
+panel = "*"
+panel-material-ui = "*"
 
 [feature.eval.pypi-dependencies]
 playwright = "*"
@@ -99,9 +101,14 @@ _eval-setup = { cmd = "playwright install chromium", description = "Install Play
 _eval-check-no-screenshots = { cmd = "python scripts/test_setup.py --skip-screenshots", cwd = ".", description = "Verify evaluation system (without Playwright check)" }
 eval-check = { cmd = "python scripts/test_setup.py", cwd = ".", description = "Verify evaluation system is set up correctly" }
 evals = { cmd = "python scripts/eval.py", cwd = ".", depends-on = [
-    "eval-check",
     "_eval-setup",
+    "eval-check",
 ], description = "Run full evaluation pipeline" }
 eval-no-screenshots = { cmd = "python scripts/eval.py --skip-screenshots", cwd = ".", depends-on = [
     "_eval-check-no-screenshots",
 ], description = "Run evaluation without screenshots (faster, no Playwright needed)" }
+eval-multi = { cmd = "python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-mini", cwd = ".", depends-on = [
+    "_eval-setup",
+    "eval-check",
+], description = "Run evaluation across multiple models (claude-sonnet-4.6 and gpt-5.4-mini)" }
+eval-dashboard = { cmd = "panel serve scripts/compare_results.py --show --args eval_results/", cwd = ".", description = "Open the model comparison dashboard in the browser" }
