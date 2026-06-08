@@ -20,6 +20,12 @@ Usage:
 
   # Full pipeline, longer execution timeout, no screenshots
   python eval.py --timeout 60 --skip-screenshots
+
+  # Run with specific models
+  python eval.py --models claude-sonnet-4.6 gpt-5.4-mini
+
+  # Compare two models, with-skills condition only
+  python eval.py --models claude-sonnet-4.6 gpt-5.4-mini --skills with
 """
 
 import argparse
@@ -39,17 +45,29 @@ CODE_OUTPUT_INSTRUCTION = (
     "\n\nRespond with a single self-contained ```python``` code block and nothing else outside it."
 )
 
+# Sentinel used when no --model flag is passed (Copilot picks its default).
+DEFAULT_MODEL = "default"
+
 SCRIPTS_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPTS_DIR.parent
+
+
+def _parse_token_value(val: str) -> int:
+    """Convert a token value string like '13.0k' or '170' to an integer."""
+    val = val.strip()
+    if "k" in val.lower():
+        return int(float(val.lower().replace("k", "")) * 1000)
+    return int(val)
 
 
 class CopilotResponse:
     """Parsed response from Copilot CLI."""
 
-    def __init__(self, raw_output: str, query: str, execution_time: float):
+    def __init__(self, raw_output: str, query: str, execution_time: float, model: str):
         self.raw_output = raw_output
         self.query = query
         self.execution_time = execution_time
+        self.model = model
         self.code_blocks = self._extract_code_blocks()
         self.tokens = self._extract_token_usage()
 
@@ -59,25 +77,42 @@ class CopilotResponse:
         return re.findall(pattern, self.raw_output, re.DOTALL)
 
     def _extract_token_usage(self) -> dict[str, int]:
-        """Extract token usage from the response footer."""
+        """Extract token usage from the response footer.
+
+        The Copilot CLI footer looks like (fields are optional):
+          Tokens     ↑ 13.0k (6.8k cached) • ↓ 170 (128 reasoning)
+          Tokens     ↑ 14.3k • ↓ 18 (10 reasoning)
+          Tokens     ↑ 13.0k • ↓ 42
+        """
         tokens = {"input": 0, "output": 0, "cached": 0, "reasoning": 0}
-        token_pattern = (
-            r"Tokens\s+↑\s*([\d.k]+)\s*•\s*↓\s*([\d.k]+)\s*"
-            r"•\s*([\d.k]+)\s*\(cached\)\s*•\s*([\d.k]+)\s*\(reasoning\)"
-        )
-        match = re.search(token_pattern, self.raw_output)
-        if match:
 
-            def parse_token_value(val: str) -> int:
-                val = val.strip()
-                if "k" in val.lower():
-                    return int(float(val.lower().replace("k", "")) * 1000)
-                return int(val)
+        # Match the Tokens line; all parenthetical sub-fields are optional.
+        token_line_pattern = r"Tokens\s+↑\s*([\d.k]+)"
+        match = re.search(token_line_pattern, self.raw_output)
+        if not match:
+            return tokens
 
-            tokens["input"] = parse_token_value(match.group(1))
-            tokens["output"] = parse_token_value(match.group(2))
-            tokens["cached"] = parse_token_value(match.group(3))
-            tokens["reasoning"] = parse_token_value(match.group(4))
+        # Start of line (for sub-field extraction)
+        line_start = match.start()
+        line = self.raw_output[line_start : self.raw_output.find("\n", line_start)]
+
+        tokens["input"] = _parse_token_value(match.group(1))
+
+        # Optional: (N cached) after the input value
+        cached_match = re.search(r"\(([\d.k]+)\s+cached\)", line)
+        if cached_match:
+            tokens["cached"] = _parse_token_value(cached_match.group(1))
+
+        # Output tokens: after the • ↓
+        output_match = re.search(r"•\s*↓\s*([\d.k]+)", line)
+        if output_match:
+            tokens["output"] = _parse_token_value(output_match.group(1))
+
+        # Optional: (N reasoning) after the output value
+        reasoning_match = re.search(r"\(([\d.k]+)\s+reasoning\)", line)
+        if reasoning_match:
+            tokens["reasoning"] = _parse_token_value(reasoning_match.group(1))
+
         return tokens
 
     def get_primary_code(self) -> str | None:
@@ -86,6 +121,7 @@ class CopilotResponse:
     def to_dict(self) -> dict:
         return {
             "query": self.query,
+            "model": self.model,
             "execution_time": self.execution_time,
             "tokens": self.tokens,
             "code_blocks_count": len(self.code_blocks),
@@ -99,11 +135,29 @@ def load_queries(yaml_path: Path) -> list[dict]:
     return data.get("queries", [])
 
 
-def run_copilot_query(query: str, timeout: int = 180) -> tuple[str, float]:
+def model_to_slug(model: str | None) -> str:
+    """Convert a model name to a filesystem-safe slug.
+
+    None / empty string maps to DEFAULT_MODEL so old results stay under
+    eval_results/default/ and are still valid.
+    """
+    if not model:
+        return DEFAULT_MODEL
+    return re.sub(r"[^a-zA-Z0-9_\-.]", "_", model)
+
+
+def run_copilot_query(
+    query: str, model: str | None = None, timeout: int = 180
+) -> tuple[str, float]:
     start_time = time.time()
     try:
+        cmd = ["copilot", "--allow-all"]
+        if model:
+            cmd += ["--model", model]
+        cmd += ["-p", query]
+
         result = subprocess.run(
-            ["copilot", "--allow-all", "-p", query],
+            cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -120,9 +174,15 @@ def run_copilot_query(query: str, timeout: int = 180) -> tuple[str, float]:
         return f"[ERROR: {str(e)}]", time.time() - start_time
 
 
-def save_results(query_id: str, response: CopilotResponse, output_dir: Path, skills_enabled: bool):
-    subdir = "with_skills" if skills_enabled else "without_skills"
-    query_dir = output_dir / subdir / query_id
+def save_results(
+    query_id: str,
+    response: CopilotResponse,
+    output_dir: Path,
+    skills_enabled: bool,
+):
+    model_slug = model_to_slug(response.model if response.model != DEFAULT_MODEL else None)
+    condition = "with_skills" if skills_enabled else "without_skills"
+    query_dir = output_dir / model_slug / condition / query_id
     query_dir.mkdir(parents=True, exist_ok=True)
 
     (query_dir / "response.txt").write_text(response.raw_output)
@@ -147,37 +207,53 @@ def save_results(query_id: str, response: CopilotResponse, output_dir: Path, ski
 def run_generation(
     queries: list[dict],
     output_dir: Path,
+    models: list[str | None],
     skip_without_skills: bool = False,
     skip_with_skills: bool = False,
 ):
-    for i, query in enumerate(queries, 1):
-        query_id = query["id"]
-        prompt = query["prompt"].rstrip() + CODE_OUTPUT_INSTRUCTION
-        timeout = query.get("timeout", 180)
+    for model in models:
+        model_label = model or DEFAULT_MODEL
+        if len(models) > 1:
+            print(f"\n{'═' * 60}")
+            print(f"Model: {model_label}")
+            print(f"{'═' * 60}")
 
-        print(f"[{i}/{len(queries)}] {query_id}")
+        for i, query in enumerate(queries, 1):
+            query_id = query["id"]
+            prompt = query["prompt"].rstrip() + CODE_OUTPUT_INSTRUCTION
+            timeout = query.get("timeout", 180)
 
-        if not skip_without_skills:
-            print("  Running WITHOUT skills...")
-            disable_skills(REPO_ROOT)
-            try:
-                raw_output, exec_time = run_copilot_query(prompt, timeout)
-                response = CopilotResponse(raw_output, prompt, exec_time)
+            print(f"[{i}/{len(queries)}] {query_id}")
+
+            if not skip_without_skills:
+                print("  Running WITHOUT skills...")
+                disable_skills(REPO_ROOT)
+                try:
+                    raw_output, exec_time = run_copilot_query(prompt, model=model, timeout=timeout)
+                    response = CopilotResponse(raw_output, prompt, exec_time, model=model_label)
+                    tok = response.tokens
+                    print(
+                        f"  Completed in {exec_time:.2f}s | "
+                        f"Tokens: ↑{tok['input']} ↓{tok['output']}"
+                        + (f" ({tok['cached']} cached)" if tok["cached"] else "")
+                    )
+                    save_results(query_id, response, output_dir, skills_enabled=False)
+                finally:
+                    enable_skills(REPO_ROOT)
+
+            if not skip_with_skills:
+                print("  Running WITH skills...")
+                raw_output, exec_time = run_copilot_query(prompt, model=model, timeout=timeout)
+                response = CopilotResponse(raw_output, prompt, exec_time, model=model_label)
                 tok = response.tokens
-                print(f"  Completed in {exec_time:.2f}s | Tokens: ↑{tok['input']} ↓{tok['output']}")
-                save_results(query_id, response, output_dir, skills_enabled=False)
-            finally:
-                enable_skills(REPO_ROOT)
+                print(
+                    f"  Completed in {exec_time:.2f}s | "
+                    f"Tokens: ↑{tok['input']} ↓{tok['output']}"
+                    + (f" ({tok['cached']} cached)" if tok["cached"] else "")
+                )
+                save_results(query_id, response, output_dir, skills_enabled=True)
 
-        if not skip_with_skills:
-            print("  Running WITH skills...")
-            raw_output, exec_time = run_copilot_query(prompt, timeout)
-            response = CopilotResponse(raw_output, prompt, exec_time)
-            tok = response.tokens
-            print(f"  Completed in {exec_time:.2f}s | Tokens: ↑{tok['input']} ↓{tok['output']}")
-            save_results(query_id, response, output_dir, skills_enabled=True)
-
-        print(f"{'─' * 60}")
+            print(f"{'─' * 60}")
 
 
 def run_execution(
@@ -228,6 +304,12 @@ Examples:
 
   # Full pipeline, longer timeout, no screenshots
   python eval.py --timeout 60 --skip-screenshots
+
+  # Run with specific models
+  python eval.py --models claude-sonnet-4.6 gpt-5.4-mini
+
+  # Compare two models, with-skills only
+  python eval.py --models claude-sonnet-4.6 gpt-5.4-mini --skills with
         """,
     )
 
@@ -247,6 +329,16 @@ Examples:
         "--queries",
         nargs="+",
         help="Specific query IDs to run (default: all)",
+    )
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        default=None,
+        metavar="MODEL",
+        help=(
+            "Model(s) to evaluate (e.g. claude-sonnet-4.6 gpt-5.4-mini). "
+            "Defaults to Copilot's default model."
+        ),
     )
     parser.add_argument(
         "--skills",
@@ -294,13 +386,17 @@ Examples:
         print("No queries matched.")
         return 1
 
-    print(f"Running {len(queries)} quer(ies)\n")
+    # None in the list means "use Copilot's default model" (no --model flag)
+    models: list[str | None] = args.models if args.models else [None]
+
+    print(f"Running {len(queries)} quer(ies) × {len(models)} model(s)\n")
 
     # Step 1: Generate
     if not args.skip_generation:
         run_generation(
             queries=queries,
             output_dir=args.output,
+            models=models,
             skip_without_skills=args.skills == "with",
             skip_with_skills=args.skills == "without",
         )

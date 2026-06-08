@@ -282,28 +282,62 @@ class CodeExecutor:
 
 
 def find_generated_code_files(eval_results_dir: Path) -> list:
-    """Find all generated_code.py files in the evaluation results."""
-    code_files = []
+    """Find all generated_code.py files in the evaluation results.
 
-    for condition_dir in ["with_skills", "without_skills"]:
-        condition_path = eval_results_dir / condition_dir
-        if not condition_path.exists():
+    Supports two directory layouts:
+
+    New layout (with model dimension):
+        eval_results/{model}/{condition}/{query_id}/generated_code.py
+
+    Legacy layout (no model dimension):
+        eval_results/{condition}/{query_id}/generated_code.py
+    """
+    code_files = []
+    conditions = {"with_skills", "without_skills"}
+
+    for entry in eval_results_dir.iterdir():
+        if not entry.is_dir():
             continue
 
-        for query_dir in condition_path.iterdir():
-            if not query_dir.is_dir():
-                continue
-
-            code_file = query_dir / "generated_code.py"
-            if code_file.exists():
-                code_files.append(
-                    {
-                        "code_file": code_file,
-                        "query_dir": query_dir,
-                        "query_id": query_dir.name,
-                        "condition": condition_dir,
-                    }
-                )
+        if entry.name in conditions:
+            # Legacy layout: eval_results/{condition}/{query_id}/
+            model = "default"
+            condition = entry.name
+            for query_dir in entry.iterdir():
+                if not query_dir.is_dir():
+                    continue
+                code_file = query_dir / "generated_code.py"
+                if code_file.exists():
+                    code_files.append(
+                        {
+                            "code_file": code_file,
+                            "query_dir": query_dir,
+                            "query_id": query_dir.name,
+                            "condition": condition,
+                            "model": model,
+                        }
+                    )
+        else:
+            # New layout: eval_results/{model}/{condition}/{query_id}/
+            model = entry.name
+            for condition_dir in entry.iterdir():
+                if not condition_dir.is_dir() or condition_dir.name not in conditions:
+                    continue
+                condition = condition_dir.name
+                for query_dir in condition_dir.iterdir():
+                    if not query_dir.is_dir():
+                        continue
+                    code_file = query_dir / "generated_code.py"
+                    if code_file.exists():
+                        code_files.append(
+                            {
+                                "code_file": code_file,
+                                "query_dir": query_dir,
+                                "query_id": query_dir.name,
+                                "condition": condition,
+                                "model": model,
+                            }
+                        )
 
     return code_files
 
@@ -345,8 +379,9 @@ def execute_all_code(
     for i, cf in enumerate(code_files, 1):
         query_id = cf["query_id"]
         condition = cf["condition"]
+        model = cf.get("model", "default")
 
-        print(f"[{i}/{len(code_files)}] {query_id} ({condition})")
+        print(f"[{i}/{len(code_files)}] {query_id} ({model} / {condition})")
 
         result = executor.execute(cf["code_file"], cf["query_dir"])
 
@@ -377,6 +412,7 @@ def execute_all_code(
             {
                 "query_id": query_id,
                 "condition": condition,
+                "model": model,
                 "success": result["success"],
                 "execution_time": result["execution_time"],
                 "has_screenshot": result.get("screenshot", False),
