@@ -4,11 +4,24 @@ Layout and structure for panel-material-ui apps. For theming (palette, typograph
 
 ## Contents
 
+- [Lookup](#lookup) — where to fetch pmui docs as markdown
 - [Key Differences from Panel](#key-differences-from-panel)
 - [Page](#page)
 - [Layouts](#layouts)
 - [Component Gotchas](#component-gotchas)
-- [Lookup](#lookup)
+
+## Lookup
+
+Fetch pmui docs as markdown, not HTML: prefix any pmui doc path with `/markdown/` and change `.html`/`.ipynb` → `.md` (also for links found inside pages). If the result is empty, the page moved — use the index.
+
+Base: `https://panel-material-ui.holoviz.org/markdown/` — append the endpoints below.
+
+- **Doc map / index**: `https://panel-material-ui.holoviz.org/llms.txt` (site root, *not* under `markdown/`)
+- **Component**: `reference/{section}/{Component}.md`
+  Sections: `widgets`, `menus`, `layouts`, `panes`, `wrappers`, `page`, `chat`, `indicators`, `global`
+- **Section index** (lists every component): `reference/{section}/index.md`
+- **How-to guides**: `how_to/{guide}.md` (index: `how_to/index.md`)
+- **Search**: web-search the topic, then convert the `.html` hit to its `/markdown/…​.md` URL.
 
 ## Key Differences from Panel
 
@@ -56,6 +69,7 @@ class MyApp(pn.viewable.Viewer):
 - `header` is only 100px — buttons, indicators, nav links only.
 - Add `margin=10` to outer `main` layouts so they stand out from sidebar.
 - Only use a sidebar when there are multiple control widgets. For a single selector, use inline `RadioButtonGroup` or `Select` in the main area with `pmui.Container` — avoids wasting viewport on a near-empty sidebar.
+- **Page not rendering (no header/sidebar)**: if `__panel__` returns the `Page` only under `if pn.state.served:`, that guard can evaluate `False` when `__panel__` runs, silently giving you the bare fallback layout with no top bar. For an app that is always served, build the `Page` once in `__init__` and return it unconditionally from `__panel__`.
 
 ```python
 # ✅ Lists
@@ -113,8 +127,18 @@ pmui.Page(
 
 - `pn.layout.HSpacer()` pushes items left/right in a Row
 - `pn.layout.VSpacer()` pushes items top/bottom in a Column
-- Always set `sizing_mode` on components unless intentionally fixed-size
-- Use `margin` to prevent widgets touching container edges (default margins often suffice)
+- Set `sizing_mode="stretch_width"` on widgets — fixed default widths are why widgets "aren't responsive".
+- Default margins are inconsistent (most `10`; `Typography` `(5,10)`; `Chip`/`Avatar`/containers `0`), so loose text/buttons won't align with margin-0 `Grid`/`Paper` blocks. Pick one baseline.
+- Align a whole body: make each section an item of ONE `Grid(container=True, spacing=2)` with children `margin=0` — shared padding aligns them and `spacing` makes the gaps (also stops cards touching).
+
+  ```python
+  pmui.Grid(pmui.Grid(title, size={"xs": 12}),
+            pmui.Grid(card, size={"xs": 12, "sm": 6, "md": 3}), ...,
+            container=True, spacing=2, sizing_mode="stretch_width")
+  ```
+
+- Slider thumb hits the edge → add horizontal margin, e.g. `margin=(10, 20)`.
+- Mixed-height rows: `align="center"`; set gaps with `sx={"gap": "12px"}`, not per-item margins.
 
 ### Layouts
 
@@ -127,15 +151,21 @@ pmui.Page(
 - `Card`: prefer `Paper`. Set `collapsible=False` unless needed.
 - `Tabulator`: use `"materialize"` theme, not `"material"`.
 - `Box` → `Column`, `TextField` → `TextInput` (neither exists).
+- Button groups (`RadioButtonGroup`, `CheckButtonGroup`): `.from_param()` may not write the widget value back to the bound param — clicking changes the buttons but the param never updates, so `@param.depends`/watchers never fire. Create the widget directly and wire it explicitly:
 
-## Lookup
+  ```python
+  # ❌ clicks don't propagate — dependent views never update
+  self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
 
-### Component Reference
+  # ✅ direct widget + explicit watcher
+  self._toggle = pmui.RadioButtonGroup(options=["bars", "lines"], value="bars")
+  self._toggle.param.watch(lambda e: setattr(self, "chart_type", e.new), "value")
+  ```
+- `Rating` (and other icon widgets): stretch to fill their container under the default `sizing_mode="stretch_width"`, rendering enormous. Pin them: `pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed")`.
+- `Dialog`: for secondary detail that would crowd the page (or overflow the narrow `Page` contextbar), use a dialog and toggle `.open`. `close_on_click=True` dismisses on backdrop click:
 
-Look up component docs at `https://panel-material-ui.holoviz.org/reference/{section}/{Component}.html`
-
-Sections: `widgets`, `menus`, `layouts`, `panes`, `page`, `chat`, `indicators`, `global`
-
-### Search
-
-Search the web at `https://panel-material-ui.holoviz.org/search.html?q=<topic>` for pmui docs.
+  ```python
+  self._details = pmui.Dialog(content, title="Details",
+                              width_option="md", open=False, close_on_click=True)
+  # open from a button: self._details.open = True
+  ```

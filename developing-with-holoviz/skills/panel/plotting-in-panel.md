@@ -1,17 +1,26 @@
-# Interacting with HoloViews
+# Plotting in Panel
 
-How to embed HoloViews and hvPlot plots in Panel apps. For standalone HoloViews concepts (elements, opts, streams, formatters, tools), see the [HoloViews skill](../holoviews/SKILL.md).
+How to embed plots in Panel apps, across libraries: HoloViews/hvPlot, Matplotlib, Plotly, ECharts, and Bokeh. For standalone HoloViews concepts (elements, `.opts()`, streams, formatters, tools), see the [HoloViews skill](../holoviews/SKILL.md).
 
 Examples build on the penguins Dashboard from the Panel skill.
 
 ## Contents
 
-- [pn.pane.HoloViews Configuration](#pnpaneholoviews-configuration)
-- [DynamicMap: Preserve Zoom/Pan Across Data Refreshes](#dynamicmap-preserve-zoompan-across-data-refreshes)
-- [One Element Per DynamicMap](#one-element-per-dynamicmap)
-- [Responsive Sizing](#responsive-sizing)
+- [HoloViews and hvPlot](#holoviews-and-hvplot)
+  - [pn.pane.HoloViews Configuration](#pnpaneholoviews-configuration)
+  - [DynamicMap: Preserve Zoom/Pan Across Data Refreshes](#dynamicmap-preserve-zoompan-across-data-refreshes)
+  - [One Element Per DynamicMap](#one-element-per-dynamicmap)
+  - [Responsive Sizing](#responsive-sizing)
+- [Matplotlib](#matplotlib)
+- [Plotly](#plotly)
+- [ECharts](#echarts)
+- [Bokeh Toolbar Tools](#bokeh-toolbar-tools)
 
-## pn.pane.HoloViews Configuration
+## HoloViews and hvPlot
+
+The richest Panel integration — hvPlot and HoloViews render through `pn.pane.HoloViews`, with DynamicMap for live updates.
+
+### pn.pane.HoloViews Configuration
 
 ```python
 pn.pane.HoloViews(
@@ -22,11 +31,11 @@ pn.pane.HoloViews(
 )
 ```
 
-- `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`.
+- `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`. (Inside a `pmui.Page`/`ThemeToggle`, plots auto-theme — see [Using Material UI](using-material-ui.md#chart-theming).)
 - `linked_axes=False` prevents axis linking when combining charts with different axis types in a Layout (`+`). Pair with `.opts(shared_axes=False)` on the Layout itself.
 - `sizing_mode="stretch_width"` is required for responsive HoloViews plots.
 
-## DynamicMap: Preserve Zoom/Pan Across Data Refreshes
+### DynamicMap: Preserve Zoom/Pan Across Data Refreshes
 
 - Setting `pane.object = new_plot` resets axes. DynamicMap patches data in place, preserving zoom/pan.
 - Use a trigger parameter as a signal — DynamicMap caches by argument identity, so read actual data from `self` inside the callback.
@@ -77,7 +86,7 @@ class Dashboard(pn.viewable.Viewer):
         return self._layout
 ```
 
-## One Element Per DynamicMap
+### One Element Per DynamicMap
 
 - Returning mixed types (`hv.Scatter` sometimes, `hv.Overlay` other times) raises `AssertionError`.
 - Combining scatter + HLines inside `hv.Overlay([...])` loses hover tooltips.
@@ -110,7 +119,7 @@ class Dashboard(pn.viewable.Viewer):
         return hv.HLine(avg).opts(color="orange", line_dash="dashed")
 ```
 
-## Responsive Sizing
+### Responsive Sizing
 
 hvPlot internally sets `width=700`. This conflicts with `responsive=True` if applied via `.opts()`.
 
@@ -143,3 +152,56 @@ area = df.hvplot.area(x='x', y='y', responsive=True, height=300)
 line = df.hvplot.line(x='x', y='y2', responsive=True, height=300)
 overlay = area * line
 ```
+
+## Matplotlib
+
+- Set `matplotlib.use('agg')` BEFORE importing pyplot — required for server-side rendering.
+- Don't add `'matplotlib'` to `pn.extension()` — not a JS extension.
+- Close figures after rendering: `plt.close(fig)`.
+
+```python
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+import panel as pn
+
+pn.extension()  # no 'matplotlib' needed
+```
+
+## Plotly
+
+- Add `"plotly"` to `pn.extension("plotly")`.
+- Match template to app theme, use transparent backgrounds:
+
+```python
+template = "plotly_dark" if pn.state.theme == "dark" else "plotly_white"
+fig.update_layout(
+    template=template,
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+)
+```
+
+## ECharts
+
+- Prefer dict config over pyecharts.
+- Configs must be JSON-serializable — never use Python functions or lambdas (`SerializationError`).
+- Template strings: `{b}` (category), `{c}` (value), `{d}` (percentage), `{value}` (axis). Prefix/suffix: `'{value}%'`.
+- Use `replaceMerge` when series count changes dynamically, else old series persist:
+
+```python
+chart_pane = pn.pane.ECharts(
+    self._chart_config,
+    options={"replaceMerge": ["series"]},
+    sizing_mode="stretch_width",
+    height=400,
+)
+```
+
+## Bokeh Toolbar Tools
+
+For Bokeh-backed plots (including HoloViews/hvPlot output):
+
+- `default_tools=["reset"]` strips all default Bokeh toolbar tools except reset; add specific tools via `tools=["hover", "xwheel_zoom"]`.
+- `active_tools=["xwheel_zoom"]` sets which tools are active by default.
+- For cumulative/monotonic curves, `hover_mode="vline"` gives a better tooltip experience.

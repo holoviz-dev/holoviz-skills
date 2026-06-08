@@ -2,7 +2,7 @@
 name: holoviews
 description: Build interactive visualizations with HoloViews elements, opts, streams, and operations. Use when composing plots from element primitives (Curve, Points, Bars, NdOverlay), customizing Bokeh tools/tooltips/formatters, using DynamicMap, streams, or link_selections. Do not use for simple DataFrame plotting (use hvPlot) or Panel app structure (use Panel).
 metadata:
-  version: "0.0.1"
+  version: "0.0.2"
   author: holoviz
 ---
 
@@ -10,7 +10,7 @@ metadata:
 
 HoloViews lets you build interactive visualizations by composing declarative elements. Use it when you need fine-grained control over plot composition, custom tooltips, Bokeh tool configuration, streaming data, or cross-filtering — things that go beyond hvPlot's `.plot()`-style API.
 
-For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, responsive sizing, `pn.pane.HoloViews`), see [Interacting with HoloViews](../panel/interacting-with-holoviews.md).
+For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, responsive sizing, `pn.pane.HoloViews`), see [Plotting in Panel](../panel/plotting-in-panel.md).
 
 ## Contents
 
@@ -107,7 +107,7 @@ dmap = hv.DynamicMap(render_fn, streams=[stream])
 - Create one DynamicMap per element type, combine with `*` (overlay) or `+` (layout).
 - Use `.opts(framewise=True)` with streaming data (Pipe/Buffer) so axes update when data ranges change.
 
-For the Panel integration pattern (trigger param, `pn.bind`, `pn.pane.HoloViews`), see [Interacting with HoloViews](../panel/interacting-with-holoviews.md).
+For the Panel integration pattern (trigger param, `pn.bind`, `pn.pane.HoloViews`), see [Plotting in Panel](../panel/plotting-in-panel.md).
 
 ## Streams
 

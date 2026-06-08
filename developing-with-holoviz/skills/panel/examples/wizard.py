@@ -1,9 +1,12 @@
 """
 Wizard/stepper layout example using panel-material-ui.
 
-Multi-step wizard with one action per page, breadcrumb navigation, sidebar
-menu, and a progress bar. Demonstrates Viewer class pattern, Placeholder
-swapping, pn.io.hold() batching, shared disabled state, and pmui.Page template.
+Multi-step wizard with one action per page, driven by a `pmui.StepperMenu`
+that shows live step state (completed / error / active), supports non-linear
+navigation, and reports position via its `active` parameter. Also demonstrates
+the Viewer class pattern, `pn.pane.Placeholder` step swapping, `pn.io.hold()`
+batching, shared `disabled` state, inline `pmui.Alert` validation, a
+`pmui.Tooltip`, and the `pmui.Page` template.
 
 Run: panel serve examples/wizard.py --dev --show
 """
@@ -12,9 +15,9 @@ import panel as pn
 import panel_material_ui as pmui
 import param
 
-pn.extension(throttled=True, defer_load=True, loading_indicator=True)
+pn.extension(throttled=True)
 
-# Professional theme - refined indigo/teal palette
+# Professional theme - refined navy/teal palette
 THEME_CONFIG = {
     "light": {
         "palette": {
@@ -69,17 +72,28 @@ THEME_CONFIG = {
 class WizardStep(pn.viewable.Viewer):
     """Base class for wizard steps."""
 
-    complete = param.Boolean(default=False, doc="""
-        Whether this step has valid data and can proceed.""")
+    complete = param.Boolean(
+        default=False,
+        doc="""
+        Whether this step has valid data and can proceed.""",
+    )
 
-    disabled = param.Boolean(default=False, doc="""
-        Whether this step's widgets are disabled (e.g., after submit).""")
+    disabled = param.Boolean(
+        default=False,
+        doc="""
+        Whether this step's widgets are disabled (e.g., after submit).""",
+    )
 
-    icon = param.String(default="circle", doc="""
-        Material icon name for breadcrumbs and sidebar.""")
+    icon = param.String(
+        default="circle",
+        doc="""
+        Material icon name for the stepper.""",
+    )
 
-    title = param.String(doc="""
-        Display title for this step.""")
+    title = param.String(
+        doc="""
+        Display title for this step."""
+    )
 
     def __panel__(self):
         raise NotImplementedError("Subclasses must implement __panel__")
@@ -92,7 +106,12 @@ class FilingStatusStep(WizardStep):
 
     filing_status = param.Selector(
         default="Single",
-        objects=["Single", "Married filing jointly", "Married filing separately", "Head of household"],
+        objects=[
+            "Single",
+            "Married filing jointly",
+            "Married filing separately",
+            "Head of household",
+        ],
         doc="""
         Your tax filing status.""",
     )
@@ -103,7 +122,9 @@ class FilingStatusStep(WizardStep):
 
     def __panel__(self):
         return pmui.Column(
-            pmui.Typography("What is your filing status?", variant="h4", sx={"fontWeight": 700, "mb": 1}),
+            pmui.Typography(
+                "What is your filing status?", variant="h4", sx={"fontWeight": 700, "mb": 1}
+            ),
             pmui.Typography(
                 "This determines your tax brackets and standard deduction.",
                 sx={"color": "text.secondary", "mb": 4},
@@ -111,7 +132,12 @@ class FilingStatusStep(WizardStep):
             pmui.RadioBoxGroup.from_param(
                 self.param.filing_status,
                 label="",  # Remove redundant label
-                options=["Single", "Married filing jointly", "Married filing separately", "Head of household"],
+                options=[
+                    "Single",
+                    "Married filing jointly",
+                    "Married filing separately",
+                    "Head of household",
+                ],
                 disabled=self.param.disabled,
             ),
             sizing_mode="stretch_width",
@@ -123,13 +149,21 @@ class IncomeStep(WizardStep):
 
     icon = param.String(default="attach_money")
 
-    interest = param.Number(default=0, bounds=(0, None), doc="""
-        Interest and dividend income from 1099 forms.""")
+    interest = param.Number(
+        default=0,
+        bounds=(0, None),
+        doc="""
+        Interest and dividend income from 1099 forms.""",
+    )
 
     title = param.String(default="Income")
 
-    wages = param.Number(default=0, bounds=(0, None), doc="""
-        W-2 wages from Box 1.""")
+    wages = param.Number(
+        default=0,
+        bounds=(0, None),
+        doc="""
+        W-2 wages from Box 1.""",
+    )
 
     @param.depends("wages", "interest", watch=True)
     def _on_income_change(self):
@@ -137,22 +171,41 @@ class IncomeStep(WizardStep):
 
     def __panel__(self):
         return pmui.Column(
-            pmui.Typography("What did you earn this year?", variant="h4", sx={"fontWeight": 600, "mb": 1}),
             pmui.Typography(
-                "Enter your total income from all sources. We'll use this to calculate your tax bracket.",
+                "What did you earn this year?", variant="h4", sx={"fontWeight": 600, "mb": 1}
+            ),
+            pmui.Typography(
+                "Enter your total income from all sources. "
+                "We'll use this to calculate your tax bracket.",
                 sx={"color": "text.secondary", "mb": 4},
             ),
             pmui.Column(
                 pmui.Typography("W-2 Wages", sx={"fontWeight": 500, "mb": 1}),
-                pmui.FloatInput.from_param(self.param.wages, label="$ Wages", sizing_mode="stretch_width", disabled=self.param.disabled),
-                pmui.Typography("From Box 1 of your W-2 form", sx={"color": "text.secondary", "fontSize": 13, "mt": 0.5}),
+                pmui.FloatInput.from_param(
+                    self.param.wages,
+                    label="$ Wages",
+                    sizing_mode="stretch_width",
+                    disabled=self.param.disabled,
+                ),
+                pmui.Typography(
+                    "From Box 1 of your W-2 form",
+                    sx={"color": "text.secondary", "fontSize": 13, "mt": 0.5},
+                ),
                 sizing_mode="stretch_width",
                 margin=(0, 0, 24, 0),
             ),
             pmui.Column(
                 pmui.Typography("Interest & Dividends", sx={"fontWeight": 500, "mb": 1}),
-                pmui.FloatInput.from_param(self.param.interest, label="$ Interest", sizing_mode="stretch_width", disabled=self.param.disabled),
-                pmui.Typography("From 1099-INT and 1099-DIV forms", sx={"color": "text.secondary", "fontSize": 13, "mt": 0.5}),
+                pmui.FloatInput.from_param(
+                    self.param.interest,
+                    label="$ Interest",
+                    sizing_mode="stretch_width",
+                    disabled=self.param.disabled,
+                ),
+                pmui.Typography(
+                    "From 1099-INT and 1099-DIV forms",
+                    sx={"color": "text.secondary", "fontSize": 13, "mt": 0.5},
+                ),
                 sizing_mode="stretch_width",
             ),
             sizing_mode="stretch_width",
@@ -173,8 +226,12 @@ class DeductionsStep(WizardStep):
 
     icon = param.String(default="receipt_long")
 
-    itemized_amount = param.Number(default=0, bounds=(0, None), doc="""
-        Total itemized deductions if not using standard.""")
+    itemized_amount = param.Number(
+        default=0,
+        bounds=(0, None),
+        doc="""
+        Total itemized deductions if not using standard.""",
+    )
 
     title = param.String(default="Deductions")
 
@@ -209,7 +266,9 @@ class DeductionsStep(WizardStep):
                 "Most filers benefit from the standard deduction.",
                 sx={"color": "text.secondary", "mb": 4},
             ),
-            pmui.RadioButtonGroup.from_param(self.param.deduction_type, disabled=self.param.disabled),
+            pmui.RadioButtonGroup.from_param(
+                self.param.deduction_type, disabled=self.param.disabled
+            ),
             self._deduction_details,
             sizing_mode="stretch_width",
         )
@@ -248,25 +307,40 @@ class ReviewStep(WizardStep):
             pmui.Paper(
                 pmui.Column(
                     pmui.Row(
-                        pmui.Typography("Filing Status", sx={"color": "text.secondary", "minWidth": 140}),
-                        pmui.Typography(filing.filing_status or "Not selected", sx={"fontWeight": 500}),
+                        pmui.Typography(
+                            "Filing Status", sx={"color": "text.secondary", "minWidth": 140}
+                        ),
+                        pmui.Typography(
+                            filing.filing_status or "Not selected", sx={"fontWeight": 500}
+                        ),
                     ),
                     pmui.Row(
-                        pmui.Typography("W-2 Wages", sx={"color": "text.secondary", "minWidth": 140}),
+                        pmui.Typography(
+                            "W-2 Wages", sx={"color": "text.secondary", "minWidth": 140}
+                        ),
                         pmui.Typography(f"${income.wages:,.2f}", sx={"fontWeight": 500}),
                     ),
                     pmui.Row(
-                        pmui.Typography("Interest Income", sx={"color": "text.secondary", "minWidth": 140}),
+                        pmui.Typography(
+                            "Interest Income", sx={"color": "text.secondary", "minWidth": 140}
+                        ),
                         pmui.Typography(f"${income.interest:,.2f}", sx={"fontWeight": 500}),
                     ),
                     pmui.Row(
-                        pmui.Typography("Deduction", sx={"color": "text.secondary", "minWidth": 140}),
-                        pmui.Typography(f"{deductions.deduction_type} (${deduction_amount:,.0f})", sx={"fontWeight": 500}),
+                        pmui.Typography(
+                            "Deduction", sx={"color": "text.secondary", "minWidth": 140}
+                        ),
+                        pmui.Typography(
+                            f"{deductions.deduction_type} (${deduction_amount:,.0f})",
+                            sx={"fontWeight": 500},
+                        ),
                     ),
                     pn.layout.Divider(margin=(16, 0)),
                     pmui.Row(
                         pmui.Typography("Taxable Income", sx={"fontWeight": 600, "minWidth": 140}),
-                        pmui.Typography(f"${taxable:,.2f}", sx={"fontWeight": 600, "color": "primary.main"}),
+                        pmui.Typography(
+                            f"${taxable:,.2f}", sx={"fontWeight": 600, "color": "primary.main"}
+                        ),
                     ),
                     sizing_mode="stretch_width",
                 ),
@@ -277,13 +351,20 @@ class ReviewStep(WizardStep):
 
 
 class TaxWizard(pn.viewable.Viewer):
-    """TurboTax-style wizard with one action per page."""
+    """TurboTax-style wizard with one action per page, driven by StepperMenu."""
 
-    active_step = param.Integer(default=0, bounds=(0, None), doc="""
-        Current step index (0-based).""")
+    active_step = param.Integer(
+        default=0,
+        bounds=(0, None),
+        doc="""
+        Current step index (0-based).""",
+    )
 
-    submitted = param.Boolean(default=False, doc="""
-        Whether the wizard has been submitted.""")
+    submitted = param.Boolean(
+        default=False,
+        doc="""
+        Whether the wizard has been submitted.""",
+    )
 
     def __init__(self, **params):
         # Step instances
@@ -299,133 +380,148 @@ class TaxWizard(pn.viewable.Viewer):
             self._deductions_step,
             self._review_step,
         ]
+        self._visited = {0}
 
-        # Components
-        self._breadcrumb_items = [
-            {"label": step.title, "icon": step.icon, "view": step}
-            for step in self._steps
-        ]
-        self._breadcrumbs = pmui.Breadcrumbs(
-            items=self._breadcrumb_items,
+        # StepperMenu replaces the old Breadcrumbs + sidebar MenuList +
+        # LinearProgress — it conveys order, progress, and per-step state in
+        # one component. non_linear=True lets users click a step to jump to it.
+        self._stepper = pmui.StepperMenu(
+            items=self._build_items(),
             active=0,
+            non_linear=True,
+            alternative_label=True,
             color="primary",
-            separator="›",
             sizing_mode="stretch_width",
+            margin=(0, 0, 8, 0),
         )
-        self._back_btn = pmui.Button(
-            label="Back",
-            icon="arrow_back",
+
+        # Inline validation banner shown when the current step is incomplete.
+        self._alert = pmui.Alert(
+            object="",
+            severity="warning",
             variant="outlined",
             visible=False,
+            sizing_mode="stretch_width",
+            margin=(0, 0, 16, 0),
+        )
+
+        # Navigation
+        self._back_btn = pmui.Button(
+            label="Back", icon="arrow_back", variant="outlined", visible=False
         )
         self._next_btn = pmui.Button(
-            label="Continue",
-            icon="arrow_forward",
-            variant="contained",
-            color="primary",
-        )
-        self._content = pn.pane.Placeholder(sizing_mode="stretch_width", min_height=450, margin=20)
-        self._progress_bar = pmui.LinearProgress(
-            value=25,
-            sizing_mode="stretch_width",
-            margin=(12, 0, 0, 0),
-            sx={
-                "height": 4,
-                "borderRadius": 2,
-                "backgroundColor": "rgba(0,0,0,0.08)",
-            },
-        )
-        self._nav_menu = pmui.MenuList(
-            items=[{"label": step.title, "icon": step.icon} for step in self._steps],
-            active=0,
-            color="primary",
-            highlight=True,
+            label="Continue", icon="arrow_forward", variant="contained", color="primary"
         )
         self._nav_row = pmui.Row(
-            self._back_btn,
-            pn.layout.HSpacer(),
-            self._next_btn,
-            sizing_mode="stretch_width",
+            self._back_btn, pn.layout.HSpacer(), self._next_btn, sizing_mode="stretch_width"
         )
+        self._content = pn.pane.Placeholder(sizing_mode="stretch_width", min_height=420, margin=20)
         self._step_text = pmui.Typography(
-            f"Step 1 of {len(self._steps)}",
-            sx={"color": "primary.contrastText"},
+            f"Step 1 of {len(self._steps)}", sx={"color": "primary.contrastText"}
         )
 
         # Wire up events and syncs
-        self._breadcrumbs.on_click(self._on_breadcrumb_click)
+        self._stepper.param.watch(self._on_stepper, "active")
         self._back_btn.on_click(self._on_back)
         self._next_btn.on_click(self._on_advance)
-        self._nav_menu.param.watch(self._on_menu_select, "active")
         for step in self._steps:
-            step.param.watch(self._update_button_state, "complete")
+            step.param.watch(self._refresh_state, "complete")
 
         super().__init__(**params)
 
-    def _on_menu_select(self, event):
-        active = event.new
-        if active and active[0] != self.active_step:
-            self.active_step = active[0]
+    # -- Stepper items reflect live completion / error state --
 
-    def _on_breadcrumb_click(self, event):
-        clicked_label = event.get("label") if isinstance(event, dict) else getattr(event, "label", None)
-        if not clicked_label:
+    def _build_items(self):
+        items = []
+        for i, step in enumerate(self._steps):
+            item = {"label": step.title, "icon": step.icon, "tooltip": step.title}
+            # The active step keeps the active highlight (no flag). Only steps
+            # the user has actually visited and left get a completed/error flag;
+            # unvisited future steps stay pending/grey. `step.complete` means
+            # "has valid data" — not "the user has finished this step" — so it
+            # must be gated on visitation or every default-valid step would
+            # render in the completed color and the active step wouldn't stand out.
+            if i != self.active_step and i in self._visited:
+                if step.complete:
+                    item["completed"] = True
+                else:
+                    item["error"] = True
+            items.append(item)
+        return items
+
+    # -- Navigation handlers --
+
+    def _on_stepper(self, event):
+        if event.new is None or event.new == self.active_step:
             return
-        for i, item in enumerate(self._breadcrumb_items):
-            if item["label"] == clicked_label:
-                self.active_step = i
-                return
+        self.active_step = event.new
 
     def _on_back(self, event=None):
         if self.active_step > 0:
-            self.active_step = self.active_step - 1
+            self.active_step -= 1
 
     def _on_advance(self, event=None):
         if self.active_step < len(self._steps) - 1:
-            self.active_step = self.active_step + 1
+            self.active_step += 1
         else:
             self._submit()
 
     def _submit(self):
         self.submitted = True
-        self._content.update(
-            pmui.Column(
-                pmui.Typography("Your return has been submitted!", variant="h4", sx={"fontWeight": 700, "mb": 2}),
-                pmui.Typography(
-                    "Thank you for using Tax Wizard. You will receive a confirmation email shortly.",
-                    sx={"color": "text.secondary"},
-                ),
-                sizing_mode="stretch_width",
-            )
-        )
         with pn.io.hold():
-            self._next_btn.visible = False
-            self._back_btn.visible = False
-            self._breadcrumbs.visible = False
             for step in self._steps:
                 step.disabled = True
+            self._stepper.items = [
+                {"label": s.title, "icon": s.icon, "completed": True} for s in self._steps
+            ]
+            self._next_btn.visible = False
+            self._back_btn.visible = False
+            self._alert.visible = False
+            self._content.update(
+                pmui.Column(
+                    pmui.Typography(
+                        "Your return has been submitted!",
+                        variant="h4",
+                        sx={"fontWeight": 700, "mb": 2},
+                    ),
+                    pmui.Typography(
+                        "Thank you for using Tax Wizard. You will receive a confirmation shortly.",
+                        sx={"color": "text.secondary"},
+                    ),
+                    sizing_mode="stretch_width",
+                )
+            )
 
-    def _update_button_state(self, *args):
-        current_step = self._steps[self.active_step]
-        self._next_btn.disabled = not current_step.complete
+    # -- State sync --
+
+    def _refresh_state(self, *events):
+        with pn.io.hold():
+            self._stepper.items = self._build_items()
+            self._update_controls()
+
+    def _update_controls(self):
+        current = self._steps[self.active_step]
+        is_first = self.active_step == 0
+        is_last = self.active_step == len(self._steps) - 1
+        self._back_btn.visible = not is_first and not self.submitted
+        self._next_btn.label = "Submit" if is_last else "Continue"
+        self._next_btn.disabled = not current.complete
+        if not current.complete and not self.submitted:
+            self._alert.object = "Complete this step before continuing."
+            self._alert.visible = True
+        else:
+            self._alert.visible = False
+        self._step_text.object = f"Step {self.active_step + 1} of {len(self._steps)}"
 
     @param.depends("active_step", watch=True, on_init=True)
     def _update_view(self):
         with pn.io.hold():
-            self._breadcrumbs.active = self.active_step
-
-            current_step = self._steps[self.active_step]
-            is_first = self.active_step == 0
-            is_last = self.active_step == len(self._steps) - 1
-
-            self._back_btn.visible = not is_first and not self.submitted
-            self._next_btn.label = "Submit" if is_last else "Continue"
-            self._next_btn.disabled = not current_step.complete
-
-            self._content.update(current_step)
-            self._nav_menu.active = (self.active_step,)
-            self._progress_bar.value = int(((self.active_step + 1) / len(self._steps)) * 100)
-            self._step_text.object = f"Step {self.active_step + 1} of {len(self._steps)}"
+            self._visited.add(self.active_step)
+            if self._stepper.active != self.active_step:
+                self._stepper.active = self.active_step
+            self._stepper.items = self._build_items()
+            self._content.update(self._steps[self.active_step])
+            self._update_controls()
 
     def __panel__(self):
         if pn.state.served:
@@ -433,20 +529,20 @@ class TaxWizard(pn.viewable.Viewer):
                 title="Tax Wizard",
                 header=[self._step_text],
                 sidebar=[
-                    pmui.Typography("Steps", variant="h6", sx={"mb": 1}),
-                    pmui.Column(self._nav_menu, sizing_mode="stretch_width"),
-                    pn.layout.Divider(margin=(20, 0)),
                     pmui.Typography("Need Help?", variant="h6", sx={"mb": 1}),
                     pmui.Typography(
                         "Have questions about filing? Visit our FAQ or contact support.",
                         sx={"color": "text.secondary", "fontSize": 13},
                     ),
-                    pmui.Button(
-                        label="View FAQ",
-                        icon="help_outline",
-                        variant="outlined",
-                        sizing_mode="stretch_width",
-                        margin=(15, 10, 0, 10),
+                    pmui.Tooltip(
+                        pmui.Button(
+                            label="View FAQ",
+                            icon="help_outline",
+                            variant="outlined",
+                            sizing_mode="stretch_width",
+                            margin=(15, 10, 0, 10),
+                        ),
+                        title="Browse frequently asked questions about filing",
                     ),
                 ],
                 sidebar_width=280,
@@ -454,10 +550,10 @@ class TaxWizard(pn.viewable.Viewer):
                 main=[
                     pmui.Container(
                         pmui.Column(
-                            self._breadcrumbs,
-                            self._progress_bar,
+                            self._stepper,
                             pmui.Paper(
                                 pmui.Column(
+                                    self._alert,
                                     self._content,
                                     self._nav_row,
                                     sizing_mode="stretch_width",
@@ -473,7 +569,7 @@ class TaxWizard(pn.viewable.Viewer):
                     )
                 ],
             )
-        return pmui.Column(self._breadcrumbs, self._content, self._nav_row)
+        return pmui.Column(self._stepper, self._alert, self._content, self._nav_row)
 
 
 TaxWizard().servable()

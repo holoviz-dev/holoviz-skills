@@ -8,9 +8,13 @@ Checklist for reviewing Panel applications. Focus on anti-patterns that cause fl
 - [Missing Hold on Multi-Property Updates](#missing-hold-on-multi-property-updates)
 - [Watcher Dependency Gaps](#watcher-dependency-gaps)
 - [Bind vs Watch for External Instances](#bind-vs-watch-for-external-instances)
+- [from_param Write-Back Gap](#from_param-write-back-gap)
+- [Unintended Stretch and Collapsed Labels](#unintended-stretch-and-collapsed-labels)
 - [Spacer vs Margin](#spacer-vs-margin)
 - [Mutating Instead of Reassigning](#mutating-instead-of-reassigning)
 - [Watch vs Depends Misuse](#watch-vs-depends-misuse)
+- [Component Gotchas](#component-gotchas)
+- [UX Heuristics](#ux-heuristics)
 
 ## Flickering from Recreated Components
 
@@ -125,6 +129,39 @@ def _on_menu_select(self, event):
 
 For the object's own parameters, prefer `@param.depends("param_name", watch=True)` — it's declarative and doesn't need event unpacking.
 
+## from_param Write-Back Gap
+
+`pmui` button-group widgets (`RadioButtonGroup`, `CheckButtonGroup`, `CheckBoxGroup`) created with `.from_param()` may not propagate the widget's value back to the bound param. The widget updates visually on click, but `@param.depends`/watchers on the param never fire, so the rest of the app silently goes stale.
+
+```python
+# WRONG — clicks change the buttons but chart_type never updates
+self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
+
+# CORRECT — direct widget + explicit watcher
+self._toggle = pmui.RadioButtonGroup(options=["bars", "lines"], value="bars")
+self._toggle.param.watch(lambda e: setattr(self, "chart_type", e.new), "value")
+```
+
+**What to look for**: a `pmui` `*ButtonGroup`/`CheckBoxGroup` built via `.from_param()` whose param has a `@param.depends(..., watch=True)` that "isn't firing." Convert to a direct widget + `.param.watch(..., "value")`.
+
+## Unintended Stretch and Collapsed Labels
+
+Under the default `sizing_mode="stretch_width"`, fixed-size widgets stretch to fill their container. Icon widgets like `Rating` render enormous, and inline `Markdown`/`HTML` labels placed in a `Row` alongside `HSpacer`s collapse to near-zero width and wrap one character per line.
+
+```python
+# WRONG — Rating fills the row (giant stars); label wraps vertically
+pmui.Row(pn.pane.Markdown("**Rating:**"), pmui.Rating(end=5), pn.layout.HSpacer())
+
+# CORRECT — pin inline widgets/labels to a fixed width
+pmui.Row(
+    pn.pane.HTML("<b>Rating:</b>", width=64, sizing_mode="fixed"),
+    pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed"),
+    pn.layout.HSpacer(),
+)
+```
+
+**What to look for**: `Rating`, small buttons, or text labels inside a stretched `Row`/`Column` without an explicit `width`/`sizing_mode="fixed"`.
+
 ## Spacer vs Margin
 
 `pn.Spacer(height=N)` creates a real component in the DOM. Margin or padding on the parent achieves the same visual gap without an extra element.
@@ -188,3 +225,26 @@ def _run_query(self):
 def results_view(self):
     return f"**{len(self.result)} rows**"
 ```
+
+## Component Gotchas
+
+Per-component traps that produce silent bugs rather than errors:
+
+- **Radio with `default=None`**: `RadioBoxGroup`/`RadioButtonGroup` visually highlight the first option even when `value=None`. Clicking that option fires no change event (the UI thinks it's already selected), so users can't select the first option and `@param.depends`/`pn.bind` never trigger on load. Always set a real default, or use `Select` if you need an empty state.
+- **`Selector.objects` as a dict**: assigning a **dict** to `param.Selector.objects` after construction can leave the widget's display labels unpopulated, so a `Select` renders blank. Drive the widget's `options` (a `{label: value}` dict) directly and keep the param's `objects` a plain list of values; sync `value` both ways with a guarded watcher.
+- **Date widgets**: convert to `pd.Timestamp` before comparing to DataFrame columns.
+
+  ```python
+  start_date, end_date = self.date_range
+  filtered = df[(df["date"] >= pd.Timestamp(start_date)) & (df["date"] <= pd.Timestamp(end_date))]
+  ```
+
+- **`Markdown` header flicker**: set `disable_anchors=True` to avoid flicker on header hover.
+
+## UX Heuristics
+
+Layout and interaction patterns for data apps and interactive tools:
+
+- **Context before controls**: show the data a control acts on *before* the control itself — users shouldn't scroll back up to act after scrolling down to look. Applies to forms, dashboards, and review screens alike.
+- **Neutral defaults for captured input**: don't preselect an answer the user is meant to provide, and keep submit disabled until they choose — a default silently skews the data. (See the radio `default=None` gotcha above; a directly-created widget makes an unset state real.)
+- **Group controls with what they affect**: place action controls adjacent to their content rather than in a distant sidebar.

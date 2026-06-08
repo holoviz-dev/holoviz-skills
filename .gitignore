@@ -26,6 +26,9 @@ pixi.lock
 /dist/
 /site
 /_build_plugin_tmp/
+# Plugin + skill zips — built on release by build_plugin.py, attached to the
+# GitHub release rather than committed.
+/artifacts/
 docs/skills/
 docs/developing-with-holoviz/
 docs/contributing-to-holoviz/

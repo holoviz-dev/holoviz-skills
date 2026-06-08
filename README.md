@@ -6,6 +6,11 @@ A curated collection of [Agent Skills](https://www.anthropic.com/news/skills) fo
 
 Agent Skills are folders of instructions, scripts, and references that teach agents how to work effectively with a specific library or workflow. These skills help agents produce correct, idiomatic HoloViz code instead of guessing from stale training data.
 
+
+## Documentation
+
+Visit **[https://holoviz-dev.github.io/holoviz-skills/](https://holoviz-dev.github.io/holoviz-skills/)** for the full list of skills and usage instructions. There, there are Copy Markdown icons at the top of each skill page to paste a skill directly into any AI chat if you prefer that over installing.
+
 ## Installation
 
 ```bash
@@ -30,11 +35,6 @@ holoviz-skills install --antigravity   # .agents/skills/           (Google Antig
 holoviz-skills install --kiro          # .kiro/skills/
 holoviz-skills install --mistral-vibe  # .vibe/skills/
 ```
-
-## Documentation
-
-Visit **[https://holoviz-dev.github.io/holoviz-skills/](https://holoviz-dev.github.io/holoviz-skills/)** for the full list of skills and usage instructions.
-
 ## Evaluation
 
 The `scripts/` directory contains an automated evaluation system that measures whether the skills improve Copilot's code generation quality. See [`scripts/README.md`](scripts/README.md) for details.
