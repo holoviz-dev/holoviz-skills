@@ -42,7 +42,10 @@ def _extract_metrics(metadata: dict) -> dict:
     }
 
 
-def collect_metrics(eval_results_dir: Path, query_filter: list[str] | None = None) -> dict:
+def collect_metrics(
+    eval_results_dir: Path,
+    query_filter: list[str] | None = None,
+) -> dict:
     """
     Collect all metrics from evaluation results.
 
@@ -74,9 +77,8 @@ def collect_metrics(eval_results_dir: Path, query_filter: list[str] | None = Non
                     continue
                 with open(metadata_file) as f:
                     metadata = json.load(f)
-                metrics.setdefault(query_id, {}).setdefault(model, {})[condition] = (
-                    _extract_metrics(metadata)
-                )
+                model_metrics = metrics.setdefault(query_id, {}).setdefault(model, {})
+                model_metrics[condition] = _extract_metrics(metadata)
         else:
             # New layout: model at depth-1, condition at depth-2
             model = entry.name
@@ -95,9 +97,9 @@ def collect_metrics(eval_results_dir: Path, query_filter: list[str] | None = Non
                         continue
                     with open(metadata_file) as f:
                         metadata = json.load(f)
-                    metrics.setdefault(query_id, {}).setdefault(model, {})[condition] = (
-                        _extract_metrics(metadata)
-                    )
+                    query_metrics = metrics.setdefault(query_id, {})
+                    model_metrics = query_metrics.setdefault(model, {})
+                    model_metrics[condition] = _extract_metrics(metadata)
 
     return metrics
 
@@ -105,7 +107,7 @@ def collect_metrics(eval_results_dir: Path, query_filter: list[str] | None = Non
 def _condition_comparison(with_skills: dict, without_skills: dict) -> dict:
     """Compare with_skills vs without_skills metrics for a single model."""
     comp: dict = {
-        "both_have_code": with_skills.get("has_code") and without_skills.get("has_code"),
+        "both_have_code": (with_skills.get("has_code") and without_skills.get("has_code")),
     }
 
     if with_skills and without_skills:
@@ -212,177 +214,206 @@ def _fmt_float(val: float | None, decimals: int = 2, suffix: str = "") -> str:
     return f"{val:.{decimals}f}{suffix}"
 
 
+def _fmt_int(val: int | None) -> str:
+    if val is None:
+        return "—"
+    return f"{val:,}"
+
+
+def _fmt_metric_rate(agg: dict, key: str) -> str:
+    if key not in agg:
+        return "—"
+    return f"{agg[key]:.1%}"
+
+
+def _fmt_metric_delta(agg: dict, key: str, decimals: int = 0, suffix: str = "") -> str:
+    if key not in agg:
+        return "—"
+    return f"{agg[key]:+,.{decimals}f}{suffix}"
+
+
+def _render_table(header: str, separator: str, rows: list[str]) -> str:
+    return "\n".join([header, separator, *rows])
+
+
+def _render_single_model_query_section(model_data: dict, model: str) -> str:
+    ws = model_data.get(model, {}).get("with_skills", {})
+    wos = model_data.get(model, {}).get("without_skills", {})
+
+    if not ws or not wos:
+        return "_No data._"
+
+    rows = [
+        (
+            "Code Generated",
+            _fmt_bool(ws.get("has_code")),
+            _fmt_bool(wos.get("has_code")),
+        ),
+        (
+            "Response Time",
+            _fmt_float(ws.get("execution_time"), suffix="s"),
+            _fmt_float(wos.get("execution_time"), suffix="s"),
+        ),
+        (
+            "Tokens (output)",
+            _fmt_int(ws.get("tokens_output")),
+            _fmt_int(wos.get("tokens_output")),
+        ),
+        (
+            "Tokens (input)",
+            _fmt_int(ws.get("tokens_input")),
+            _fmt_int(wos.get("tokens_input")),
+        ),
+        (
+            "Tokens (cached)",
+            _fmt_int(ws.get("tokens_cached")),
+            _fmt_int(wos.get("tokens_cached")),
+        ),
+    ]
+
+    if ws.get("execution_success") is not None or wos.get("execution_success") is not None:
+        rows.append(
+            (
+                "Execution Success",
+                _fmt_bool(ws.get("execution_success")),
+                _fmt_bool(wos.get("execution_success")),
+            )
+        )
+
+    table = _render_table(
+        "| Metric | With Skills | Without Skills |",
+        "|--------|-------------|----------------|",
+        [f"| {label} | {left} | {right} |" for label, left, right in rows],
+    )
+
+    notes = []
+    comp = model_data.get(model, {}).get("comparison", {})
+    if comp.get("execution_improvement"):
+        notes.append("**IMPROVED:** Code executes successfully with skills")
+    elif comp.get("execution_regression"):
+        notes.append("**REGRESSION:** Code fails with skills")
+
+    return "\n\n".join([table, *notes]) if notes else table
+
+
+def _render_multi_model_query_section(model_data: dict, model_cols: list[str]) -> str:
+    metrics_rows = [
+        ("Code Generated", "has_code", _fmt_bool),
+        ("Response Time (s)", "execution_time", lambda v: _fmt_float(v, suffix="s")),
+        ("Tokens (output)", "tokens_output", _fmt_int),
+        ("Tokens (input)", "tokens_input", _fmt_int),
+        ("Tokens (cached)", "tokens_cached", _fmt_int),
+        ("Execution Success", "execution_success", _fmt_bool),
+    ]
+
+    header = "| Metric |" + "".join(f" `{m}` w/ skills | `{m}` w/o skills |" for m in model_cols)
+    separator = "|--------|" + "".join(" --- | --- |" for _ in model_cols)
+
+    rows = []
+    for label, key, fmt in metrics_rows:
+        cells = []
+        for model in model_cols:
+            ws = model_data[model].get("with_skills", {})
+            wos = model_data[model].get("without_skills", {})
+            cells.extend([fmt(ws.get(key)), fmt(wos.get(key))])
+        rows.append("| " + label + " | " + " | ".join(cells) + " |")
+
+    notes = []
+    for model in model_cols:
+        comp = model_data[model].get("comparison", {})
+        if comp.get("execution_improvement"):
+            notes.append(f"**`{model}` IMPROVED:** " "Code executes successfully with skills")
+        elif comp.get("execution_regression"):
+            notes.append(f"**`{model}` REGRESSION:** " "Code fails with skills")
+
+    section = _render_table(header, separator, rows)
+    return "\n\n".join([section, *notes]) if notes else section
+
+
+def _render_query_section(query_id: str, data: dict, all_models: list[str]) -> str:
+    model_data = data.get("models", {})
+
+    if not model_data:
+        body = "_No data._"
+    elif len(all_models) == 1:
+        body = _render_single_model_query_section(model_data, all_models[0])
+    else:
+        model_cols = [model for model in all_models if model in model_data]
+        body = _render_multi_model_query_section(model_data, model_cols)
+
+    return f"### `{query_id}`\n\n{body}"
+
+
 def save_markdown_report(summary: dict, output_file: Path):
     """Save a human-readable summary as a Markdown file."""
     all_models: list[str] = summary.get("models", ["default"])
-    lines = [
-        "# Evaluation Summary\n",
+    sections = [
+        "# Evaluation Summary",
         f"**Total Queries:** {summary['total_queries']}  ",
-        f"**Models evaluated:** {', '.join(f'`{m}`' for m in all_models)}\n",
+        f"**Models evaluated:** {', '.join(f'`{m}`' for m in all_models)}",
     ]
 
     # ── Aggregate section ──────────────────────────────────────────────────
     if summary.get("aggregate"):
-        lines.append("## Aggregate Statistics\n")
+        sections.append("## Aggregate Statistics")
+        table_header = (
+            "| Model | With Skills | Without Skills |\n" "|-------|-------------|----------------|"
+        )
 
         # Code generation rate
-        lines += [
-            "### Code Generation Rate\n",
-            "| Model | With Skills | Without Skills |",
-            "|-------|-------------|----------------|",
-        ]
+        code_rows = []
         for model, agg in summary["aggregate"].items():
-            ws_rate = f"{agg.get('code_generation_rate_with', 0):.1%}"
-            wos_rate = f"{agg.get('code_generation_rate_without', 0):.1%}"
-            lines.append(f"| `{model}` | {ws_rate} | {wos_rate} |")
-        lines.append("")
+            code_rows.append(
+                f"| `{model}` | "
+                f"{_fmt_metric_rate(agg, 'code_generation_rate_with')} | "
+                f"{_fmt_metric_rate(agg, 'code_generation_rate_without')} |"
+            )
+        sections.append(_render_table("### Code Generation Rate", table_header, code_rows))
 
         # Execution success rate (only if data exists)
-        has_exec = any(
-            "execution_success_rate_with" in agg for agg in summary["aggregate"].values()
-        )
+        aggregate_values = summary["aggregate"].values()
+        has_exec = any("execution_success_rate_with" in agg for agg in aggregate_values)
         if has_exec:
-            lines += [
-                "### Execution Success Rate\n",
-                "| Model | With Skills | Without Skills |",
-                "|-------|-------------|----------------|",
-            ]
+            exec_rows = []
             for model, agg in summary["aggregate"].items():
-                ws_rate = (
-                    f"{agg['execution_success_rate_with']:.1%}"
-                    if "execution_success_rate_with" in agg
-                    else "—"
+                exec_rows.append(
+                    f"| `{model}` | "
+                    f"{_fmt_metric_rate(agg, 'execution_success_rate_with')} | "
+                    f"{_fmt_metric_rate(agg, 'execution_success_rate_without')} |"
                 )
-                wos_rate = (
-                    f"{agg['execution_success_rate_without']:.1%}"
-                    if "execution_success_rate_without" in agg
-                    else "—"
-                )
-                lines.append(f"| `{model}` | {ws_rate} | {wos_rate} |")
-            lines.append("")
+            sections.append(_render_table("### Execution Success Rate", table_header, exec_rows))
 
         # Token and time deltas
-        lines += [
-            "### Resource Usage (With Skills vs Without Skills)\n",
-            "| Model | Avg Token Δ (output) | Avg Response Time Δ |",
-            "|-------|---------------------|---------------------|",
-        ]
+        resource_rows = []
         for model, agg in summary["aggregate"].items():
-            tok_d = f"{agg['avg_token_difference']:+,.0f}" if "avg_token_difference" in agg else "—"
-            time_d = f"{agg['avg_time_difference']:+.2f}s" if "avg_time_difference" in agg else "—"
-            lines.append(f"| `{model}` | {tok_d} | {time_d} |")
-        lines.append("")
+            token_delta = _fmt_metric_delta(agg, "avg_token_difference")
+            time_delta = _fmt_metric_delta(
+                agg,
+                "avg_time_difference",
+                decimals=2,
+                suffix="s",
+            )
+            resource_rows.append(f"| `{model}` | {token_delta} | {time_delta} |")
+        resource_header = (
+            "| Model | Avg Token Δ (output) | Avg Response Time Δ |\n"
+            "|-------|---------------------|---------------------|"
+        )
+        sections.append(
+            _render_table(
+                "### Resource Usage (With Skills vs Without Skills)",
+                resource_header,
+                resource_rows,
+            )
+        )
 
     # ── Per-query section ──────────────────────────────────────────────────
-    lines.append("## Per-Query Results\n")
+    sections.append("## Per-Query Results")
+    sections.extend(
+        _render_query_section(query_id, data, all_models)
+        for query_id, data in summary["queries"].items()
+    )
 
-    for query_id, data in summary["queries"].items():
-        lines.append(f"### `{query_id}`\n")
-        model_data = data.get("models", {})
-
-        if not model_data:
-            lines.append("_No data._\n")
-            continue
-
-        if len(all_models) == 1:
-            # Single-model: keep the original compact two-column table
-            model = all_models[0]
-            ws = model_data.get(model, {}).get("with_skills", {})
-            wos = model_data.get(model, {}).get("without_skills", {})
-
-            if ws and wos:
-                lines += [
-                    "| Metric | With Skills | Without Skills |",
-                    "|--------|-------------|----------------|",
-                ]
-                ws_code = _fmt_bool(ws.get("has_code"))
-                wos_code = _fmt_bool(wos.get("has_code"))
-
-                ws_time = _fmt_float(ws.get("execution_time"), suffix="s")
-                wos_time = _fmt_float(wos.get("execution_time"), suffix="s")
-
-                ws_out = ws.get("tokens_output", "—")
-                wos_out = wos.get("tokens_output", "—")
-
-                ws_in = ws.get("tokens_input", "—")
-                wos_in = wos.get("tokens_input", "—")
-
-                ws_cache = ws.get("tokens_cached", "—")
-                wos_cache = wos.get("tokens_cached", "—")
-
-                lines.append(f"| Code Generated | {ws_code} | {wos_code} |")
-                lines.append(f"| Response Time | {ws_time} | {wos_time} |")
-                lines.append(f"| Tokens (output) | {ws_out:,} | {wos_out:,} |")
-                lines.append(f"| Tokens (input) | {ws_in:,} | {wos_in:,} |")
-                lines.append(f"| Tokens (cached) | {ws_cache:,} | {wos_cache} |")
-                if (
-                    ws.get("execution_success") is not None
-                    or wos.get("execution_success") is not None
-                ):
-                    ws_succ = ws.get("execution_success")
-                    wos_succ = wos.get("execution_success")
-                    lines.append(
-                        f"| Execution Success | {_fmt_bool(ws_succ)} | {_fmt_bool(wos_succ)} |"
-                    )
-                lines.append("")
-
-                comp = model_data.get(model, {}).get("comparison", {})
-                if comp.get("execution_improvement"):
-                    lines.append("**IMPROVED:** Code executes successfully with skills\n")
-                elif comp.get("execution_regression"):
-                    lines.append("**REGRESSION:** Code fails with skills\n")
-        else:
-            # Multi-model: render a wider table with model × condition columns
-            model_cols = []
-            for m in all_models:
-                if m in model_data:
-                    model_cols.append(m)
-
-            header = "| Metric |" + "".join(
-                f" `{m}` w/ skills | `{m}` w/o skills |" for m in model_cols
-            )
-            separator = "|--------|" + "".join(" --- | --- |" for _ in model_cols)
-            lines += [header, separator]
-
-            metrics_rows = [
-                ("Code Generated", "has_code", _fmt_bool),
-                ("Response Time (s)", "execution_time", lambda v: _fmt_float(v, suffix="s")),
-                (
-                    "Tokens (output)",
-                    "tokens_output",
-                    lambda v: f"{v:,}" if isinstance(v, int) else "—",
-                ),
-                (
-                    "Tokens (input)",
-                    "tokens_input",
-                    lambda v: f"{v:,}" if isinstance(v, int) else "—",
-                ),
-                (
-                    "Tokens (cached)",
-                    "tokens_cached",
-                    lambda v: f"{v:,}" if isinstance(v, int) else "—",
-                ),
-                ("Execution Success", "execution_success", _fmt_bool),
-            ]
-
-            for label, key, fmt in metrics_rows:
-                row = f"| {label} |"
-                for m in model_cols:
-                    ws = model_data[m].get("with_skills", {})
-                    wos = model_data[m].get("without_skills", {})
-                    row += f" {fmt(ws.get(key))} | {fmt(wos.get(key))} |"
-                lines.append(row)
-            lines.append("")
-
-            # Improvement/regression notes per model
-            for m in model_cols:
-                comp = model_data[m].get("comparison", {})
-                if comp.get("execution_improvement"):
-                    lines.append(f"**`{m}` IMPROVED:** Code executes successfully with skills\n")
-                elif comp.get("execution_regression"):
-                    lines.append(f"**`{m}` REGRESSION:** Code fails with skills\n")
-
-    output_file.write_text("\n".join(lines))
+    output_file.write_text("\n\n".join(sections) + "\n")
 
 
 def aggregate_metrics(
@@ -436,7 +467,9 @@ def main():
     )
 
     parser.add_argument(
-        "--output", type=Path, help="Output directory for reports (default: same as eval-results)"
+        "--output",
+        type=Path,
+        help="Output directory for reports (default: same as eval-results)",
     )
 
     parser.add_argument(
@@ -452,7 +485,9 @@ def main():
         return 1
 
     aggregate_metrics(
-        eval_results_dir=args.eval_results, output_dir=args.output, query_filter=args.queries
+        eval_results_dir=args.eval_results,
+        output_dir=args.output,
+        query_filter=args.queries,
     )
 
     return 0
