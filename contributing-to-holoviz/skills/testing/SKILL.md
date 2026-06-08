@@ -2,7 +2,7 @@
 name: testing
 description: Testing guidelines for HoloViz packages. Use when writing tests, reviewing test coverage in PRs, or identifying missing edge cases in any HoloViz repository.
 metadata:
-  version: "0.0.1"
+  version: "0.0.2"
   author: holoviz
 ---
 
@@ -16,12 +16,15 @@ This skill covers testing patterns and edge cases specific to HoloViz repositori
 - New tests must fail on `main` before submitting.
 - UI tests require the `--ui` flag.
 - Only create a new test file if no existing file is a good fit.
+- Cover the lines you add; exercise new behavior, don't just import it.
 
 ## Edge Cases and Logical Errors
 
 - Identify logical errors and edge cases in the changed code. Trace branching logic and boundary conditions to find inputs that could produce wrong results, silent data loss, or unexpected exceptions.
 - Test for NaN and datetime types (np, pd) — these are common edge cases across HoloViz that are easy to miss.
+- Also probe (where the logic branches on them): empty/single-element inputs, duplicate/colliding labels, negative/reversed values, unsorted input.
 - Parameterize tests when the same logic is exercised with different inputs.
+- Name tests for intent; skip comments that just restate what the test does.
 
 ```python
 # WRONG — only tests the happy path
