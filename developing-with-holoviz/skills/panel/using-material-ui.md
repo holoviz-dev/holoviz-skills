@@ -8,7 +8,7 @@ Building:
 
 - [Lookup](#lookup) — where to fetch pmui docs as markdown
 - [Key Differences from Panel](#key-differences-from-panel)
-- [Page](#page) — incl. [header / AppBar color](#page-header--appbar-color)
+- [Page](#page) — incl. [header / AppBar color](#page-header-appbar-color)
 - [Layouts](#layouts)
 - [Component Gotchas](#component-gotchas)
 
