@@ -27,7 +27,7 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 | Typed, validated, reactive parameters | `developing-with-holoviz/skills/param/SKILL.md` |
 | Quick exploratory plots from DataFrames / xarray | `developing-with-holoviz/skills/hvplot/SKILL.md` |
 | Dashboard, data app, or interactive tool | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` |
-| Convert a design / screenshot / React app into a pmui app | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` + `developing-with-holoviz/skills/panel/converting-designs-to-pmui.md` (+ `building-custom-components.md` for rich/clickable pieces) |
+| Convert a design / screenshot / React app into a Material UI (pmui) app | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` + `developing-with-holoviz/skills/panel/converting-designs-to-material-ui.md` (+ `building-custom-components.md` for rich/clickable pieces) |
 | HoloViews elements, opts, tooltips, formatters, tools | `developing-with-holoviz/skills/holoviews/SKILL.md` |
 | Embedding plots in Panel (HoloViews/hvPlot, Matplotlib, Plotly, ECharts; DynamicMap, responsive sizing) | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/plotting-in-panel.md` + `developing-with-holoviz/skills/holoviews/SKILL.md` |
 | Display, filter, sort, or select rows in a data table | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-tabulator.md` |

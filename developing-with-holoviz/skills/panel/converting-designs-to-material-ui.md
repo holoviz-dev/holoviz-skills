@@ -1,4 +1,4 @@
-# Converting Designs to pmui
+# Converting Designs to Material UI
 
 A workflow for turning a visual design — a screenshot, a Figma mockup, or an existing app (e.g. a
 React app) you are porting — into a panel-material-ui (pmui) app. This is the *process*; for
