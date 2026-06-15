@@ -144,9 +144,6 @@ export function render({ model, el }) {
 }
 ```
 
-Canonical working example (verified end-to-end): `anaconda_lumen/new_compass/components.py`
-(`AccountRow`) and `anaconda_lumen/new_compass/account_row.js`.
-
 ## Development: POC First
 
 Build in two phases. Getting JS imports and responsive sizing working takes significant debugging.
