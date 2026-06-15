@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "1.0.4"
+  version: "1.0.2"
   author: holoviz
 ---
 

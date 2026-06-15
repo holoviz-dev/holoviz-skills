@@ -53,8 +53,8 @@ of it is native:
 
 Then flag the **one or two** elements that native widgets can't express — typically a richly-styled
 clickable element. Decide those are custom components now (see
-[Building Custom Components](building-custom-components.md): "Native pmui first, custom component
-when…"), so you are not surprised mid-build.
+[Building Custom Components](building-custom-components.md) — the "Choosing an Approach" ladder:
+native pmui first, a JS component only when needed), so you are not surprised mid-build.
 
 ## 3. Build Component-First With Mock Data
 

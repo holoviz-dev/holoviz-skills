@@ -13,9 +13,15 @@ Design notes
   ``creating-custom-holoviz-skills/``). The ``holoviz_skills/skills/``,
   ``.claude/skills`` and ``.agents/skills`` copies are generated/gitignored,
   so the hook never touches them.
-* Idempotent: the bump only happens when the SKILL.md's version still matches
-  HEAD. Once bumped (staged version != HEAD version) a re-run is a no-op, so
-  re-committing after pre-commit re-stages does not double-bump.
+* One bump per branch: the version is compared against the merge-base with the
+  base branch (``origin/main`` by default; override with the
+  ``SKILL_VERSION_BASE_REF`` env var), so a skill bumps at most once across a
+  whole PR no matter how many commits touch it. Falls back to ``HEAD`` (the
+  original per-commit behavior) when no base branch can be resolved — detached
+  HEAD, no ``main``, or a shallow clone that lacks it.
+* Idempotent / respects manual bumps: once the staged version differs from the
+  baseline (already bumped on this branch, hand-edited, or freshly seeded), a
+  re-run is a no-op.
 * Brand-new skills (SKILL.md not yet in HEAD) keep their authored version.
 * Skills with no ``metadata.version`` get one seeded at ``0.1.0`` on first edit.
 * Stdlib-only, matching the convention of the other scripts in this folder.
@@ -23,6 +29,7 @@ Design notes
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -36,6 +43,11 @@ SKILL_ROOTS = (
 )
 
 SEED_VERSION = "0.1.0"
+
+# Env var to override the base ref used for version comparison.
+BASE_REF_ENV = "SKILL_VERSION_BASE_REF"
+# Tried in order when no override is set; first that exists wins.
+DEFAULT_BASE_CANDIDATES = ("origin/main", "origin/master", "main", "master")
 
 # Matches an indented ``version: "x.y.z"`` line inside the metadata block.
 VERSION_RE = re.compile(
@@ -54,13 +66,37 @@ def repo_root() -> Path:
     return Path(out.stdout.strip())
 
 
-def git_head_text(relpath: str) -> str | None:
-    """Return the content of ``relpath`` at HEAD, or None if not tracked there."""
-    res = subprocess.run(
-        ["git", "show", f"HEAD:{relpath}"],
-        capture_output=True,
-        text=True,
-    )
+def _git(args: list[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], capture_output=True, text=True)
+
+
+def _ref_exists(ref: str) -> bool:
+    return _git(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]).returncode == 0
+
+
+def baseline_ref() -> str:
+    """Resolve the ref to compare skill versions against.
+
+    Prefer the merge-base with the branch's base branch, so a whole PR/branch
+    bumps a given skill at most once no matter how many commits touch it. Honor
+    the ``SKILL_VERSION_BASE_REF`` env override, else try the default base
+    candidates. Fall back to ``HEAD`` (the original per-commit behavior) when no
+    base can be resolved — detached HEAD, no ``main``, or a shallow clone.
+    """
+    env = os.environ.get(BASE_REF_ENV, "").strip()
+    candidates = [env] if env else list(DEFAULT_BASE_CANDIDATES)
+    for ref in candidates:
+        if not ref or not _ref_exists(ref):
+            continue
+        mb = _git(["merge-base", ref, "HEAD"])
+        if mb.returncode == 0 and mb.stdout.strip():
+            return mb.stdout.strip()
+    return "HEAD"
+
+
+def git_show_text(ref: str, relpath: str) -> str | None:
+    """Return the content of ``relpath`` at ``ref``, or None if not tracked there."""
+    res = _git(["show", f"{ref}:{relpath}"])
     return res.stdout if res.returncode == 0 else None
 
 
@@ -161,24 +197,30 @@ def main(argv: list[str]) -> int:
         if owner is not None:
             skill_mds.add(owner)
 
+    # Compare against the branch base (merge-base with main), not HEAD, so a
+    # skill bumps at most once per branch/PR regardless of commit count. Falls
+    # back to "HEAD" — the original per-commit behavior — when unresolvable.
+    base = baseline_ref()
+
     bumped: list[str] = []
     for md in sorted(skill_mds):
         rel = md.relative_to(root).as_posix()
-        head_text = git_head_text(rel)
-        if head_text is None:
-            # New skill not in HEAD yet — keep the authored version.
+        base_text = git_show_text(base, rel)
+        if base_text is None:
+            # Skill not present at the base ref (new on this branch) — keep the
+            # authored version.
             continue
 
         current_text = md.read_text(encoding="utf-8")
-        head_ver = version_string(head_text)
+        base_ver = version_string(base_text)
         cur_ver = version_string(current_text)
 
         # Idempotency / respect manual bumps: only act when the staged version
-        # still matches HEAD's. Once it differs — because we already bumped it in
-        # this commit, the author bumped it by hand, or it was seeded where HEAD
-        # had none (None != "x.y.z") — leave it alone. This makes re-running the
-        # hook a no-op and prevents the bump-on-every-commit loop.
-        if cur_ver != head_ver:
+        # still matches the base's. Once it differs — already bumped on this
+        # branch, hand-edited, or seeded where the base had none
+        # (None != "x.y.z") — leave it alone. This makes re-running the hook a
+        # no-op and prevents bump-on-every-commit across a branch.
+        if cur_ver != base_ver:
             continue
 
         new_text = bump_text(current_text)
