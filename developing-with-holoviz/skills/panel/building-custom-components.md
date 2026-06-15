@@ -1,10 +1,13 @@
 # Building Custom Components
 
-Build custom Panel components that bridge Python and JavaScript.
+Build custom Panel components — pure-Python ones that compose existing widgets,
+and JS-backed ones that bridge Python and JavaScript.
 
 ## Contents
 
-- [Which Component Type](#which-component-type)
+- [Choosing an Approach (Python vs JS)](#choosing-an-approach-python-vs-js)
+- [Pure-Python Components: `Viewer` and `PyComponent`](#pure-python-components-viewer-and-pycomponent)
+- [Which JS Component Type](#which-js-component-type)
 - [Native pmui First, Custom Component When…](#native-pmui-first-custom-component-when)
 - [Recipe: a Clickable Rich Row (JSComponent)](#recipe-a-clickable-rich-row-jscomponent)
 - [Development: POC First](#development-poc-first)
@@ -19,7 +22,53 @@ Build custom Panel components that bridge Python and JavaScript.
 - [MaterialUIComponent](#materialuicomponent)
 - [Key DOs and DON'Ts](#key-dos-and-donts)
 
-## Which Component Type
+## Choosing an Approach (Python vs JS)
+
+Most custom components need no JavaScript. Work down this ladder; stop at the
+first rung that works — each one below costs more (JS file, CDN debugging,
+state-sync lifecycle):
+
+1. **Native pmui / Panel widget** — no code; most "rich" UI is layout over `Paper`, `Chip`, `Grid`, `Accordion`, `Button`, `MenuList`.
+2. **Pure-Python composite** (`Viewer` or `PyComponent`) — wire *existing* widgets into one reusable, Param-synced unit. No JS. See below.
+3. **JS component** — only for rendering no Panel widget provides (JS charting/mapping lib, bespoke DOM, fully-clickable rich row). See [Which JS Component Type](#which-js-component-type).
+
+The common mistake is jumping to rung 3 and reimplementing a slider or
+multi-select Panel already ships.
+
+## Pure-Python Components: `Viewer` and `PyComponent`
+
+Compose existing Panel objects into one reusable component with its own Param API
+— no `.js`, CDN, or bundler. Both need a `__panel__` returning the layout, and
+sync outer params to inner widgets with `@param.depends(..., watch=True)`.
+
+- **`Viewer`** (`from panel.viewable import Viewer`) — a reusable layout block;
+  lowest ceremony. Pattern: [Custom Viewer](https://panel.holoviz.org/how_to/custom_components/custom_viewer.html).
+- **`PyComponent`** (`from panel.custom import PyComponent`) — when the result
+  must *be* a first-class `Widget`/`Pane` (a `.value`, works with `.from_param`).
+  Inherit the type base first, impl second: `class FeatureInput(WidgetBase, PyComponent)`.
+  Pattern: [Build a Widget in Python](https://panel.holoviz.org/how_to/custom_components/python/create_custom_widget.html).
+
+Shape (a `Viewer` wrapping two `FloatInput`s; sync runs both ways):
+
+```python
+class EditableRange(Viewer):
+    value = param.Range(default=(0, 1))
+
+    def __init__(self, **params):
+        self._start, self._end = pn.widgets.FloatInput(), pn.widgets.FloatInput()
+        super().__init__(**params)
+        ...  # build self._layout = pn.Row(self._start, self._end)
+
+    def __panel__(self): return self._layout
+
+    @param.depends("value", watch=True)        # outer → inner
+    def _sync_widgets(self): self._start.value, self._end.value = self.value
+
+    @param.depends("_start.value", "_end.value", watch=True)   # inner → outer
+    def _sync_params(self): self.value = (self._start.value, self._end.value)
+```
+
+## Which JS Component Type
 
 | Criteria | JSComponent | ReactComponent | AnyWidgetComponent | MaterialUIComponent |
 |---|---|---|---|---|
@@ -30,11 +79,13 @@ Build custom Panel components that bridge Python and JavaScript.
 
 ## Native pmui First, Custom Component When…
 
-A custom component is a real cost (JS file, CDN debugging, state-sync lifecycle). Default to
+A *JS* custom component is a real cost (JS file, CDN debugging, state-sync lifecycle). Default to
 composing native pmui — `Paper`, `Chip`, `Grid`, `Accordion`, `Typography`, `Button`, `MenuList` —
-which themes automatically and needs no JS. Most "rich" UI is just layout over these.
+which themes automatically and needs no JS. Most "rich" UI is just layout over these. To bundle
+widgets into a reusable unit with no new rendering, stay in Python with a `Viewer`/`PyComponent`
+(see [Pure-Python Components](#pure-python-components-viewer-and-pycomponent)).
 
-Reach for a custom component (almost always a vanilla-JS `JSComponent`) when native widgets
+Reach for a *JS* custom component (almost always a vanilla-JS `JSComponent`) when native widgets
 genuinely can't express the interaction. The clearest trigger: a **fully-clickable element with rich
 multi-part content** — e.g. a list row showing text plus several colored chips, where clicking
 anywhere selects it. `pmui.Button` takes only a string `label`, so it can't host that content, and
