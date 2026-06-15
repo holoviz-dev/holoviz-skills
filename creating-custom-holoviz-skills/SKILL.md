@@ -2,7 +2,8 @@
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
 metadata:
-  version: "0.1.1"
+  version: "0.1.2"
+  author: holoviz
 ---
 
 # Creating Custom Skills
@@ -67,11 +68,15 @@ to* a HoloViz package (testing, docs, releases), it goes under
 2. Write the SKILL.md (see structure below).
 3. Optionally add sibling `*.md` reference files for detailed lookup material.
 4. Add an entry to the parent routing skill's Loading Table and Skill Map so
-   agents know when to load your skill. If you added reference files, register
-   them too — a routing skill may keep a dedicated references sub-table (e.g.
-   the "Panel References" table in `developing-with-holoviz/SKILL.md`).
-   An unlisted reference file still ships in the docs, but agents won't know to
-   load it.
+   agents know when to load your skill. If you added reference files, make each
+   one reachable from a Loading Table user-need row that pairs it with the
+   sub-skill (e.g. "Filterable data table → `panel/SKILL.md` + `using-tabulator.md`").
+   The full per-reference index belongs in the sub-skill's own References
+   section — don't duplicate it as a sub-table in the routing skill, which loads
+   on *every* task in the category and would carry that cost regardless of
+   relevance. A reference reachable from neither a Loading Table row nor the
+   sub-skill's References section still ships in the docs, but agents won't know
+   to load it.
 5. Run `python scripts/build_stubs.py` — this regenerates all docs pages and
    updates `zensical.toml` automatically. **Do not edit `zensical.toml` by
    hand** — the script manages the nav, including nested sections for skills
@@ -232,10 +237,12 @@ routing skill's two tables:
 - **Skill Map** — maps sub-skill names to what they cover (these are
   doc-facing Markdown links).
 
-A routing skill may also keep a **references sub-table** (e.g. "Panel
-References") listing the sibling `.md` files of a heavily-referenced sub-skill.
-When you add a reference file to such a skill, add a row there too — otherwise
-agents have no signal to load it.
+Don't list a sub-skill's reference files exhaustively in the routing skill (no
+"references sub-table"). The routing skill loads on *every* task in its category,
+so a per-reference index there costs context even for unrelated work, and it
+duplicates the sub-skill's own References section. Instead, give each reference a
+Loading Table user-need row paired with its sub-skill, and let the sub-skill's
+References section be the single full index.
 
 ## Docs pipeline
 

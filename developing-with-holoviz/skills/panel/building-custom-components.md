@@ -8,7 +8,7 @@ and JS-backed ones that bridge Python and JavaScript.
 - [Choosing an Approach (Python vs JS)](#choosing-an-approach-python-vs-js)
 - [Pure-Python Components: `Viewer` and `PyComponent`](#pure-python-components-viewer-and-pycomponent)
 - [Which JS Component Type](#which-js-component-type)
-- [Native pmui First, Custom Component When…](#native-pmui-first-custom-component-when)
+- [When a JS Component Is Warranted](#when-a-js-component-is-warranted)
 - [Recipe: a Clickable Rich Row (JSComponent)](#recipe-a-clickable-rich-row-jscomponent)
 - [Development: POC First](#development-poc-first)
 - [Python Class Structure](#python-class-structure)
@@ -77,19 +77,14 @@ class EditableRange(Viewer):
 | Export | `export function render({model, el})` | `export function render({model, el})` | `export default { render }` | `export function render({model, el})` |
 | ESM attr | `_esm` | `_esm` | `_esm` | `_esm_base` |
 
-## Native pmui First, Custom Component When…
+## When a JS Component Is Warranted
 
-A *JS* custom component is a real cost (JS file, CDN debugging, state-sync lifecycle). Default to
-composing native pmui — `Paper`, `Chip`, `Grid`, `Accordion`, `Typography`, `Button`, `MenuList` —
-which themes automatically and needs no JS. Most "rich" UI is just layout over these. To bundle
-widgets into a reusable unit with no new rendering, stay in Python with a `Viewer`/`PyComponent`
-(see [Pure-Python Components](#pure-python-components-viewer-and-pycomponent)).
-
-Reach for a *JS* custom component (almost always a vanilla-JS `JSComponent`) when native widgets
-genuinely can't express the interaction. The clearest trigger: a **fully-clickable element with rich
-multi-part content** — e.g. a list row showing text plus several colored chips, where clicking
-anywhere selects it. `pmui.Button` takes only a string `label`, so it can't host that content, and
-`MenuList` items flatten rich content into label/secondary/icon.
+The ladder above keeps you on rungs 1–2 whenever possible; reach for a *JS* component
+(almost always a vanilla-JS `JSComponent`) only when native widgets genuinely can't express the
+interaction. The clearest trigger: a **fully-clickable element with rich multi-part content** —
+e.g. a list row showing text plus several colored chips, where clicking anywhere selects it.
+`pmui.Button` takes only a string `label`, so it can't host that content, and `MenuList` items
+flatten rich content into label/secondary/icon.
 
 - **❌ Anti-pattern — the overlay button (wastes hours).** Don't layer a transparent full-size
   `pmui.Button` over a composed visual row to "capture the click." The Panel wrapper around the
