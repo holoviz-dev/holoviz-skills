@@ -2,7 +2,7 @@
 name: developing-with-holoviz
 description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param).
 metadata:
-  version: "0.1.2"
+  version: "0.1.3"
   author: holoviz
 ---
 
@@ -27,6 +27,7 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 | Typed, validated, reactive parameters | `developing-with-holoviz/skills/param/SKILL.md` |
 | Quick exploratory plots from DataFrames / xarray | `developing-with-holoviz/skills/hvplot/SKILL.md` |
 | Dashboard, data app, or interactive tool | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` |
+| Convert a design / screenshot / React app into a pmui app | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` + `developing-with-holoviz/skills/panel/converting-designs-to-pmui.md` (+ `building-custom-components.md` for rich/clickable pieces) |
 | HoloViews elements, opts, tooltips, formatters, tools | `developing-with-holoviz/skills/holoviews/SKILL.md` |
 | Embedding plots in Panel (HoloViews/hvPlot, Matplotlib, Plotly, ECharts; DynamicMap, responsive sizing) | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/plotting-in-panel.md` + `developing-with-holoviz/skills/holoviews/SKILL.md` |
 | Custom JS/React/AnyWidget components | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/building-custom-components.md` |
@@ -51,6 +52,7 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 | [iterating-on-panel-apps](skills/panel/iterating-on-panel-apps.md) | Serve with logging, screenshot with Playwright, debug loop |
 | [using-material-ui](skills/panel/using-material-ui.md) | Building pmui apps (`pmui.Page`, `Container`/`Grid` layouts, centering, gotchas) and theming (`theme_config` palette, typography, icons, brand assets, chart theming) |
 | [migrating-to-material-ui](skills/panel/migrating-to-material-ui.md) | Converting a plain-Panel app to pmui: template→Page, widget/pane swaps, new components, what to leave alone |
+| [converting-designs-to-pmui](skills/panel/converting-designs-to-pmui.md) | Workflow for turning a screenshot/design/React app into a pmui app: capture references, map to components, build component-first with mock data, assemble, theme last |
 | [plotting-in-panel](skills/panel/plotting-in-panel.md) | Embedding plots in Panel: HoloViews/hvPlot (DynamicMap, responsive sizing), Matplotlib, Plotly, ECharts, Bokeh tools |
 | [using-tabulator](skills/panel/using-tabulator.md) | `add_filter` with widgets, checkbox selection, row content, function-based filtering |
 | [building-custom-components](skills/panel/building-custom-components.md) | JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent, CDN gotchas |

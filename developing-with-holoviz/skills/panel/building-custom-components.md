@@ -5,6 +5,8 @@ Build custom Panel components that bridge Python and JavaScript.
 ## Contents
 
 - [Which Component Type](#which-component-type)
+- [Native pmui First, Custom Component When…](#native-pmui-first-custom-component-when)
+- [Recipe: a Clickable Rich Row (JSComponent)](#recipe-a-clickable-rich-row-jscomponent)
 - [Development: POC First](#development-poc-first)
 - [Python Class Structure](#python-class-structure)
 - [CDN Selection Guide (Critical)](#cdn-selection-guide-critical)
@@ -25,6 +27,79 @@ Build custom Panel components that bridge Python and JavaScript.
 | State Sync | `model.value`, `model.on('param', cb)` | `model.useState("param")` | `model.get/set/save_changes` | `model.useState("param")` |
 | Export | `export function render({model, el})` | `export function render({model, el})` | `export default { render }` | `export function render({model, el})` |
 | ESM attr | `_esm` | `_esm` | `_esm` | `_esm_base` |
+
+## Native pmui First, Custom Component When…
+
+A custom component is a real cost (JS file, CDN debugging, state-sync lifecycle). Default to
+composing native pmui — `Paper`, `Chip`, `Grid`, `Accordion`, `Typography`, `Button`, `MenuList` —
+which themes automatically and needs no JS. Most "rich" UI is just layout over these.
+
+Reach for a custom component (almost always a vanilla-JS `JSComponent`) when native widgets
+genuinely can't express the interaction. The clearest trigger: a **fully-clickable element with rich
+multi-part content** — e.g. a list row showing text plus several colored chips, where clicking
+anywhere selects it. `pmui.Button` takes only a string `label`, so it can't host that content, and
+`MenuList` items flatten rich content into label/secondary/icon.
+
+- **❌ Anti-pattern — the overlay button (wastes hours).** Don't layer a transparent full-size
+  `pmui.Button` over a composed visual row to "capture the click." The Panel wrapper around the
+  inner MUI button stays in normal document flow, so `height: 100%` / `inset: 0` in `sx` resolves
+  against an auto-height parent and the hit area **collapses to zero height** — clicks never land,
+  silently. (`pointer-events`, `z-index`, and `styles` vs `sx` juggling don't reliably fix it.)
+- **✅ Do — one clickable `JSComponent`.** Render the whole row as a single `<div>` with an
+  `onclick`. Full control, one event path, no overlay. See the recipe below.
+
+## Recipe: a Clickable Rich Row (JSComponent)
+
+A reusable pattern for "selectable list row with rich content." Python side — plain params, derived
+fields as `@staticmethod`s so the component is self-contained and constructible from a domain dict:
+
+```python
+# pyright: reportAssignmentType=false
+from pathlib import Path
+import param
+from panel.custom import JSComponent
+
+class AccountRow(JSComponent):
+    account  = param.String(default="")
+    subline  = param.String(default="")
+    pills    = param.List(default=[])      # [{"label": "...", "color": "#..."}]
+    deal_id  = param.String(default="")
+    active   = param.Boolean(default=False)
+    _esm = Path(__file__).parent / "account_row.js"
+
+    def __init__(self, deal=None, **params):
+        if deal is not None:
+            params.setdefault("account", deal["account"])
+            params.setdefault("subline", self.subline_for(deal))
+            params.setdefault("pills", self.pills_for(deal))
+            params.setdefault("deal_id", deal["id"])
+        super().__init__(**params)
+
+    @staticmethod
+    def pills_for(deal):  # field-derivation lives on the class, not module scope
+        ...
+```
+
+JS side (`account_row.js`) — build one clickable `<div>`, emit a `select` event, restyle on `active`:
+
+```javascript
+export function render({ model, el }) {
+  function build() {
+    el.innerHTML = "";
+    const row = document.createElement("div");
+    // ...set text from model.account / model.subline, append chips from model.pills...
+    row.style.borderColor = model.active ? "#6d5cff" : "transparent";
+    row.onclick = () => model.send_event("select", {});   // → Python
+    el.appendChild(row);
+  }
+  build();
+  model.on("active", build);                 // re-style on selection
+  model.on("account subline pills", build);  // rebuild if content changes
+}
+```
+
+Canonical working example (verified end-to-end): `anaconda_lumen/new_compass/components.py`
+(`AccountRow`) and `anaconda_lumen/new_compass/account_row.js`.
 
 ## Development: POC First
 
@@ -234,3 +309,25 @@ Use inline `style` props for icon dimensions — MUI CSS classes may not load pr
 - Set descriptive element IDs for Playwright testing.
 - Handle resize events for responsive components.
 - Clean up resources (intervals, listeners) in the `remove` lifecycle.
+- **`send_event` carries no source.** The Python handler receives a bare `DOMEvent` with **no
+  `.obj`** — reaching for `event.obj.some_id` raises `AttributeError`. When many instances share one
+  event name, bind a per-instance closure that captures the id, rather than reading it off the event:
+
+  ```python
+  # ❌ AttributeError: 'DOMEvent' object has no attribute 'obj'
+  row.on_event("select", lambda e: setattr(self, "selected", e.obj.deal_id))
+
+  # ✅ capture the id in a closure
+  def _make_handler(self, deal_id):
+      def handler(event):
+          self.selected = deal_id
+      return handler
+  row.on_event("select", self._make_handler(deal_id))
+  ```
+- **Shadow DOM defeats DOM scraping.** pmui renders into shadow roots, so Playwright
+  `document.querySelector` / `getByText` often can't reach inside a component and `boundingBox()` can
+  read `0×0`. Verify behavior by asserting on **Python-side param/state** (or a visible status pane
+  you bind for the test), not by scraping the rendered DOM.
+- **Keep components self-contained with `@staticmethod`.** Put field-derivation (e.g. `pills_for`,
+  `subline_for`) on the class as static methods, not module-level helpers, so the component carries
+  its own domain-dict → params mapping and can be constructed as `Row(record)`.

@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   author: holoviz
 ---
 
@@ -30,6 +30,7 @@ Read these for specialized topics. Each is a standalone document you can load wi
 - [Building Custom Components](building-custom-components.md) — building JSComponent, ReactComponent, AnyWidgetComponent, and MaterialUIComponent; CDN selection, event handling, state sync lifecycle
 - [Using Material UI](using-material-ui.md) — building pmui apps (`pmui.Page`, `Container`/`Grid` layouts, centering, component gotchas) and theming (`theme_config` palette, typography, icons, brand assets, chart theming)
 - [Migrating to Material UI](migrating-to-material-ui.md) — converting an existing plain-Panel app to pmui: template→Page, widget swaps, pane/interaction upgrades, what to leave alone
+- [Converting Designs to pmui](converting-designs-to-pmui.md) — workflow for turning a screenshot/design/React app into a pmui app: capture references, map to components, build component-first with mock data, assemble, theme last
 - [Plotting in Panel](plotting-in-panel.md) — embedding plots from any library: HoloViews/hvPlot (DynamicMap zoom/pan, responsive sizing), Matplotlib, Plotly, ECharts, Bokeh toolbar tools
 - [Using Tabulator](using-tabulator.md) — `add_filter` with widgets, checkbox selection, row content, function-based filtering
 - [Using Pytest Playwright](using-pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components

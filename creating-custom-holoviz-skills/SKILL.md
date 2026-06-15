@@ -2,7 +2,7 @@
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 # Creating Custom Skills
@@ -127,9 +127,9 @@ these on demand (L3) — they consume zero context tokens until actually read.
 ```
 panel/
   SKILL.md                        # Core instructions (always loaded when skill triggers)
-  mapping-widgets.md              # Reference — Param type → Panel widget table
+  iterating-on-panel-apps.md      # Reference — serve, screenshot, debug loop
   building-custom-components.md   # Reference — JSComponent, ReactComponent, CDN guide
-  applying-material-ui.md         # Reference — pmui.Page, layouts, component gotchas
+  using-material-ui.md            # Reference — pmui.Page, layouts, gotchas, theming
   examples/
     dashboard.py                  # Runnable example — agent can read or execute
     wizard.py

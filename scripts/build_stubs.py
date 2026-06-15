@@ -71,11 +71,8 @@ SUBSKILL_ORDER: dict[str, list[str]] = {
 REFERENCE_ORDER: dict[str, list[str]] = {
     "panel": [
         "iterating-on-panel-apps",
-        "mapping-widgets",
         "building-custom-components",
-        "applying-material-ui",
-        "branding-material-ui",
-        "interacting-with-holoviews",
+        "using-material-ui",
         "using-pytest-playwright",
         "reviewing-panel-apps",
     ],
