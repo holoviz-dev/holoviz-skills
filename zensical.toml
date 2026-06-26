@@ -30,6 +30,13 @@ nav = [
       ] },
     ] },
     { "Using HoloViews" = "developing-with-holoviz/holoviews.md" },
+    { "Exploring a Dataset" = [
+      "developing-with-holoviz/exploring/index.md",
+      { "The Story Spec" = "developing-with-holoviz/exploring/story-spec.md" },
+      { "Examples" = [
+        { "Sample Data" = "developing-with-holoviz/exploring/sample_data.md" },
+      ] },
+    ] },
   ] },
   { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",

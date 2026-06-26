@@ -2,7 +2,7 @@
 name: developing-with-holoviz
 description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param).
 metadata:
-  version: "0.1.3"
+  version: "0.1.4"
   author: holoviz
 ---
 
@@ -26,6 +26,7 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 |---|---|
 | Typed, validated, reactive parameters | `developing-with-holoviz/skills/param/SKILL.md` |
 | Quick exploratory plots from DataFrames / xarray | `developing-with-holoviz/skills/hvplot/SKILL.md` |
+| Explore, profile, or understand an unfamiliar dataset; EDA; "what's in this data"; a narrative data story | `developing-with-holoviz/skills/exploring/SKILL.md` (+ `developing-with-holoviz/skills/exploring/story-spec.md` for the spec schema) |
 | Dashboard, data app, or interactive tool | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` |
 | Convert a design / screenshot / React app into a Material UI (pmui) app | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` + `developing-with-holoviz/skills/panel/converting-designs-to-material-ui.md` (+ `building-custom-components.md` for rich/clickable pieces) |
 | HoloViews elements, opts, tooltips, formatters, tools | `developing-with-holoviz/skills/holoviews/SKILL.md` |
@@ -44,5 +45,6 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 |---|---|
 | [param](skills/param/SKILL.md) | `@param.depends`, `watch=True`, `.watch()`, parameter types, dependent parameters |
 | [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
+| [exploring](skills/exploring/SKILL.md) | Profile any multidimensional dataset (column roles → measures/dimensions/time/ids), then build a grounded narrative EDA notebook (start small → build up the ladder), hvPlot/HoloViews-first, deferring to Panel; ships a profiler + notebook-builder script |
 | [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections |
 | [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, templates, serving, performance, plotting gotchas. Carries 10 topic references (Material UI, custom components, plotting, Tabulator, Playwright testing, review, architecture, migration) — the Loading Table above routes to each; `panel/SKILL.md`'s References section is the full index. |

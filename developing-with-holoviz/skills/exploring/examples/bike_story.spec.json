@@ -1,0 +1,42 @@
+{
+  "title": "Exploring the Fremont Bridge bike counts",
+  "intro": "A grounded EDA narrative built from a declarative spec. Each beat is a question; the builder renders the vetted hvPlot/HoloViews code. No Panel until the data outgrows the notebook.\n\n**Question:** does this data have a daily rhythm, does it differ by day and direction, and is the uptick real?",
+  "setup": "from sample_data import sample_fremont\ndf = sample_fremont()   # swap for: pd.read_csv('FremontHourly.csv', parse_dates=['Date'], index_col='Date')\ndf.head()",
+  "beats": [
+    {
+      "kind": "profile",
+      "params": {"title": "Fremont Bridge hourly counts"},
+      "narrate": "## 0. What are we holding?\n\nProfile first. The plan flags `East`/`West`/`Total` as measures and `Date` as temporal — that is what seeds every section below."
+    },
+    {
+      "kind": "resample",
+      "params": {"cols": ["East", "West", "Total"], "freq": "W", "agg": "sum", "ylabel": "weekly riders", "title": "Weekly ridership — trend, seasonality, weather wobble"},
+      "narrate": "## 1. Zoom out — the raw signal is noise\n\nHourly is hash. Weekly totals expose a ~2x summer/winter swing and a slow multi-year climb: some uptick is real, but a lot of any short window is just weather."
+    },
+    {
+      "kind": "rhythm",
+      "params": {"measure": "Total", "by": "hour", "title": "The daily rhythm: two commute peaks"},
+      "narrate": "## 2. The daily rhythm\n\nAverage over hour-of-day: sharp peaks at ~8am and ~5pm, a midday lull, near-zero overnight. This is a commuter counter."
+    },
+    {
+      "kind": "split",
+      "params": {"measure": "Total", "title": "Weekday commute vs weekend leisure"},
+      "narrate": "## 3. Whose rhythm? Weekday vs weekend\n\nCondition on one more dimension and the single rhythm splits in two: weekdays bimodal (commute), weekends a single midday hump. One average hid two populations."
+    },
+    {
+      "kind": "heatmap",
+      "params": {"measure": "Total", "title": "Mean riders by hour x weekday (the weekly fingerprint)"},
+      "narrate": "## 4. The whole week at a glance\n\nBoth conditioning dimensions on one panel. The commute ridge glows Mon-Fri at 8 and 17; the weekend is a soft midday smear."
+    },
+    {
+      "kind": "pca_dayshape",
+      "params": {"measure": "Total", "title": "Each day as a point - PCA of daily shape"},
+      "narrate": "## 5. Let the data name its own categories\n\nTreat each day as a 24-D shape vector, reduce with an SVD. PC1 alone separates commute-shaped from leisure-shaped days, unsupervised — and the weekdays that land with weekends are the holidays."
+    },
+    {
+      "kind": "code",
+      "params": {"code": "# Escalate to Panel only now: to filter by date range, set a min-count\n# threshold, or brush the scatter to light up the heatmap, wrap this state in\n# a small Panel app (pn.bind / DynamicMap). See rhythm_profiler.py."},
+      "narrate": "## 6. Where it wants to go interactive\n\nEverything above is a static notebook doing real work. The moment a control must drive *every* view at once, defer to Panel."
+    }
+  ]
+}
