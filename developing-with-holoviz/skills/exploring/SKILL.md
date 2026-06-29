@@ -1,20 +1,21 @@
 ---
 name: exploring
 description: >-
-  Explore any multidimensional dataset and hand back a notebook that tells its
-  story — and that the reader can keep playing after you've gone. Profile first
-  to find what is worth exploring (measures, dimensions, time, ids), build the
-  story rung by rung, and make it interactive by default: an inline
-  groupby/HoloMap widget wherever a view has a free dimension, a small
-  one-control-drives-every-panel Viewer where linked views share state. Push
-  heavy aggregation to the engine (DuckDB) and keep the interactive layer cheap.
-  Use when the user wants to explore, profile, or understand an unfamiliar
-  dataset, do EDA, asks "what's in this data", or wants a data story. Do not use
-  for a single known plot (use hvplot) or a prebuilt production dashboard (use
-  panel).
+  Explore any multidimensional dataset and hand back a narrative that tells its
+  story and stays interactive — as a notebook the reader re-runs, or a servable
+  Panel layout you can render. Profile first to find what is worth exploring
+  (measures, dimensions, time, ids), then build the story one question at a time,
+  handing the reader a knob wherever a view has a free dimension: hvPlot
+  `groupby=` for the simple case, DynamicMap + pn.bind for deeper one-control
+  views. Push heavy aggregation to the engine (DuckDB) and keep the interactive
+  layer cheap. Use when the user wants to explore, profile, or understand an
+  unfamiliar dataset, do EDA, asks "what's in this data", or wants a data story.
+  Do not use for a single known plot (use hvplot) or a prebuilt production
+  dashboard (use panel).
 compatibility: >-
-  Requires hvplot, holoviews, pandas; jupytext to emit the .ipynb; optionally
-  duckdb for engine-side aggregation and panel for one-control views.
+  Requires hvplot, holoviews, pandas; jupytext to emit a notebook, or panel
+  (panel-material-ui) for a servable layout; optionally duckdb for engine-side
+  aggregation.
 metadata:
   version: "0.4.0"
   author: holoviz
