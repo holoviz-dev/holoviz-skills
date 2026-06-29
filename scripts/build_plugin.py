@@ -5,6 +5,7 @@ as GitHub release assets (which cannot be nested in folders):
 
 * ``<category>.plugin``            — one Claude Desktop / Cowork plugin per
   top-level category (e.g. ``developing-with-holoviz.plugin``)
+* ``holoviz-skills.plugin``        — all categories combined into one Cowork plugin
 * ``holoviz-skills.zip``           — all skills together, any tool
 * ``<category>.zip``               — one zip per top-level category
   (e.g. ``developing-with-holoviz.zip``)
@@ -40,9 +41,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
-# Name for the generic all-skills zip (not Claude-specific). Plugins are built
-# per category, so there is no single combined plugin.
+# Name for the all-skills artifacts: holoviz-skills.zip (generic, any tool) and
+# holoviz-skills.plugin (all categories combined into one Cowork plugin).
 PLUGIN_NAME = "holoviz-skills"
+COMBINED_DESCRIPTION = (
+    "All HoloViz skills in one plugin: explore, profile, and visualize data with "
+    "hvPlot, HoloViews, Panel, and Param, and contribute to HoloViz packages. "
+    "Routes to the right sub-skill for any interactive-dataviz or data-app task."
+)
 
 # Sub-skill directory name (one level below a category SKILL.md).
 SUBSKILLS_DIRNAME = "skills"
@@ -239,6 +245,50 @@ def build_plugin(stage: bool = False) -> list[Path]:
     return outputs
 
 
+def build_combined_plugin(stage: bool = False) -> Path | None:
+    """Build a single ``artifacts/holoviz-skills.plugin`` bundling every category.
+
+    Same shape as a per-category plugin, but with all categories under
+    ``skills/`` and one combined manifest — the all-in-one Cowork install.
+    """
+    skill_dirs = find_skill_dirs(REPO_ROOT)
+    if not skill_dirs:
+        print("build_combined_plugin: no skill directories found.", file=sys.stderr)
+        return None
+
+    ARTIFACTS_DIR.mkdir(exist_ok=True)
+    output = ARTIFACTS_DIR / f"{PLUGIN_NAME}.plugin"
+    with tempfile.TemporaryDirectory() as _tmp:
+        tmp_dir = Path(_tmp)
+
+        manifest_dir = tmp_dir / ".claude-plugin"
+        manifest_dir.mkdir()
+        manifest = {"name": PLUGIN_NAME, "description": COMBINED_DESCRIPTION, **PLUGIN_JSON_BASE}
+        (manifest_dir / "plugin.json").write_text(
+            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+        )
+
+        # Every category (with its nested sub-skills) under skills/.
+        skills_out = tmp_dir / "skills"
+        skills_out.mkdir()
+        for cat_dir in skill_dirs:
+            shutil.copytree(cat_dir, skills_out / cat_dir.name, ignore=_ignore)
+
+        tmp_zip = tmp_dir / f"{PLUGIN_NAME}.plugin"
+        with zipfile.ZipFile(tmp_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for path in sorted(tmp_dir.rglob("*")):
+                if _should_skip(path) or path == tmp_zip:
+                    continue
+                zf.write(path, path.relative_to(tmp_dir))
+        shutil.copy2(tmp_zip, output)
+
+    size_kb = output.stat().st_size // 1024
+    print(f"build_combined_plugin: wrote {output.relative_to(REPO_ROOT)}  ({size_kb} KB)")
+    if stage:
+        _git_stage(output)
+    return output
+
+
 # ---------------------------------------------------------------------------
 # Zip builds
 # ---------------------------------------------------------------------------
@@ -311,8 +361,9 @@ def build_zips(stage: bool = False) -> list[Path]:
 
 def main(stage: bool = False) -> int:
     plugin_out = build_plugin(stage=stage)
+    combined = build_combined_plugin(stage=stage)
     zip_out = build_zips(stage=stage)
-    total = len(plugin_out) + len(zip_out)
+    total = len(plugin_out) + (1 if combined else 0) + len(zip_out)
     print(f"\nbuild_plugin: done — {total} file(s) written to artifacts/")
     return 0 if total > 0 else 1
 
