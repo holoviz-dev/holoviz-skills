@@ -19,9 +19,175 @@ Directory layouts supported:
 
 import argparse
 import json
+import platform
+import subprocess
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 CONDITIONS = ("with_skills", "without_skills")
+RUNS_REGISTRY_FILE = "runs.json"
+HISTORY_SUMMARY_FILE = "history_summary.json"
+HISTORY_SCHEMA_VERSION = 1
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
+
+
+def _safe_git_value(*args: str) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except Exception:
+        return None
+    value = result.stdout.strip()
+    return value or None
+
+
+def _load_json(path: Path, default: dict) -> dict:
+    if not path.exists():
+        return default
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return default
+
+
+def _flatten_history_rows(summary: dict, run_id: str, created_at: str) -> list[dict]:
+    rows: list[dict] = []
+    for query_id, query_data in summary.get("queries", {}).items():
+        models = query_data.get("models", {})
+        for model, model_data in models.items():
+            for condition in CONDITIONS:
+                metrics = model_data.get(condition, {})
+                if not metrics:
+                    continue
+                rows.append(
+                    {
+                        "run_id": run_id,
+                        "created_at": created_at,
+                        "query_id": query_id,
+                        "model": model,
+                        "condition": condition,
+                        "tokens_output": metrics.get("tokens_output"),
+                        "tokens_input": metrics.get("tokens_input"),
+                        "tokens_cached": metrics.get("tokens_cached"),
+                        "execution_time": metrics.get("execution_time"),
+                        "execution_success": metrics.get("execution_success"),
+                        "has_code": metrics.get("has_code"),
+                    }
+                )
+    return rows
+
+
+def _update_history_summary(eval_results_dir: Path, new_rows: list[dict]):
+    path = eval_results_dir / HISTORY_SUMMARY_FILE
+    payload = _load_json(path, {"schema_version": HISTORY_SCHEMA_VERSION, "rows": []})
+    existing_rows = payload.get("rows", [])
+    by_key = {
+        (r.get("run_id"), r.get("query_id"), r.get("model"), r.get("condition")): r
+        for r in existing_rows
+    }
+    for row in new_rows:
+        key = (row["run_id"], row["query_id"], row["model"], row["condition"])
+        by_key[key] = row
+
+    merged_rows = sorted(
+        by_key.values(),
+        key=lambda r: (r.get("created_at") or "", r.get("run_id") or ""),
+    )
+    payload = {
+        "schema_version": HISTORY_SCHEMA_VERSION,
+        "row_count": len(merged_rows),
+        "rows": merged_rows,
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def _update_runs_registry(eval_results_dir: Path, run_record: dict):
+    path = eval_results_dir / RUNS_REGISTRY_FILE
+    payload = _load_json(path, {"schema_version": HISTORY_SCHEMA_VERSION, "runs": []})
+    runs = payload.get("runs", [])
+
+    runs_by_id = {r.get("run_id"): r for r in runs if r.get("run_id")}
+    runs_by_id[run_record["run_id"]] = run_record
+
+    merged_runs = sorted(
+        runs_by_id.values(),
+        key=lambda r: (r.get("created_at") or "", r.get("run_id") or ""),
+        reverse=True,
+    )
+
+    payload = {
+        "schema_version": HISTORY_SCHEMA_VERSION,
+        "run_count": len(merged_runs),
+        "runs": merged_runs,
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def _build_run_record(
+    run_id: str,
+    created_at: str,
+    summary: dict,
+    run_metadata: dict,
+    snapshot_dir: Path,
+) -> dict:
+    metadata = run_metadata or {}
+    return {
+        "run_id": run_id,
+        "created_at": created_at,
+        "status": "success",
+        "results_relpath": str(snapshot_dir.relative_to(snapshot_dir.parent.parent)),
+        "total_queries": summary.get("total_queries", 0),
+        "models": summary.get("models", []),
+        "run_trigger": metadata.get("run_trigger", "manual"),
+        "publish_target": metadata.get("publish_target", "local"),
+        "models_requested": metadata.get("models_requested", []),
+        "query_ids": metadata.get("query_ids", []),
+        "skip_generation": bool(metadata.get("skip_generation", False)),
+        "skip_execution": bool(metadata.get("skip_execution", False)),
+        "skip_aggregation": bool(metadata.get("skip_aggregation", False)),
+        "git_commit": _safe_git_value("rev-parse", "HEAD"),
+        "git_branch": _safe_git_value("rev-parse", "--abbrev-ref", "HEAD"),
+        "python_version": sys.version.split()[0],
+        "platform": platform.platform(),
+    }
+
+
+def _persist_run_snapshot(
+    eval_results_dir: Path,
+    summary: dict,
+    markdown_file: Path,
+    run_id: str,
+    run_metadata: dict | None,
+):
+    created_at = _utc_now_iso()
+    runs_dir = eval_results_dir / "runs"
+    snapshot_dir = runs_dir / run_id
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+
+    snapshot_json = snapshot_dir / "evaluation_results.json"
+    snapshot_json.write_text(json.dumps(summary, indent=2) + "\n")
+    snapshot_md = snapshot_dir / "evaluation_summary.md"
+    snapshot_md.write_text(markdown_file.read_text())
+
+    run_record = _build_run_record(
+        run_id=run_id,
+        created_at=created_at,
+        summary=summary,
+        run_metadata=run_metadata or {},
+        snapshot_dir=snapshot_dir,
+    )
+    (snapshot_dir / "run_metadata.json").write_text(json.dumps(run_record, indent=2) + "\n")
+
+    _update_runs_registry(eval_results_dir, run_record)
+    _update_history_summary(eval_results_dir, _flatten_history_rows(summary, run_id, created_at))
 
 
 def _extract_metrics(metadata: dict) -> dict:
@@ -322,9 +488,9 @@ def _render_multi_model_query_section(model_data: dict, model_cols: list[str]) -
     for model in model_cols:
         comp = model_data[model].get("comparison", {})
         if comp.get("execution_improvement"):
-            notes.append(f"**`{model}` IMPROVED:** " "Code executes successfully with skills")
+            notes.append(f"**`{model}` IMPROVED:** Code executes successfully with skills")
         elif comp.get("execution_regression"):
-            notes.append(f"**`{model}` REGRESSION:** " "Code fails with skills")
+            notes.append(f"**`{model}` REGRESSION:** Code fails with skills")
 
     section = _render_table(header, separator, rows)
     return "\n\n".join([section, *notes]) if notes else section
@@ -357,7 +523,7 @@ def save_markdown_report(summary: dict, output_file: Path):
     if summary.get("aggregate"):
         sections.append("## Aggregate Statistics")
         table_header = (
-            "| Model | With Skills | Without Skills |\n" "|-------|-------------|----------------|"
+            "| Model | With Skills | Without Skills |\n|-------|-------------|----------------|"
         )
 
         # Code generation rate
@@ -420,6 +586,8 @@ def aggregate_metrics(
     eval_results_dir: Path,
     output_dir: Path | None = None,
     query_filter: list[str] | None = None,
+    run_id: str | None = None,
+    run_metadata: dict | None = None,
 ):
     """
     Main aggregation function.
@@ -447,10 +615,18 @@ def aggregate_metrics(
     md_file = output_dir / "evaluation_summary.md"
     save_markdown_report(summary, md_file)
 
+    if run_id:
+        _persist_run_snapshot(
+            eval_results_dir=eval_results_dir,
+            summary=summary,
+            markdown_file=md_file,
+            run_id=run_id,
+            run_metadata=run_metadata,
+        )
+
     model_count = len(summary.get("models", []))
     print(
-        f"Metrics aggregated for {len(metrics)} quer(ies) "
-        f"× {model_count} model(s) → {md_file.name}"
+        f"Metrics aggregated for {len(metrics)} quer(ies) × {model_count} model(s) → {md_file.name}"
     )
 
 
@@ -477,6 +653,21 @@ def main():
         nargs="+",
         help="Only aggregate metrics for specific queries (default: all queries)",
     )
+    parser.add_argument(
+        "--run-id",
+        default=None,
+        help="Optional run ID for creating historical snapshots",
+    )
+    parser.add_argument(
+        "--run-trigger",
+        default="manual",
+        help="Run trigger metadata saved with snapshots",
+    )
+    parser.add_argument(
+        "--publish-target",
+        default="local",
+        help="Publish target metadata saved with snapshots",
+    )
 
     args = parser.parse_args()
 
@@ -488,6 +679,11 @@ def main():
         eval_results_dir=args.eval_results,
         output_dir=args.output,
         query_filter=args.queries,
+        run_id=args.run_id,
+        run_metadata={
+            "run_trigger": args.run_trigger,
+            "publish_target": args.publish_target,
+        },
     )
 
     return 0

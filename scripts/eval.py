@@ -35,6 +35,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from uuid import uuid4
 
 import yaml
 from toggle_skills import disable_skills, enable_skills
@@ -274,11 +275,49 @@ def run_execution(
     )
 
 
-def run_aggregation(output_dir: Path, query_ids: list[str] | None):
+def _slugify(value: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", "-", value.lower()).strip("-")
+    return cleaned or "run"
+
+
+def _safe_git_short_sha() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=REPO_ROOT,
+        )
+    except Exception:
+        return None
+    sha = result.stdout.strip()
+    return sha or None
+
+
+def _default_run_id(run_trigger: str, models_requested: list[str], query_count: int) -> str:
+    """Return a short readable run ID that is distinct from created_at."""
+    model_tag = _slugify(models_requested[0]) if len(models_requested) == 1 else "multi-model"
+    sha = _safe_git_short_sha() or "local"
+    nonce = uuid4().hex[:4]
+    return f"{_slugify(run_trigger)}-{model_tag}-q{query_count}-{sha}-{nonce}"
+
+
+def run_aggregation(
+    output_dir: Path,
+    query_ids: list[str] | None,
+    run_id: str,
+    run_metadata: dict,
+):
     sys.path.insert(0, str(SCRIPTS_DIR))
     from aggregate_metrics import aggregate_metrics
 
-    aggregate_metrics(eval_results_dir=output_dir, query_filter=query_ids)
+    aggregate_metrics(
+        eval_results_dir=output_dir,
+        query_filter=query_ids,
+        run_id=run_id,
+        run_metadata=run_metadata,
+    )
 
 
 def main():
@@ -372,6 +411,22 @@ Examples:
         default=30,
         help="Code execution timeout in seconds (default: 30)",
     )
+    parser.add_argument(
+        "--run-id",
+        default=None,
+        help="Unique run identifier (default: readable slug)",
+    )
+    parser.add_argument(
+        "--run-trigger",
+        choices=["manual", "ci_comment", "ci_dispatch", "ci_schedule"],
+        default="manual",
+        help="Source that triggered this run (default: manual)",
+    )
+    parser.add_argument(
+        "--publish-target",
+        default="local",
+        help="Publish target hint recorded in run metadata (default: local)",
+    )
 
     args = parser.parse_args()
 
@@ -388,8 +443,25 @@ Examples:
 
     # None in the list means "use Copilot's default model" (no --model flag)
     models: list[str | None] = args.models if args.models else [None]
+    models_requested = [model or DEFAULT_MODEL for model in models]
+    run_id = args.run_id or _default_run_id(
+        run_trigger=args.run_trigger,
+        models_requested=models_requested,
+        query_count=len(queries),
+    )
+
+    run_metadata = {
+        "run_trigger": args.run_trigger,
+        "publish_target": args.publish_target,
+        "models_requested": models_requested,
+        "query_ids": [q["id"] for q in queries],
+        "skip_generation": args.skip_generation,
+        "skip_execution": args.skip_execution,
+        "skip_aggregation": args.skip_aggregation,
+    }
 
     print(f"Running {len(queries)} quer(ies) × {len(models)} model(s)\n")
+    print(f"Run ID: {run_id}")
 
     # Step 1: Generate
     if not args.skip_generation:
@@ -415,7 +487,12 @@ Examples:
     # Step 3: Aggregate
     if not args.skip_aggregation:
         print("\n→ Aggregating metrics...")
-        run_aggregation(output_dir=args.output, query_ids=args.queries)
+        run_aggregation(
+            output_dir=args.output,
+            query_ids=args.queries,
+            run_id=run_id,
+            run_metadata=run_metadata,
+        )
 
     print(f"\nDone. Results saved to: {args.output}")
     return 0
