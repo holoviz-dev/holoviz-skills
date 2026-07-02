@@ -1,6 +1,12 @@
 name: Eval Command
 
 on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*.*.*a*"
+      - "v*.*.*b*"
+      - "v*.*.*rc*"
   workflow_dispatch:
     inputs:
       ref:
@@ -11,11 +17,16 @@ on:
         description: Optional PR number to post a result comment to
         required: false
         type: string
+      deploy_dashboard:
+        description: Deploy the historical dashboard to Outerbounds after eval
+        required: false
+        type: boolean
+        default: false
   issue_comment:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   issues: write
   pull-requests: write
 
@@ -33,6 +44,7 @@ jobs:
       checkout_ref: ${{ steps.decide.outputs.checkout_ref }}
       pr_number: ${{ steps.decide.outputs.pr_number }}
       trigger_source: ${{ steps.decide.outputs.trigger_source }}
+      deploy_dashboard: ${{ steps.decide.outputs.deploy_dashboard }}
     steps:
       - name: Decide whether to run
         id: decide
@@ -48,10 +60,12 @@ jobs:
             let checkoutRef = "";
             let prNumber = "";
             let triggerSource = context.eventName;
+            let deployDashboard = false;
 
             if (context.eventName === "workflow_dispatch") {
               const inputs = context.payload.inputs || {};
               checkoutRef = inputs.ref || context.ref;
+              deployDashboard = String(inputs.deploy_dashboard || "false").toLowerCase() === "true";
               const inputPullNumber = (inputs.pull_number || "").trim();
               if (inputPullNumber === "") {
                 shouldRun = true;
@@ -66,6 +80,12 @@ jobs:
                 prNumber = String(Number(inputPullNumber));
                 reason = "Manual dispatch";
               }
+            } else if (context.eventName === "push" && context.ref.startsWith("refs/tags/")) {
+              shouldRun = true;
+              checkoutRef = context.ref;
+              reason = "Tag push";
+              triggerSource = "tag_push";
+              deployDashboard = true;
             } else if (context.eventName === "issue_comment") {
               const issue = context.payload.issue;
               const comment = context.payload.comment;
@@ -106,6 +126,7 @@ jobs:
             core.setOutput("checkout_ref", checkoutRef);
             core.setOutput("pr_number", prNumber);
             core.setOutput("trigger_source", triggerSource);
+            core.setOutput("deploy_dashboard", deployDashboard ? "true" : "false");
 
       - name: Show gate decision
         run: |
@@ -175,10 +196,40 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         run: pixi run -e eval eval-check
 
-      - name: Run full eval pipeline
+      - name: Compute run metadata
+        id: runmeta
+        run: |
+          echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Run eval pipeline
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-        run: pixi run -e eval python scripts/eval.py
+        run: pixi run -e eval evals
+
+      - name: Deploy historical dashboard
+        if: needs.gate.outputs.deploy_dashboard == 'true'
+        env:
+          OUTERBOUNDS_CONFIG_TOKEN: ${{ secrets.OUTERBOUNDS_CONFIG_TOKEN }}
+        run: pixi run -e eval eval-deploy-dashboard
+
+      - name: Commit updated eval history
+        if: needs.gate.outputs.deploy_dashboard == 'true' && github.event_name != 'issue_comment' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add eval_results/runs.json eval_results/history_summary.json
+          if git diff --cached --quiet; then
+            echo "No tracked eval history changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: update eval history"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            git push origin HEAD:main
+          else
+            git push
+          fi
 
       - name: Upload eval artifacts
         if: always()

@@ -95,6 +95,7 @@ panel-material-ui = "*"
 
 [feature.eval.pypi-dependencies]
 playwright = "*"
+outerbounds = "*"
 
 [feature.eval.tasks]
 _eval-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }
@@ -113,7 +114,4 @@ eval-multi = { cmd = "python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-
 ], description = "Run evaluation across multiple models (claude-sonnet-4.6 and gpt-5.4-mini)" }
 eval-dashboard = { cmd = "panel serve scripts/compare_results.py --show --args eval_results/", cwd = ".", description = "Open the model comparison dashboard in the browser" }
 eval-history-dashboard = { cmd = "panel serve scripts/compare_history.py --show --args eval_results/", cwd = ".", description = "Open the historical run dashboard in the browser" }
-# eval-publish = { cmd = "python scripts/eval_publish.py --provider ${EVAL_PUBLISH_PROVIDER:-noop} --run-trigger ${EVAL_RUN_TRIGGER:-manual} --publish-target ${EVAL_PUBLISH_TARGET:-local} ${EVAL_RUN_ID:+--run-id $EVAL_RUN_ID}", cwd = ".", depends-on = [
-#     "_eval-setup",
-#     "eval-check",
-# ], description = "Run eval pipeline and publish run artifacts/summary" }
+eval-deploy-dashboard = { cmd = "python scripts/eval_publish.py", cwd = ".", description = "Deploy the historical dashboard using existing eval_results" }
