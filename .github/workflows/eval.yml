@@ -208,8 +208,6 @@ jobs:
 
       - name: Deploy historical dashboard
         if: needs.gate.outputs.deploy_dashboard == 'true'
-        env:
-          OUTERBOUNDS_CONFIG_TOKEN: ${{ secrets.OUTERBOUNDS_CONFIG_TOKEN }}
         run: pixi run -e eval eval-deploy-dashboard
 
       - name: Commit updated eval history

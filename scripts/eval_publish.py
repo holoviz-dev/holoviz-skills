@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import tempfile
@@ -33,7 +34,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    config_token = args.outerbounds_config_token
+    config_token = args.outerbounds_config_token or os.getenv("OUTERBOUNDS_CONFIG_TOKEN")
     if config_token:
         configure_cmd = ["outerbounds", "configure", "--force", config_token]
         print("Configuring Outerbounds profile...")
