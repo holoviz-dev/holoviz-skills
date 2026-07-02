@@ -75,7 +75,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
             label="Runs",
             options=all_runs,
             value=default_runs,
-            helper_text="Hold CMD to select multiple",
             sizing_mode="stretch_width",
         )
         self._model_filter = pmui.CheckButtonGroup(
@@ -112,7 +111,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             sizing_mode="stretch_width",
         )
 
-        self._trend_pane = pn.pane.HoloViews(height=380, sizing_mode="stretch_width")
+        self._trend_pane = pn.Column(sizing_mode="stretch_width")
         self._table_pane = pn.widgets.Tabulator(
             pd.DataFrame(),
             theme="materialize",
@@ -219,11 +218,13 @@ class HistoricalDashboard(pn.viewable.Viewer):
         with pn.io.hold():
             df = self._filtered_df()
             if df.empty:
-                self._trend_pane.object = pn.pane.Markdown("No data for selected filters.")
+                self._trend_pane.objects = [pn.pane.Markdown("No data for selected filters.")]
                 self._table_pane.value = pd.DataFrame()
                 return
 
-            self._trend_pane.object = self._build_trend(df)
+            self._trend_pane.objects = [
+                pn.pane.HoloViews(self._build_trend(df), height=380, sizing_mode="stretch_width")
+            ]
 
             display_cols = [
                 "run_id",

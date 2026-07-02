@@ -8,6 +8,8 @@ dependencies:
   conda:
     panel: 1.9.3
     panel-material-ui: 0.13.0
+    hvplot: "*"
+    pandas: "*"
 
 commands:
-  - panel serve scripts/compare_history.py --port 6000 --address 0.0.0.0 --allow-websocket-origin="*" --args eval_results/
+  - panel serve compare_history.py --port 6000 --address 0.0.0.0 --allow-websocket-origin="*" --args eval_results/

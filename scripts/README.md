@@ -27,6 +27,15 @@ pixi run eval-multi
 
 # Open the comparison dashboard after running evals
 pixi run eval-dashboard
+
+# Run eval and merge history into eval_results/
+pixi run -e eval evals
+
+# Deploy the historical dashboard from existing eval_results/
+pixi run -e eval eval-deploy-dashboard
+
+# Open the historical trends dashboard
+pixi run -e eval eval-history-dashboard
 ```
 
 ## GitHub Actions Eval Command
@@ -49,6 +58,7 @@ Required repository secret:
 Workflow outputs:
 
 - Uploads `eval_results/` as an Actions artifact
+- Runs `evals`, then `eval-deploy-dashboard` when deploying the dashboard
 - Posts a PR comment with run status and `evaluation_summary.md` (or a fallback message if missing)
 
 ## `eval.py` Reference
@@ -135,6 +145,28 @@ The dashboard loads `eval_results/evaluation_results.json` and shows:
 - A filterable table with the raw per-query/model/condition values
 - Sidebar filters for queries, models, conditions, and metric selection
 
+## Historical Dashboard
+
+The historical dashboard is intentionally separate from `compare_results.py` and
+focuses on trends across runs.
+
+```bash
+panel serve scripts/compare_history.py --args eval_results/ --show
+```
+
+Or using pixi:
+
+```bash
+pixi run -e eval eval-history-dashboard
+```
+
+It reads compact history files produced during aggregation:
+
+- `eval_results/runs.json` (run registry + metadata)
+- `eval_results/history_summary.json` (flattened trend rows)
+
+This keeps the repo lean while allowing persistent time-based comparisons.
+
 ## Other Scripts
 
 These scripts are still independently runnable in addition to being called by `eval.py`:
@@ -144,6 +176,8 @@ These scripts are still independently runnable in addition to being called by `e
 | `execute_generated.py` | Execute saved `generated_code.py` files and capture outputs |
 | `aggregate_metrics.py` | Read `metadata.json` files and produce the comparison report |
 | `compare_results.py` | Panel dashboard — `panel serve scripts/compare_results.py --args eval_results/` |
+| `compare_history.py` | Panel historical dashboard — `panel serve scripts/compare_history.py --args eval_results/` |
+| `eval_publish.py` | Deploy the historical dashboard from existing eval results |
 | `toggle_skills.py` | Enable or disable skill files (rename AGENTS.md / SKILL.md) |
 | `test_setup.py` | Pre-flight environment check before running evaluations |
 
@@ -163,11 +197,47 @@ eval_results/
 │   └── without_skills/
 │       └── (same structure)
 ├── evaluation_results.json          # Full metrics comparison (machine-readable)
-└── evaluation_summary.md            # Human-readable summary table
+├── evaluation_summary.md            # Human-readable summary table
+├── runs/                            # Per-run immutable snapshots
+│   └── <run_id>/
+│       ├── evaluation_results.json
+│       ├── evaluation_summary.md
+│       └── run_metadata.json
+├── runs.json                        # Compact run registry (git-commit friendly)
+└── history_summary.json             # Flattened historical trend rows
 ```
 
 `metadata.json` always includes a `"model"` field — either the model name passed via
 `--models` or `"default"` when no model flag was used.
+
+## Eval And Deploy
+
+The recommended command for local parity with CI is:
+
+```bash
+pixi run -e eval evals
+pixi run -e eval eval-deploy-dashboard
+```
+
+Useful environment variables:
+
+- `EVAL_RUN_ID` (optional explicit run ID)
+- `EVAL_RUN_TRIGGER` (`manual`, `ci_comment`, `ci_dispatch`, `ci_schedule`)
+- `OUTERBOUNDS_CONFIG_TOKEN` (optional; configures the CLI profile before deploy)
+
+The deploy command stages only:
+
+- `scripts/compare_history.py`
+- `eval_results/runs.json`
+- `eval_results/history_summary.json`
+
+and deploys that bundle to Outerbounds.
+
+To deploy the dashboard without rerunning eval:
+
+```bash
+pixi run -e eval eval-deploy-dashboard
+```
 
 ## Adding Queries
 
