@@ -42,6 +42,12 @@ def main() -> int:
         if configure_result.returncode != 0:
             return configure_result.returncode
 
+    check_cmd = ["outerbounds", "check"]
+    print("Checking Outerbounds configuration...")
+    check_result = subprocess.run(check_cmd)
+    if check_result.returncode != 0:
+        return check_result.returncode
+
     with tempfile.TemporaryDirectory(prefix="outerbounds-history-") as staging_root:
         staging_path = Path(staging_root)
         shutil.copy2(
