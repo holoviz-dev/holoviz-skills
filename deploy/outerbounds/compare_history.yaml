@@ -1,0 +1,13 @@
+name: holoviz-skills-history
+port: 6000
+image: python:3.11-trixie
+auth:
+  public: true
+
+dependencies:
+  conda:
+    panel: 1.9.3
+    panel-material-ui: 0.13.0
+
+commands:
+  - panel serve scripts/compare_history.py --port 6000 --address 0.0.0.0 --allow-websocket-origin="*" --args eval_results/
