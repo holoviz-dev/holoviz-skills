@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 """Historical evaluation dashboard for trend analysis across runs.
 
-This dashboard is intentionally separate from compare_results.py.
-
 Usage:
     panel serve scripts/compare_history.py --show --args eval_results/
-    panel serve scripts/compare_history.py --args eval_results/
 """
 
 # pyright: reportAssignmentType=false
@@ -19,6 +16,7 @@ import pandas as pd
 import panel as pn
 import panel_material_ui as pmui
 import param
+from bokeh.models import NumeralTickFormatter
 
 pn.extension("tabulator", throttled=True)
 
@@ -198,21 +196,41 @@ class HistoricalDashboard(pn.viewable.Viewer):
             .sort_values(by=["created_at", "model", "condition"])
         )
         grouped["series"] = grouped["model"] + " | " + grouped["condition"]
-        grouped["run_label"] = grouped["run_id"]
 
-        return grouped.hvplot.bar(
-            x="run_label",
+        if metric in ("execution_success", "has_code"):
+            plot = grouped.hvplot.scatter(
+                x="created_at",
+                y=metric,
+                by="series",
+                height=360,
+                responsive=True,
+                ylabel=label,
+                xlabel="Run date",
+                title=f"Run Trend: {label}",
+                legend="top_left",
+                size=80,
+                alpha=0.85,
+                yformatter=NumeralTickFormatter(format="0%"),
+                ylim=(0, 1),
+                hover=True,
+            )
+            return plot
+
+        plot = grouped.hvplot.line(
+            x="created_at",
             y=metric,
             by="series",
-            stacked=False,
             height=360,
             responsive=True,
             ylabel=label,
-            xlabel="Run ID",
-            title=f"Grouped Comparison: {label}",
+            xlabel="Run date",
+            title=f"Run Trend: {label}",
             legend="top_left",
-            rot=45,
+            markers=True,
+            line_width=2,
+            hover=True,
         )
+        return plot
 
     def _refresh_views(self):
         with pn.io.hold():

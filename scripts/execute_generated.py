@@ -282,28 +282,22 @@ class CodeExecutor:
 
 
 def find_generated_code_files(eval_results_dir: Path) -> list:
-    """Find all generated_code.py files in the evaluation results.
-
-    Supports two directory layouts:
-
-    New layout (with model dimension):
-        eval_results/{model}/{condition}/{query_id}/generated_code.py
-
-    Legacy layout (no model dimension):
-        eval_results/{condition}/{query_id}/generated_code.py
-    """
+    """Find all generated_code.py files in the evaluation results."""
     code_files = []
-    conditions = {"with_skills", "without_skills"}
 
     for entry in eval_results_dir.iterdir():
         if not entry.is_dir():
             continue
 
-        if entry.name in conditions:
-            # Legacy layout: eval_results/{condition}/{query_id}/
-            model = "default"
-            condition = entry.name
-            for query_dir in entry.iterdir():
+        model = entry.name
+        for condition_dir in entry.iterdir():
+            if not condition_dir.is_dir() or condition_dir.name not in {
+                "with_skills",
+                "without_skills",
+            }:
+                continue
+            condition = condition_dir.name
+            for query_dir in condition_dir.iterdir():
                 if not query_dir.is_dir():
                     continue
                 code_file = query_dir / "generated_code.py"
@@ -317,27 +311,6 @@ def find_generated_code_files(eval_results_dir: Path) -> list:
                             "model": model,
                         }
                     )
-        else:
-            # New layout: eval_results/{model}/{condition}/{query_id}/
-            model = entry.name
-            for condition_dir in entry.iterdir():
-                if not condition_dir.is_dir() or condition_dir.name not in conditions:
-                    continue
-                condition = condition_dir.name
-                for query_dir in condition_dir.iterdir():
-                    if not query_dir.is_dir():
-                        continue
-                    code_file = query_dir / "generated_code.py"
-                    if code_file.exists():
-                        code_files.append(
-                            {
-                                "code_file": code_file,
-                                "query_dir": query_dir,
-                                "query_id": query_dir.name,
-                                "condition": condition,
-                                "model": model,
-                            }
-                        )
 
     return code_files
 

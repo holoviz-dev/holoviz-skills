@@ -48,6 +48,7 @@ CODE_OUTPUT_INSTRUCTION = (
 
 # Sentinel used when no --model flag is passed (Copilot picks its default).
 DEFAULT_MODEL = "default"
+DEFAULT_MODEL_LABEL = "Default (Copilot)"
 
 SCRIPTS_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPTS_DIR.parent
@@ -181,7 +182,7 @@ def save_results(
     output_dir: Path,
     skills_enabled: bool,
 ):
-    model_slug = model_to_slug(response.model if response.model != DEFAULT_MODEL else None)
+    model_slug = model_to_slug(response.model if response.model != DEFAULT_MODEL_LABEL else None)
     condition = "with_skills" if skills_enabled else "without_skills"
     query_dir = output_dir / model_slug / condition / query_id
     query_dir.mkdir(parents=True, exist_ok=True)
@@ -213,7 +214,7 @@ def run_generation(
     skip_with_skills: bool = False,
 ):
     for model in models:
-        model_label = model or DEFAULT_MODEL
+        model_label = model or DEFAULT_MODEL_LABEL
         if len(models) > 1:
             print(f"\n{'═' * 60}")
             print(f"Model: {model_label}")
@@ -376,7 +377,7 @@ Examples:
         metavar="MODEL",
         help=(
             "Model(s) to evaluate (e.g. claude-sonnet-4.6 gpt-5.4-mini). "
-            "Defaults to Copilot's default model."
+            f"Defaults to {DEFAULT_MODEL_LABEL}."
         ),
     )
     parser.add_argument(

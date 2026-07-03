@@ -245,10 +245,12 @@ jobs:
           PR_NUMBER: ${{ needs.gate.outputs.pr_number }}
           RUN_ID: ${{ github.run_id }}
           REPOSITORY: ${{ github.repository }}
-          SUMMARY_PATH: eval_results/evaluation_summary.md
+          SUMMARY_PATH: eval_results/evaluation_results.json
+          SUMMARY_MD_PATH: ${{ runner.temp }}/eval-summary.md
         with:
           script: |
             const fs = require("fs");
+            const path = require("path");
 
             const prNumber = Number(process.env.PR_NUMBER);
             const rawStatus = process.env.JOB_STATUS || "unknown";
@@ -263,10 +265,49 @@ jobs:
 
             let summaryText = "No evaluation summary file was generated.";
             if (fs.existsSync(process.env.SUMMARY_PATH)) {
-              summaryText = fs.readFileSync(process.env.SUMMARY_PATH, "utf8").trim();
-              if (!summaryText) {
-                summaryText = "Evaluation summary file exists but is empty.";
+              const payload = JSON.parse(fs.readFileSync(process.env.SUMMARY_PATH, "utf8"));
+              const lines = [];
+              lines.push("# Evaluation Summary");
+              lines.push("");
+              lines.push("| Field | Value |");
+              lines.push("|---|---:|");
+              lines.push(`| Total queries | ${payload.total_queries ?? "n/a"} |`);
+              lines.push(`| Models | ${(payload.models || []).join(", ") || "n/a"} |`);
+              lines.push(`| Aggregate models | ${Object.keys(payload.aggregate || {}).length} |`);
+              lines.push("");
+
+              const aggregate = payload.aggregate || {};
+              const aggregateRows = Object.entries(aggregate).map(([model, agg]) => ({
+                model,
+                codeWith: agg.code_generation_rate_with,
+                codeWithout: agg.code_generation_rate_without,
+                execWith: agg.execution_success_rate_with,
+                execWithout: agg.execution_success_rate_without,
+                tokenDelta: agg.avg_token_difference,
+                timeDelta: agg.avg_time_difference,
+              }));
+
+              if (aggregateRows.length) {
+                lines.push("## Aggregate Statistics");
+                lines.push("");
+                lines.push("| Model | Code Gen w/ | Code Gen w/o | Exec w/ | Exec w/o | Avg Token Δ | Avg Time Δ |");
+                lines.push("|---|---:|---:|---:|---:|---:|---:|");
+                for (const row of aggregateRows) {
+                  const fmtPct = (v) => (typeof v === "number" ? `${(v * 100).toFixed(1)}%` : "—");
+                  const fmtDelta = (v, suffix = "") => (typeof v === "number" ? `${v >= 0 ? "+" : ""}${v.toFixed(suffix ? 2 : 0)}${suffix}` : "—");
+                  lines.push(
+                    `| \`${row.model}\` | ${fmtPct(row.codeWith)} | ${fmtPct(row.codeWithout)} | ${fmtPct(row.execWith)} | ${fmtPct(row.execWithout)} | ${fmtDelta(row.tokenDelta)} | ${fmtDelta(row.timeDelta, "s")} |`
+                  );
+                }
+                lines.push("");
               }
+
+              lines.push("## Notes");
+              lines.push("");
+              lines.push("- Download the `eval-results-*` artifact for the full JSON output.");
+              lines.push("- Historical trends are available from the separate dashboard.");
+              summaryText = lines.join("\n");
+              fs.writeFileSync(process.env.SUMMARY_MD_PATH, summaryText);
             }
 
             if (summaryText.length > 60000) {

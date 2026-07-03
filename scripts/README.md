@@ -1,6 +1,6 @@
 # HoloViz Skills Evaluation
 
-Automated system to measure whether SKILL.md files improve Copilot's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces a comparison report. Supports running multiple models in a single pass to compare their outputs side by side.
+Automated system to measure whether SKILL.md files improve Copilot's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces JSON summaries plus dashboards. Supports running multiple models in a single pass to compare their outputs side by side.
 
 ## Requirements
 
@@ -24,9 +24,6 @@ pixi run eval-no-screenshots
 
 # Run across multiple models
 pixi run eval-multi
-
-# Open the comparison dashboard after running evals
-pixi run eval-dashboard
 
 # Run eval and merge history into eval_results/
 pixi run -e eval evals
@@ -59,7 +56,7 @@ Workflow outputs:
 
 - Uploads `eval_results/` as an Actions artifact
 - Runs `evals`, then `eval-deploy-dashboard` when deploying the dashboard
-- Posts a PR comment with run status and `evaluation_summary.md` (or a fallback message if missing)
+- Posts a PR comment with run status and a short JSON summary (or a fallback message if missing)
 
 ## `eval.py` Reference
 
@@ -123,31 +120,11 @@ Run `copilot --allow-all -p "list available model IDs"` to see current models. A
 - `gemini-3.1-pro-preview`
 - `gemini-3.5-flash`
 
-When `--models` is not specified, Copilot uses its own default model. The `model` field is always recorded in `metadata.json` as `"default"` in this case.
-
-## Comparison Dashboard
-
-After running evals, launch the interactive comparison dashboard:
-
-```bash
-panel serve scripts/compare_results.py --args eval_results/ --show
-```
-
-Or using pixi:
-
-```bash
-pixi run -e eval eval-dashboard
-```
-
-The dashboard loads `eval_results/evaluation_results.json` and shows:
-
-- A bar chart comparing the selected metric across queries, models, and conditions
-- A filterable table with the raw per-query/model/condition values
-- Sidebar filters for queries, models, conditions, and metric selection
+When `--models` is not specified, Copilot uses its own default model. The `model` field is recorded as `"default"` in `metadata.json`, while the CLI labels it as `Default (Copilot)`.
 
 ## Historical Dashboard
 
-The historical dashboard is intentionally separate from `compare_results.py` and
+The historical dashboard is intentionally separate from the query comparison view and
 focuses on trends across runs.
 
 ```bash
@@ -175,7 +152,6 @@ These scripts are still independently runnable in addition to being called by `e
 |---|---|
 | `execute_generated.py` | Execute saved `generated_code.py` files and capture outputs |
 | `aggregate_metrics.py` | Read `metadata.json` files and produce the comparison report |
-| `compare_results.py` | Panel dashboard — `panel serve scripts/compare_results.py --args eval_results/` |
 | `compare_history.py` | Panel historical dashboard — `panel serve scripts/compare_history.py --args eval_results/` |
 | `eval_publish.py` | Deploy the historical dashboard from existing eval results |
 | `toggle_skills.py` | Enable or disable skill files (rename AGENTS.md / SKILL.md) |
@@ -197,11 +173,9 @@ eval_results/
 │   └── without_skills/
 │       └── (same structure)
 ├── evaluation_results.json          # Full metrics comparison (machine-readable)
-├── evaluation_summary.md            # Human-readable summary table
 ├── runs/                            # Per-run immutable snapshots
 │   └── <run_id>/
 │       ├── evaluation_results.json
-│       ├── evaluation_summary.md
 │       └── run_metadata.json
 ├── runs.json                        # Compact run registry (git-commit friendly)
 └── history_summary.json             # Flattened historical trend rows

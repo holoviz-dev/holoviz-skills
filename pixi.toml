@@ -112,6 +112,5 @@ eval-multi = { cmd = "python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-
     "_eval-setup",
     "eval-check",
 ], description = "Run evaluation across multiple models (claude-sonnet-4.6 and gpt-5.4-mini)" }
-eval-dashboard = { cmd = "panel serve scripts/compare_results.py --show --args eval_results/", cwd = ".", description = "Open the model comparison dashboard in the browser" }
 eval-history-dashboard = { cmd = "panel serve scripts/compare_history.py --show --args eval_results/", cwd = ".", description = "Open the historical run dashboard in the browser" }
 eval-deploy-dashboard = { cmd = "python scripts/eval_publish.py", cwd = ".", description = "Deploy the historical dashboard using existing eval_results" }
