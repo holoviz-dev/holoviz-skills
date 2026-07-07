@@ -8,47 +8,21 @@ metadata:
 
 # PR Descriptions
 
-This skill covers what a good HoloViz pull request description contains. Write it in the first person, as work you did, and keep the prose free of em dashes.
+Write HoloViz PR descriptions in the first person, as work you did, and keep the prose free of em dashes.
 
-## Structure
+Follow the repo's PR template rather than inventing sections. Every HoloViz repo inherits it from the org-wide `holoviz/.github` repo, so fetch the current, authoritative sections from the raw template and fill each one in:
 
-A good PR description has these parts, in order:
+https://raw.githubusercontent.com/holoviz/.github/refs/heads/main/.github/pull_request_template.md
 
-1. **Title:** conventional-commit style (`fix:`, `feat:`, `docs:`, `chore:`) summarizing the change in one line.
-2. **Overview:** 2-3 sentences in your own words covering what changed and why. Link the issue it resolves (`Closes #1234`).
-3. **Before / After:** include it only when the change produces an observable difference a reviewer should see, such as changed behavior, a bug fix with a visible symptom, an API change, or anything visual (UI, plotting, rendered docs). Skip it when there is nothing to compare, such as docs, refactors, config, or adding agent-facing files. When you include it, label the old versus new; visual changes need before/after screenshots, GIFs, or video.
-4. **Major changes:** if there is a breaking change, API change, new dependency, or migration step, call it out under its own bold heading so a reviewer cannot miss it. Omit this section when there is none.
-5. **AI disclosure:** if the work used AI assistance, always include a disclosure and never remove it. State what you planned and understood versus what AI helped scaffold.
+## Writing each part well
+
+- **Title:** conventional-commit style (`fix:`, `feat:`, `docs:`, `chore:`) summarizing the change in one line.
+- **Description:** 2-3 sentences in your own words on what changed and why, with the motivation and a minimal reproducible example. Flag any breaking change, API change, new dependency, or migration step prominently so a reviewer cannot miss it.
+- **Before / After:** include for any observable or visual change (behavior, UI, plotting, rendered docs) with screenshots, GIFs, or video, labelled old versus new. Skip it when there is nothing to compare, such as docs or refactors.
+- **AI disclosure:** if AI was used, name the tool and model (for example Claude Code + Opus) and how it was used, and never delete the section. Non-disclosure can result in a ban.
 
 ## Guidelines
 
-- Keep the overview short. The diff shows *how*; the description explains *why*.
-- For a large PR, add a short bullet list of the key changes and a "How to test" note.
+- Keep the description tight. The diff shows *how*; explain *why*.
 - Don't restate the diff line by line.
-
-## Example
-
-```markdown
-<!-- WRONG: no why, no before/after, restates the diff -->
-## Summary
-Changed the `filter_by_range` function in transforms.py. Updated the
-if statement and added a return. Also edited a test.
-
-<!-- CORRECT: overview, before/after (observable behavior change), major change flagged -->
-## Overview
-`filter_by_range` dropped rows containing NaN, silently shrinking the
-result. This makes NaN handling explicit so filtered output matches the
-input length. Closes #1234.
-
-## Before / After
-Before: `filter_by_range(df, 'x', 0, 2)` returned 2 of 3 rows (NaN dropped).
-After: returns all 3 rows; NaN is retained.
-[before.png] [after.png]
-
-## Breaking change
-Callers relying on NaN being dropped must now filter explicitly.
-
-## AI disclosure
-I identified the bug and designed the fix; AI helped scaffold the
-parametrized test cases.
-```
+- For a large PR, add a short bullet list of the key changes and a "How to test" note.
