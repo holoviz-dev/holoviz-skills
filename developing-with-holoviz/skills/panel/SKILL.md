@@ -109,7 +109,7 @@ class BadDashboard(pn.viewable.Viewer):
 
 ## Widgets and Extensions
 
-- Call `pn.extension(throttled=True)` with any needed JS extensions (`"tabulator"`, `"plotly"`). Never add `"bokeh"`.
+- Call `pn.extension(throttled=True)` with any needed JS extensions (`"tabulator"`, `"plotly"`). Never add `"bokeh"`. **If `pn.widgets.Tabulator` is used anywhere in the app, `"tabulator"` must be included in `pn.extension()`**
 - `.from_param()` auto-creates the right widget type from a parameter — syncs value, bounds, and objects. (Button-group widgets are an exception that needs an explicit watcher — see the from_param write-back gap in [Reviewing Panel Apps](reviewing-panel-apps.md).)
 - Prefer `pn.bind(self._update, widget1.param.value, widget2.param.value, watch=True)` over lambda-based `.param.watch()` for wiring multiple widgets to a single update method.
 - Default to `sizing_mode="stretch_width"` via `pn.config.set`.
@@ -122,6 +122,7 @@ For new apps, use `pmui.Page` from panel-material-ui (see [Using Material UI](us
 
 - Keep a dev server running: `panel serve app.py --dev --show`. Don't restart after edits.
 - Don't use `--autoreload` (legacy). Don't use `python app.py`.
+- **`pn.state.served`** is the correct attribute to check if the app is running under `panel serve`. Do NOT use `pn.state.serving`, `pn.state.is_serving`, or any other variant — they do not exist and will raise `AttributeError`. Do NOT use `__name__.startswith("bokeh")` — this was a Bokeh-era pattern that no longer works; `__name__` is always `"__main__"` under modern `panel serve`.
 
 ## Performance
 

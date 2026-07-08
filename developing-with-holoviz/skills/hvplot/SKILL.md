@@ -169,16 +169,68 @@ earthquakes.hvplot.points(
 )
 ```
 
+## Bar Charts
+
+**Signature:** `df.hvplot.bar(x=None, y=None, stacked=False, **kwds)` — **never pass `kind=`**, it is set automatically. Same applies to `hvplot.barh`.
+
+**`bar` vs `barh` axis convention:**
+- `bar`: `x=` is the category, `y=` is the numeric value
+- `barh`: `x=` is the numeric value, `y=` is the category
+
+**To invert axis order** on `barh` (e.g. largest at top), use `invert=True` — **not** `invert_yaxis=True` (that option does not exist for `barh` in Bokeh and is silently ignored or warns).
+
+**Coloring bars** — `color=` accepts:
+- A single named/hex color string: `color="red"` or `color="#4e79a7"`
+- A list of color strings, one per series/`by` group: `color=["forestgreen", "orange"]`
+- The name of a field whose values are color strings: `color="Color"` (the column must contain actual color strings like `"red"` or `"#4e79a7"`, not category names or numbers)
+
+```python
+import hvplot.pandas  # noqa
+import pandas as pd
+
+df = pd.DataFrame({
+    'Project' : ['hvPlot', 'hvPlot', 'HoloViews', 'HoloViews', 'Panel', 'Panel'],
+    'Source' : ['Conda', 'PyPI', 'Conda', 'PyPI', 'Conda', 'PyPI'],
+    'Downloads': [112000, 407000, 132000, 720000, 171000, 1200000],
+    'Color': ['forestgreen', 'orange', 'forestgreen', 'orange', 'forestgreen', 'orange']
+})
+
+# Single color
+df.hvplot.bar(x="Project", y="Downloads", color="#4e79a7")
+
+# Different color per by-group (list, one per group)
+df.hvplot.bar(x="Project", y="Downloads", by="Source", color=["forestgreen", "orange"], stacked=True)
+
+# Color by column containing color strings (requires by=)
+df.hvplot.bar(x='Project', y='Downloads', by='Source', color='Color', stacked=True)
+
+# barh — x= is numeric, y= is category; use invert=True to flip order
+df.hvplot.barh(x="Downloads", y="Project", color="#4e79a7", invert=True)
+
+# WRONG — `kind=` is redundant and causes TypeError: got multiple values for 'kind'
+df.hvplot.bar(x="Project", y="Downloads", kind="bar")
+
+# WRONG — by= must be a different column from x=; using the same column removes it
+# as a plot dimension → KeyError: "Dimension('Project') not found." at render
+df.hvplot.bar(x="Project", y="Downloads", by="Project")
+
+# WRONG — invert_yaxis= does not exist for barh; use invert=True instead
+df.hvplot.barh(x="Downloads", y="Project", invert_yaxis=True)
+```
+References: https://hvplot.holoviz.org/en/docs/latest/ref/api/manual/hvplot.hvPlot.bar.html,
+            https://hvplot.holoviz.org/en/docs/latest/ref/api/manual/hvplot.hvPlot.barh.html
+
+
 ## Styling
 
 - Sort values so the largest is at top (or bottom) for easy comparison.
 - For `barh`, `.set_index("category")` before plotting. Without this, `sort_values()` leaves a numeric index that renders as NaN on the y-axis.
-- Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
+- Use a single neutral color by default; reserve color encoding for when it maps to data.
 - Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, `show_frame=False`.
 - Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely. Pass `responsive=True` and `hover=False` on both plot and labels calls. Inside bars: `y="pos"` where `pos = value * 0.98`, `text_align="right"`, `text_color="white"`. Outside bars: `pos = value + offset`, `text_align="left"`, `text_color="black"`. For stacked bars + labels, the labels DataFrame must include stacked columns via `hover_cols`.
 - `backend_opts` accesses Bokeh model properties (e.g. `"outline_line_alpha": 0`). `.opts()` accesses HoloViews plot options (e.g. `show_frame=False`).
 - Prefer hvPlot kwargs over `.opts()` — they take precedence. Pass `responsive=True` in the hvPlot call, not via `.opts()`, which can conflict with default dimensions.
-- Use `NumeralTickFormatter(format='0a')` for large-number axes via `xformatter=`/`yformatter=`.
+- Use `NumeralTickFormatter(format='0a')` for large-number axes via `xformatter=`/`yformatter=`. These accept a format string (e.g. `"%d"`, `"$0.0a"`), a `NumeralTickFormatter` instance, or a callable — never a type like `str` or `int` (raises `ValueError: value must be an instance of (str, TickFormatter, function)`).
 - Use `fontscale=` for readability.
 - This example is heavily stylized to illustrate what's possible; use discretion.
 
