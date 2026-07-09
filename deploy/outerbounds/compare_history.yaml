@@ -4,8 +4,8 @@ image: python:3.11-trixie
 auth:
   public: true
 tags:
-  - team:ai-services
-  - owner:tpatrick@anaconda.com
+  - team: ai-services
+  - owner: tpatrick@anaconda.com
 
 dependencies:
   conda:
