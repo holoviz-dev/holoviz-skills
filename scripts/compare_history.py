@@ -21,7 +21,7 @@ import param
 pn.extension("tabulator", throttled=True)
 
 _DEFAULT_RESULTS_DIR = Path(__file__).parent.parent / "eval_results"
-_RESULTS_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else _DEFAULT_RESULTS_DIR
+_RESULTS_DIR = next((Path(a) for a in sys.argv[1:] if Path(a).is_dir()), _DEFAULT_RESULTS_DIR)
 _METRICS = ["tokens_output", "tokens_input", "execution_time", "execution_success", "has_code"]
 _METRIC_LABELS = {
     "tokens_output": "Tokens (output)",

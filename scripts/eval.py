@@ -214,7 +214,7 @@ def run_generation(
     skip_with_skills: bool = False,
 ):
     for model in models:
-        model_label = model or DEFAULT_MODEL_LABEL
+        model_label = model or DEFAULT_MODEL
         if len(models) > 1:
             print(f"\n{'═' * 60}")
             print(f"Model: {model_label}")

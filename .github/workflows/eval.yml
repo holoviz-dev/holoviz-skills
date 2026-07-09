@@ -224,7 +224,7 @@ jobs:
           fi
           git commit -m "chore: update eval history"
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            git push origin HEAD:main
+            git push origin HEAD:main --no-ff
           else
             git push
           fi
