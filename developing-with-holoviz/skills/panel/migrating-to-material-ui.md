@@ -5,22 +5,21 @@ This skill provides the steps and diffs for converting an existing plain-Panel a
 Migration is a presentation change, not a logic change: swap templates, widgets, and panes, but leave every `@param.depends`, `param.watch`, `pn.bind`, and periodic callback untouched. For how the target API works once you're there, see [Using Material UI](using-material-ui.md) (Page, layouts, component gotchas, palette, typography, icons) — don't restate those here.
 
 ## Contents
-- [Migrating to Material UI](#migrating-to-material-ui)
-  - [Contents](#contents)
-  - [When to Migrate](#when-to-migrate)
-  - [Migration Checklist](#migration-checklist)
-  - [Imports and Extension](#imports-and-extension)
-  - [Template to Page](#template-to-page)
-  - [Widgets](#widgets)
-  - [Parameter Names](#parameter-names)
-  - [Panes](#panes)
-  - [Layouts](#layouts)
-  - [Styling](#styling)
-  - [Interaction Upgrades](#interaction-upgrades)
-  - [Consider New Components](#consider-new-components)
-  - [What Not to Migrate](#what-not-to-migrate)
-  - [Gotchas](#gotchas)
-  - [Verifying](#verifying)
+
+- [When to Migrate](#when-to-migrate)
+- [Migration Checklist](#migration-checklist)
+- [Imports and Extension](#imports-and-extension)
+- [Template to Page](#template-to-page)
+- [Widgets](#widgets)
+- [Parameter Names](#parameter-names)
+- [Panes](#panes)
+- [Layouts](#layouts)
+- [Styling](#styling)
+- [Interaction Upgrades](#interaction-upgrades)
+- [Consider New Components](#consider-new-components)
+- [What Not to Migrate](#what-not-to-migrate)
+- [Gotchas](#gotchas)
+- [Verifying](#verifying)
 
 ## When to Migrate
 
@@ -216,7 +215,7 @@ Browse `reference/{section}/index.md` (especially `menus/` and `wrappers/`, whic
 
 Some `pn.*` objects have no pmui equivalent — keep them as-is:
 
-- **Plot / data panes:** `pn.pane.HoloViews`, `pn.pane.DeckGL`, `pn.pane.ECharts`, `pn.pane.Plotly`, `pn.pane.Matplotlib`, `pn.widgets.Tabulator`.
+- **Plot / data panes** — no pmui equivalent; keep as `pn.pane.*` / `pn.widgets.Tabulator` (see [Panes](#panes) for the full list, including media/embed).
 - **Widgets with no pmui class:** `CodeEditor`, `Terminal`, `JSONEditor`, `FileSelector`, `FileDropper`, `Player`, `DiscretePlayer`, `StaticText`, `ToggleGroup`, `ArrayInput`, `ColorMap`, the `DataFrame` widget, and the speech/media widgets (`SpeechToText`, `TextToSpeech`, `VideoStream`). Keep them as `pn.widgets.*`.
 - **Indicators:** pmui has only `LoadingSpinner`, `Progress`, `CircularProgress`, and `LinearProgress`. Everything else — `Number`, `Trend`, `Gauge`, `Dial`, `Tqdm`, `BooleanStatus`, `LinearGauge`, `TooltipIcon` — stays `pn.indicators.*`.
 - **Spacers and low-level layout helpers** without a Material counterpart (`pn.layout.HSpacer`, `pn.layout.VSpacer`).

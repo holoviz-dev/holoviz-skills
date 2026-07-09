@@ -8,7 +8,7 @@ Building:
 
 - [Lookup](#lookup) — where to fetch pmui docs as markdown
 - [Key Differences from Panel](#key-differences-from-panel)
-- [Page](#page)
+- [Page](#page) — incl. [header / AppBar color](#page-header-appbar-color)
 - [Layouts](#layouts)
 - [Component Gotchas](#component-gotchas)
 
@@ -96,6 +96,25 @@ pmui.Page(sidebar=[widget1, widget2], main=[content])
 pmui.Page(sidebar=widget1, main=content)
 ```
 
+### Page header / AppBar color
+
+The `Page` header is an MUI `AppBar color="primary"`. If `theme_config` sets no
+`palette.primary.main`, it falls back to a hardcoded blue (`#0072b5`) with a white title — which
+clashes with a dark app. Either set `palette.primary.main`, or override the header directly via the
+`.header` class (use this when you want the header a different color from the brand primary, e.g. a
+dark panel tone):
+
+```python
+pmui.Page(
+    sx={"& .header": {
+        "backgroundColor": "#14141b",  # match the app's panel color
+        "backgroundImage": "none",
+        "boxShadow": "none",
+    }},
+    ...
+)
+```
+
 ## Layouts
 
 Notes:
@@ -144,8 +163,18 @@ pmui.Page(
 
 - `pn.layout.HSpacer()` pushes items left/right in a Row
 - `pn.layout.VSpacer()` pushes items top/bottom in a Column
-- Always set `sizing_mode` on components unless intentionally fixed-size
-- Use `margin` to prevent widgets touching container edges (default margins often suffice)
+- Always set `sizing_mode` on components unless intentionally fixed-size; fixed default widths are why widgets "aren't responsive".
+- Use `margin` to prevent widgets touching container edges (default margins often suffice). Default margins are inconsistent (most `10`; `Typography` `(5,10)`; `Chip`/`Avatar`/containers `0`), so loose text/buttons won't align with margin-0 `Grid`/`Paper` blocks — pick one baseline.
+- Align a whole body: make each section an item of ONE `Grid(container=True, spacing=2)` with children `margin=0` — shared padding aligns them and `spacing` makes the gaps (also stops cards touching):
+
+  ```python
+  pmui.Grid(pmui.Grid(title, size={"xs": 12}),
+            pmui.Grid(card, size={"xs": 12, "sm": 6, "md": 3}), ...,
+            container=True, spacing=2, sizing_mode="stretch_width")
+  ```
+
+- Slider thumb hits the edge → add horizontal margin, e.g. `margin=(10, 20)`.
+- Mixed-height rows: `align="center"`; set gaps with `sx={"gap": "12px"}`, not per-item margins.
 
 ### Layouts
 
@@ -158,6 +187,8 @@ pmui.Page(
 - `Card`: prefer `Paper`. Set `collapsible=False` unless needed.
 - `Tabulator`: use `"materialize"` theme, not `"material"`.
 - `Box` → `Column`, `TextField` → `TextInput` (neither exists).
+- `Chip`: use `label=`, not `object=` (deprecated). Chips default to `margin=10`, which blows out tight stacked layouts — set `margin=0` when packing several together. Translucent-pill look: `sx={"color": c, "backgroundColor": f"{c}22"}`.
+- `Accordion` header text: the title renders as a Typography *inside* the summary, so a rule on `.MuiAccordionSummary-root` won't reach it. Target the content to restyle the label: `sx={"& .MuiAccordionSummary-content *": {"fontSize": "13px", "color": "#6d5cff"}}`.
 - `CheckButtonGroup`/`RadioButtonGroup` styling: in sidebars use `orientation="vertical"`, `color="primary"`, `variant="outlined"`.
 - Button groups (`RadioButtonGroup`, `CheckButtonGroup`): `.from_param()` may not write the widget value back to the bound param — clicking changes the buttons but the param never updates, so `@param.depends`/watchers never fire. Create the widget directly and wire it explicitly:
 

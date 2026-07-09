@@ -2,6 +2,14 @@
 
 Tabulator is the preferred widget for displaying DataFrames in Panel apps — sortable, filterable, paginated. Requires `pn.extension("tabulator")`.
 
+## Contents
+
+- [Basic Setup](#basic-setup)
+- [Widget-Based Filtering with `add_filter`](#widget-based-filtering-with-add_filter)
+  - [Function-Based Filtering](#function-based-filtering)
+- [Checkbox Selection](#checkbox-selection)
+- [Row Content (Expandable Details)](#row-content-expandable-details)
+
 ## Basic Setup
 
 ```python

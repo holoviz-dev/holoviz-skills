@@ -2,7 +2,7 @@
 name: cleanup
 description: Code cleanup and refactoring guidelines for HoloViz packages. Use when reviewing PRs, refactoring code, or checking adherence to code quality standards in any HoloViz repository.
 metadata:
-  version: "0.0.1"
+  version: "0.0.2"
   author: holoviz
 ---
 
@@ -14,6 +14,11 @@ This skill covers code quality patterns and common pitfalls when reviewing or re
 
 - Perform a `git diff` from the PR branch to the main branch and review for potential issues, improvements, and adherence to best practices.
 - Consider the full set of changes and whether there is a simpler way to achieve the same result. A PR that touches five files to work around a problem may have a two-line fix elsewhere.
+- Explain *why* this approach over the alternatives (mixin vs. inheritance vs. duplication); reviewers consistently ask for that rationale.
+- Reuse the naming and option behavior of similar existing components instead of inventing a new spelling for the same idea (e.g. `font_size` to match a sibling element, not `fontsize`).
+- Don't change an existing default or signature — that breaks users — unless a breaking change is the explicit goal of the PR.
+- Share cross-backend/variant logic via a mixin or helper, but extract only what is genuinely common.
+- Scrutinize AI-assisted code like any other; flag it and verify the behavior yourself.
 
 ## Code Style
 
@@ -26,7 +31,8 @@ This skill covers code quality patterns and common pitfalls when reviewing or re
 - Use consistent naming. If a class is `FollowUpSuggestion`, the variable should be `follow_up_suggestion`, not `followup_suggestion` or `follow_up_suggestions`.
 - Sort `param` declarations alphabetically with a blank line between each.
 - Include `doc="""..."""` on every public param, starting on a new line.
-- Ensure comments are about *why* and *what must remain true*, not what the syntax does. Good comments explain intent, constraints, workarounds, performance rationale, or API quirks. Avoid restating obvious code or narrating line-by-line.
+- Ensure comments are about *why* and *what must remain true*, not what the syntax does. Good comments explain intent, constraints, workarounds, performance rationale, or API quirks. Avoid restating obvious code or narrating line-by-line. Keep them concise; over-explaining is also a smell.
+- Compute derived values (ranges, extents, validation scans) once and reuse them; don't rescan the data in every method or on every render.
 - Place internal `_`-prefixed params after public params. Use a `_`-prefixed param (e.g. `_cache = param.Dict()`) when the value needs to trigger watches or be serialized. Use a plain class/instance variable (e.g. `self._cache = {}` in `__init__`) for transient internal state that doesn't need param machinery.
 
 ```python

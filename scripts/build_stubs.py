@@ -71,11 +71,8 @@ SUBSKILL_ORDER: dict[str, list[str]] = {
 REFERENCE_ORDER: dict[str, list[str]] = {
     "panel": [
         "iterating-on-panel-apps",
-        "mapping-widgets",
         "building-custom-components",
-        "applying-material-ui",
-        "branding-material-ui",
-        "interacting-with-holoviews",
+        "using-material-ui",
         "using-pytest-playwright",
         "reviewing-panel-apps",
     ],
@@ -203,6 +200,32 @@ def extract_description(text: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+def extract_version(text: str) -> str | None:
+    """Return ``metadata.version`` from a SKILL.md's front matter, if present.
+
+    Scoped to the leading front-matter block so an illustrative ``version:`` in
+    the body (e.g. a code example) is never picked up.
+    """
+    fm = FRONT_MATTER_RE.match(text)
+    block = fm.group(0) if fm else ""
+    m = re.search(r'^\s+version:\s*["\']?(\d+\.\d+\.\d+)["\']?\s*$', block, re.MULTILINE)
+    return m.group(1) if m else None
+
+
+def inject_version_note(text: str, version: str | None) -> str:
+    """Insert an italic ``*Skill version X.Y.Z*`` line just after the first H1."""
+    if not version:
+        return text
+    note = f"*Skill version {version}*"
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if s.startswith("# ") and not s.startswith("## "):
+            lines[i + 1 : i + 1] = ["", note]
+            return "\n".join(lines)
+    return note + "\n\n" + text
+
+
 def generate_example_md(example: Example, source_rel: str, screenshot_path: str | None) -> str:
     """Generate markdown content for a Python example."""
     lines = [f"# {example.title}", ""]
@@ -271,21 +294,27 @@ class Example:
 class Reference:
     """A reference document alongside a sub-skill."""
 
-    def __init__(self, slug: str, title: str, source: Path, cleaned: str):
+    def __init__(
+        self, slug: str, title: str, source: Path, cleaned: str, version: str | None = None
+    ):
         self.slug = slug
         self.title = title
         self.source = source
         self.cleaned = cleaned
+        self.version = version  # inherited from the owning sub-skill
 
 
 class SubSkill:
     """A single sub-skill within a category."""
 
-    def __init__(self, slug: str, title: str, source: Path, cleaned: str):
+    def __init__(
+        self, slug: str, title: str, source: Path, cleaned: str, version: str | None = None
+    ):
         self.slug = slug
         self.title = title
         self.source = source
         self.cleaned = cleaned
+        self.version = version
         self.references: list[Reference] = []
         self.examples: list[Example] = []
 
@@ -293,21 +322,25 @@ class SubSkill:
 class Category:
     """A top-level directory containing a routing SKILL.md and sub-skills."""
 
-    def __init__(self, dirname: str, title: str, description: str):
+    def __init__(self, dirname: str, title: str, description: str, version: str | None = None):
         self.dirname = dirname
         self.title = title
         self.description = description
+        self.version = version
         self.children: list[SubSkill] = []
 
 
 class Standalone:
     """A top-level directory with only a single SKILL.md (no sub-skills)."""
 
-    def __init__(self, slug: str, title: str, source: Path, cleaned: str):
+    def __init__(
+        self, slug: str, title: str, source: Path, cleaned: str, version: str | None = None
+    ):
         self.slug = slug
         self.title = title
         self.source = source
         self.cleaned = cleaned
+        self.version = version
 
 
 # ---------------------------------------------------------------------------
@@ -439,11 +472,17 @@ def build_nav_toml(
                             f'      {{ "{ref.title}" = '
                             f'"{section.dirname}/{child.slug}/{ref.slug}.md" }},'
                         )
-                    for ex in ordered_examples(child):
-                        lines.append(
-                            f'      {{ "{ex.title} Example" = '
-                            f'"{section.dirname}/{child.slug}/{ex.slug}.md" }},'
-                        )
+                    examples = ordered_examples(child)
+                    if examples:
+                        # Group example pages under a single "Examples" node so
+                        # they don't sit flat alongside the reference pages.
+                        lines.append('      { "Examples" = [')
+                        for ex in examples:
+                            lines.append(
+                                f'        {{ "{ex.title}" = '
+                                f'"{section.dirname}/{child.slug}/{ex.slug}.md" }},'
+                            )
+                        lines.append("      ] },")
                     lines.append("    ] },")
                 else:
                     lines.append(
@@ -610,15 +649,17 @@ def build() -> int:
             title = extract_h1_title(root_cleaned) or slug_to_title(tld)
             desc = extract_description(root_raw) or ""
 
-            cat = Category(tld, title, desc)
+            cat = Category(tld, title, desc, extract_version(root_raw))
 
             for child_md in children:
                 raw = child_md.read_text(encoding="utf-8")
                 cleaned = strip_frontmatter_and_comments(raw)
                 slug = child_md.parent.name
                 child_title = extract_h1_title(cleaned) or slug_to_title(slug)
+                child_version = extract_version(raw)
 
-                # Discover sibling .md files (references).
+                # Discover sibling .md files (references) — they inherit the
+                # owning sub-skill's version.
                 ref_paths = find_references(child_md)
                 refs: list[Reference] = []
                 for ref_path in ref_paths:
@@ -626,7 +667,9 @@ def build() -> int:
                     ref_cleaned = strip_frontmatter_and_comments(ref_raw)
                     ref_slug = ref_path.stem
                     ref_title = extract_h1_title(ref_cleaned) or slug_to_title(ref_slug)
-                    refs.append(Reference(ref_slug, ref_title, ref_path, ref_cleaned))
+                    refs.append(
+                        Reference(ref_slug, ref_title, ref_path, ref_cleaned, child_version)
+                    )
 
                 # Discover .py files in examples/ subdirectory.
                 example_paths = find_examples(child_md)
@@ -637,7 +680,7 @@ def build() -> int:
                     ex_title = slug_to_title(ex_slug)
                     examples.append(Example(ex_slug, ex_title, ex_path, ex_code))
 
-                skill = SubSkill(slug, child_title, child_md, cleaned)
+                skill = SubSkill(slug, child_title, child_md, cleaned, child_version)
                 skill.references = refs
                 skill.examples = examples
                 cat.children.append(skill)
@@ -648,7 +691,7 @@ def build() -> int:
             raw = roots[0].read_text(encoding="utf-8")
             cleaned = strip_frontmatter_and_comments(raw)
             title = extract_h1_title(cleaned) or slug_to_title(tld)
-            standalones[tld] = Standalone(tld, title, roots[0], cleaned)
+            standalones[tld] = Standalone(tld, title, roots[0], cleaned, extract_version(raw))
 
     # ---- Rewrite internal links ----
     path_map = build_path_map(categories, standalones)
@@ -678,7 +721,9 @@ def build() -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Section index page (docs-facing, not the routing skill).
-        index_md = inject_source_meta(generate_index_md(cat), f"{cat.dirname}/SKILL.md")
+        index_md = inject_source_meta(
+            inject_version_note(generate_index_md(cat), cat.version), f"{cat.dirname}/SKILL.md"
+        )
         (out_dir / "index.md").write_text(index_md, encoding="utf-8")
         print(f"build_stubs: {cat.dirname}/  ->  docs/{cat.dirname}/index.md")
         page_count += 1
@@ -692,7 +737,9 @@ def build() -> int:
                 skill_dir.mkdir(parents=True, exist_ok=True)
 
                 dest = skill_dir / "index.md"
-                content = inject_source_meta(child.cleaned, str(rel_src))
+                content = inject_source_meta(
+                    inject_version_note(child.cleaned, child.version), str(rel_src)
+                )
                 dest.write_text(content, encoding="utf-8")
                 print(f"build_stubs: {rel_src}  ->  docs/{cat.dirname}/{child.slug}/index.md")
                 page_count += 1
@@ -700,7 +747,9 @@ def build() -> int:
                 for ref in child.references:
                     ref_dest = skill_dir / f"{ref.slug}.md"
                     ref_rel_src = ref.source.relative_to(REPO_ROOT)
-                    ref_content = inject_source_meta(ref.cleaned, str(ref_rel_src))
+                    ref_content = inject_source_meta(
+                        inject_version_note(ref.cleaned, ref.version), str(ref_rel_src)
+                    )
                     ref_dest.write_text(ref_content, encoding="utf-8")
                     print(
                         f"build_stubs: {ref_rel_src}  ->  "
@@ -725,7 +774,9 @@ def build() -> int:
             else:
                 # Flat page (no references or examples).
                 dest = out_dir / f"{child.slug}.md"
-                content = inject_source_meta(child.cleaned, str(rel_src))
+                content = inject_source_meta(
+                    inject_version_note(child.cleaned, child.version), str(rel_src)
+                )
                 dest.write_text(content, encoding="utf-8")
                 print(f"build_stubs: {rel_src}  ->  docs/{cat.dirname}/{child.slug}.md")
                 page_count += 1
@@ -733,7 +784,7 @@ def build() -> int:
     for st in standalones.values():
         dest = DOCS_DIR / f"{st.slug}.md"
         rel_src = st.source.relative_to(REPO_ROOT)
-        content = inject_source_meta(st.cleaned, str(rel_src))
+        content = inject_source_meta(inject_version_note(st.cleaned, st.version), str(rel_src))
         dest.write_text(content, encoding="utf-8")
         print(f"build_stubs: {rel_src}  ->  docs/{st.slug}.md")
         page_count += 1

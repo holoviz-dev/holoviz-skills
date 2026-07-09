@@ -2,7 +2,7 @@
 name: param
 description: Define Python classes with typed, validated, reactive parameters using Param. Use when building classes with constrained attributes, reactive dependencies between values, or dynamic option cascading. Load alongside the Panel skill for any Panel app using Parameterized classes.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   author: holoviz
 ---
 
@@ -120,18 +120,9 @@ config.param.update(source="Parquet", limit=500)  # one notification, not two
 with config.param.update():
     config.source = "SQL"
     config.limit = 200
-
-# param.Event for buttons — use with @param.depends(watch=True)
-class Wizard(param.Parameterized):
-    go_next = param.Event()
-    step = param.Integer(default=0)
-
-    @param.depends("go_next", watch=True)
-    def _on_go_next(self):
-        self.step = self.step + 1
-
-# Then in Panel: pmui.Button.from_param(wizard.param.go_next, label="Continue")
 ```
+
+For the `param.Event` + `Button.from_param()` + `@param.depends(watch=True)` button pattern, see the declarative example under [.watch() vs @param.depends vs .link()](#watch-vs-paramdepends-vs-link).
 
 ## Reactive Expressions (rx)
 
@@ -215,15 +206,7 @@ class Wizard(param.Parameterized):
         self.active_step = self._menu.param.active.rx()[0]  # menu -> step sync
 ```
 
-For inline reactive expressions, use `.rx()` instead of lambdas:
-
-```python
-# ✅ Preferred — rx for reactive string formatting
-button = pn.widgets.Button(name="Add " + select.param.value.rx())
-
-# ❌ Avoid — lambda callback
-button = pn.widgets.Button(name=pn.bind(lambda x: f"Add {x}", select))
-```
+For inline reactive string formatting, prefer `.rx()` over a `pn.bind`/lambda callback — see [Reactive Expressions (rx)](#reactive-expressions-rx).
 
 ```python
 # ✅ Preferred — declarative, no event argument

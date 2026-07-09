@@ -47,7 +47,8 @@ PLUGIN_NAME = "holoviz-skills"
 # Sub-skill directory name (one level below a category SKILL.md).
 SUBSKILLS_DIRNAME = "skills"
 
-# Shared manifest fields; ``name`` and ``description`` are filled in per category.
+# Shared manifest fields; ``name``, ``description``, and ``version`` are filled
+# in per category. ``version`` here is only a fallback when a SKILL.md has none.
 PLUGIN_JSON_BASE: dict = {
     "version": "0.1.0",
     "author": {"name": "HoloViz"},
@@ -66,13 +67,26 @@ def _read_description(skill_md: Path) -> str | None:
     return m.group(1).strip().strip('"').strip("'") if m else None
 
 
+def _read_version(skill_md: Path) -> str | None:
+    """Return ``metadata.version`` from a SKILL.md's front matter, if present."""
+    if not skill_md.exists():
+        return None
+    fm = re.match(r"\A---\s*\n.*?\n---\s*\n", skill_md.read_text(encoding="utf-8"), re.DOTALL)
+    block = fm.group(0) if fm else ""
+    m = re.search(r'^\s+version:\s*["\']?(\d+\.\d+\.\d+)["\']?\s*$', block, re.MULTILINE)
+    return m.group(1) if m else None
+
+
 def _plugin_manifest(category_dir: Path) -> dict:
     """Build the plugin.json manifest for a single category."""
     name = category_dir.name
-    description = _read_description(category_dir / "SKILL.md") or (
-        f"HoloViz skills for {name.replace('-', ' ')}."
-    )
-    return {"name": name, "description": description, **PLUGIN_JSON_BASE}
+    skill_md = category_dir / "SKILL.md"
+    description = _read_description(skill_md) or f"HoloViz skills for {name.replace('-', ' ')}."
+    version = _read_version(skill_md)
+    manifest = {"name": name, "description": description, **PLUGIN_JSON_BASE}
+    if version:
+        manifest["version"] = version  # override the fallback with the real skill version
+    return manifest
 
 
 # Names to omit from every output archive.
