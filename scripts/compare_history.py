@@ -11,12 +11,12 @@ import json
 import sys
 from pathlib import Path
 
+import holoviews as hv
 import hvplot.pandas  # noqa: F401
 import pandas as pd
 import panel as pn
 import panel_material_ui as pmui
 import param
-from bokeh.models import NumeralTickFormatter
 
 pn.extension("tabulator", throttled=True)
 
@@ -31,18 +31,30 @@ _METRIC_LABELS = {
     "has_code": "Code Generation Rate",
 }
 
+_CONDITION_DASH = {"with_skills": "solid", "without_skills": "dashed"}
+_CONDITION_MARKER = {"with_skills": "circle", "without_skills": "x"}
+_MODEL_COLORS = [
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+]
 
-class HistoryState(param.Parameterized):
+
+class HistoricalDashboard(pn.viewable.Viewer):
     selected_runs = param.ListSelector(default=[], objects=[])
     selected_models = param.ListSelector(default=[], objects=[])
     selected_queries = param.ListSelector(default=[], objects=[])
     selected_conditions = param.ListSelector(
-        default=["with_skills", "without_skills"], objects=["with_skills", "without_skills"]
+        default=["with_skills", "without_skills"],
+        objects=["with_skills", "without_skills"],
     )
     selected_metric = param.Selector(default="tokens_output", objects=_METRICS)
 
-
-class HistoricalDashboard(pn.viewable.Viewer):
     def __init__(self, results_dir: Path, **params):
         self._results_dir = results_dir
         self._history_df = self._load_history(results_dir)
@@ -58,16 +70,29 @@ class HistoricalDashboard(pn.viewable.Viewer):
         all_queries = (
             sorted(self._history_df["query_id"].unique()) if not self._history_df.empty else []
         )
-
         default_runs = all_runs[: min(5, len(all_runs))]
-        self._state = HistoryState(
-            selected_runs=default_runs,
-            selected_models=all_models,
-            selected_queries=all_queries,
+
+        params.setdefault("selected_runs", default_runs)
+        params.setdefault("selected_models", all_models)
+        params.setdefault("selected_queries", all_queries)
+
+        self._model_color = {
+            m: _MODEL_COLORS[i % len(_MODEL_COLORS)] for i, m in enumerate(all_models)
+        }
+
+        self._trend_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
+        self._delta_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
+        self._table_pane = pn.widgets.Tabulator(
+            pd.DataFrame(),
+            theme="materialize",
+            sizing_mode="stretch_width",
+            show_index=False,
         )
-        self._state.param["selected_runs"].objects = all_runs
-        self._state.param["selected_models"].objects = all_models
-        self._state.param["selected_queries"].objects = all_queries
+        self._no_data_alert = pmui.Alert(
+            "No historical summary found. Run eval first to generate history_summary.json.",
+            alert_type="warning",
+            visible=self._history_df.empty,
+        )
 
         self._run_filter = pmui.MultiSelect(
             label="Runs",
@@ -109,49 +134,23 @@ class HistoricalDashboard(pn.viewable.Viewer):
             sizing_mode="stretch_width",
         )
 
-        self._trend_pane = pn.Column(sizing_mode="stretch_width")
-        self._table_pane = pn.widgets.Tabulator(
-            pd.DataFrame(),
-            theme="materialize",
-            sizing_mode="stretch_width",
-            show_index=False,
-        )
-        self._no_data_alert = pmui.Alert(
-            "No historical summary found. Run eval first to generate history_summary.json.",
-            alert_type="warning",
-            visible=self._history_df.empty,
-        )
-
         super().__init__(**params)
 
-        self._run_filter.param.watch(
-            lambda e: setattr(self._state, "selected_runs", e.new), "value"
-        )
-        self._model_filter.param.watch(
-            lambda e: setattr(self._state, "selected_models", e.new), "value"
-        )
-        self._query_filter.param.watch(
-            lambda e: setattr(self._state, "selected_queries", e.new), "value"
-        )
+        self.param["selected_runs"].objects = all_runs
+        self.param["selected_models"].objects = all_models
+        self.param["selected_queries"].objects = all_queries
+
+        self._run_filter.param.watch(lambda e: setattr(self, "selected_runs", e.new), "value")
+        self._model_filter.param.watch(lambda e: setattr(self, "selected_models", e.new), "value")
+        self._query_filter.param.watch(lambda e: setattr(self, "selected_queries", e.new), "value")
         self._condition_filter.param.watch(
-            lambda e: setattr(self._state, "selected_conditions", e.new), "value"
+            lambda e: setattr(self, "selected_conditions", e.new), "value"
         )
-        self._metric_select.param.watch(
-            lambda e: setattr(self._state, "selected_metric", e.new), "value"
-        )
+        self._metric_select.param.watch(lambda e: setattr(self, "selected_metric", e.new), "value")
 
-        self._state.param.watch(
-            lambda _: self._refresh_views(),
-            [
-                "selected_runs",
-                "selected_models",
-                "selected_queries",
-                "selected_conditions",
-                "selected_metric",
-            ],
-        )
-
-        self._refresh_views()
+    # ------------------------------------------------------------------
+    # Data helpers
+    # ------------------------------------------------------------------
 
     def _load_history(self, results_dir: Path) -> pd.DataFrame:
         history_file = results_dir / "history_summary.json"
@@ -161,7 +160,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
         rows = payload.get("rows", [])
         if not rows:
             return pd.DataFrame()
-
         df = pd.DataFrame(rows)
         df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
         df = df.sort_values(["created_at", "run_id", "model", "condition", "query_id"])
@@ -170,79 +168,248 @@ class HistoricalDashboard(pn.viewable.Viewer):
     def _filtered_df(self) -> pd.DataFrame:
         if self._history_df.empty:
             return self._history_df
-
         df = self._history_df
-        if self._state.selected_runs:
-            df = df[df["run_id"].isin(self._state.selected_runs)]
-        if self._state.selected_models:
-            df = df[df["model"].isin(self._state.selected_models)]
-        if self._state.selected_queries:
-            df = df[df["query_id"].isin(self._state.selected_queries)]
-        if self._state.selected_conditions:
-            df = df[df["condition"].isin(self._state.selected_conditions)]
+        if self.selected_runs:
+            df = df[df["run_id"].isin(self.selected_runs)]
+        if self.selected_models:
+            df = df[df["model"].isin(self.selected_models)]
+        if self.selected_queries:
+            df = df[df["query_id"].isin(self.selected_queries)]
+        if self.selected_conditions:
+            df = df[df["condition"].isin(self.selected_conditions)]
         return df
 
-    def _build_trend(self, df: pd.DataFrame):
-        metric = self._state.selected_metric
-        label = _METRIC_LABELS.get(metric, metric)
+    def _run_order(self, df: pd.DataFrame) -> dict[str, int]:
+        """Chronological run → x-index (oldest = 0)."""
+        order = df[["run_id", "created_at"]].drop_duplicates("run_id").sort_values("created_at")
+        return {row.run_id: i for i, row in enumerate(order.itertuples())}
 
-        metric_df = df.copy()
+    # ------------------------------------------------------------------
+    # Plot 1 — Line + Scatter trend
+    # ------------------------------------------------------------------
+
+    def _build_trend(self, df: pd.DataFrame):
+        metric = self.selected_metric
+        label = _METRIC_LABELS[metric]
+
         if metric in ("execution_success", "has_code"):
-            metric_df[metric] = metric_df[metric].astype(float)
+            df = df.copy()
+            df[metric] = df[metric].astype(float)
+
+        run_to_x = self._run_order(df)
+        xticks = [(v, k) for k, v in run_to_x.items()]
+        # Tight x range: small left margin, half-unit right margin
+        n_runs = len(run_to_x)
+        xlim = (-0.1, n_runs - 0.5)
 
         grouped = (
-            metric_df.groupby(["created_at", "run_id", "model", "condition"], as_index=False)
-            .agg({metric: "mean"})
-            .sort_values(by=["created_at", "model", "condition"])
+            df.groupby(["run_id", "model", "condition"], as_index=False)
+            .agg(**{metric: (metric, "mean"), "created_at": ("created_at", "first")})
+            .sort_values("created_at")
         )
-        grouped["series"] = grouped["model"] + " | " + grouped["condition"]
+        grouped["x"] = grouped["run_id"].map(run_to_x)
+        grouped["series"] = grouped["model"] + " / " + grouped["condition"]
+
+        hover_spec = [
+            ("Series", "$name"),
+            ("Run", "@run_id"),
+            (label, f"@{{{metric}}}{{0.2f}}"),
+        ]
+
+        line_plots = {}
+        scatter_plots = {}
+        for series_key, grp in grouped.groupby("series"):
+            model = grp["model"].iloc[0]
+            condition = grp["condition"].iloc[0]
+            color = self._model_color.get(model, "#333333")
+            dash = _CONDITION_DASH.get(condition, "solid")
+            marker = _CONDITION_MARKER.get(condition, "circle")
+            grp = grp.sort_values("x")
+
+            line_plots[series_key] = grp.hvplot.line(
+                x="x",
+                y=metric,
+                color=color,
+                line_dash=dash,
+                line_width=2,
+                hover_cols=["run_id", metric],
+                hover_tooltips=hover_spec,
+                responsive=True,
+                height=340,
+            )
+            scatter_plots[series_key] = grp.hvplot.scatter(
+                x="x",
+                y=metric,
+                color=color,
+                marker=marker,
+                size=80,
+                hover_cols=["run_id", metric],
+                hover_tooltips=hover_spec,
+                responsive=True,
+                height=340,
+            )
+
+        if not line_plots:
+            return hv.Curve([], kdims=["x"], vdims=[metric]).opts(
+                responsive=True, height=340, title="No data for selected filters."
+            )
+
+        overlay = hv.NdOverlay(line_plots) * hv.NdOverlay(scatter_plots)
+
+        extra = {"ylim": (-0.1, 1.1)} if metric in ("execution_success", "has_code") else {}
+        overlay = overlay.opts(
+            hv.opts.NdOverlay(
+                title=f"Metric Trend: {label}",
+                legend_position="top_right",
+                xticks=xticks,
+                xrotation=30,
+                xlabel="Run (chronological)",
+                ylabel=label,
+                xlim=xlim,
+                responsive=True,
+                height=340,
+                **extra,
+            ),
+        )
+        return overlay
+
+    # ------------------------------------------------------------------
+    # Plot 3 — Skills Advantage Δ
+    # ------------------------------------------------------------------
+
+    def _build_delta(self, df: pd.DataFrame):
+        metric = self.selected_metric
+        label = _METRIC_LABELS[metric]
+        delta_col = "delta"
 
         if metric in ("execution_success", "has_code"):
-            plot = grouped.hvplot.scatter(
-                x="created_at",
-                y=metric,
-                by="series",
-                height=360,
-                responsive=True,
-                ylabel=label,
-                xlabel="Run date",
-                title=f"Run Trend: {label}",
-                legend="top_left",
-                size=80,
-                alpha=0.85,
-                yformatter=NumeralTickFormatter(format="0%"),
-                ylim=(0, 1),
-                hover=True,
-            )
-            return plot
+            df = df.copy()
+            df[metric] = df[metric].astype(float)
 
-        plot = grouped.hvplot.line(
-            x="created_at",
-            y=metric,
-            by="series",
-            height=360,
-            responsive=True,
-            ylabel=label,
-            xlabel="Run date",
-            title=f"Run Trend: {label}",
-            legend="top_left",
-            markers=True,
-            line_width=2,
-            hover=True,
+        run_to_x = self._run_order(df)
+        xticks = [(v, k) for k, v in run_to_x.items()]
+        n_runs = len(run_to_x)
+        xlim = (-0.1, n_runs - 0.5)
+
+        agg = df.groupby(["run_id", "model", "query_id", "condition"], as_index=False).agg(
+            **{metric: (metric, "mean"), "created_at": ("created_at", "first")}
         )
-        return plot
+        pivot = agg.pivot_table(
+            index=["run_id", "model", "query_id", "created_at"],
+            columns="condition",
+            values=metric,
+        ).reset_index()
+        pivot.columns.name = None
 
-    def _refresh_views(self):
+        if "with_skills" not in pivot.columns or "without_skills" not in pivot.columns:
+            msg = "Delta requires both conditions present in data."
+            return hv.Curve([], kdims=["x"], vdims=[delta_col]).opts(
+                responsive=True, height=280, title=msg
+            )
+
+        pivot = pivot.dropna(subset=["with_skills", "without_skills"])
+        if pivot.empty:
+            return hv.Curve([], kdims=["x"], vdims=[delta_col]).opts(
+                responsive=True, height=280, title="No paired rows for delta."
+            )
+
+        pivot[delta_col] = pivot["with_skills"] - pivot["without_skills"]
+        pivot["x"] = pivot["run_id"].map(run_to_x)
+        pivot["series"] = pivot["model"] + " / " + pivot["query_id"]
+
+        hover_spec = [
+            ("Series", "$name"),
+            ("Run", "@run_id"),
+            (f"Δ {label}", f"@{{{delta_col}}}{{0.3f}}"),
+        ]
+
+        line_plots = {}
+        scatter_plots = {}
+        for series_key, grp in pivot.groupby("series"):
+            model = grp["model"].iloc[0]
+            color = self._model_color.get(model, "#333333")
+            grp = grp.sort_values("x")
+
+            line_plots[series_key] = grp.hvplot.line(
+                x="x",
+                y=delta_col,
+                color=color,
+                line_width=2,
+                hover_cols=["run_id", delta_col],
+                hover_tooltips=hover_spec,
+                responsive=True,
+                height=280,
+            )
+            scatter_plots[series_key] = grp.hvplot.scatter(
+                x="x",
+                y=delta_col,
+                color=color,
+                size=70,
+                hover_cols=["run_id", delta_col],
+                hover_tooltips=hover_spec,
+                responsive=True,
+                height=280,
+            )
+
+        if not line_plots:
+            return hv.Curve([], kdims=["x"], vdims=[delta_col]).opts(
+                responsive=True, height=280, title="No data for selected filters."
+            )
+
+        zero_line = hv.HLine(0).opts(color="gray", line_dash="dashed", line_width=1.5)
+
+        overlay = hv.NdOverlay(line_plots) * hv.NdOverlay(scatter_plots) * zero_line
+        overlay = overlay.opts(
+            hv.opts.NdOverlay(
+                title=f"Skills Advantage (Δ): {label}",
+                legend_position="top_right",
+                xticks=xticks,
+                xrotation=30,
+                xlabel="Run (chronological)",
+                ylabel=f"Δ {label}",
+                xlim=xlim,
+                responsive=True,
+                height=280,
+            ),
+        )
+        return overlay
+
+    # ------------------------------------------------------------------
+    # Reactive update — fires whenever any filter param changes
+    # ------------------------------------------------------------------
+
+    @param.depends(
+        "selected_runs",
+        "selected_models",
+        "selected_queries",
+        "selected_conditions",
+        "selected_metric",
+        watch=True,
+        on_init=True,
+    )
+    def _update_views(self):
+        df = self._filtered_df()
         with pn.io.hold():
-            df = self._filtered_df()
             if df.empty:
-                self._trend_pane.objects = [pn.pane.Markdown("No data for selected filters.")]
+                self._trend_pane.object = hv.Curve([], kdims=["x"], vdims=["y"]).opts(
+                    responsive=True, height=340, title="No data for selected filters."
+                )
+                self._delta_pane.object = hv.Curve([], kdims=["x"], vdims=["y"]).opts(
+                    responsive=True, height=280, title="No data for selected filters."
+                )
                 self._table_pane.value = pd.DataFrame()
                 return
 
-            self._trend_pane.objects = [
-                pn.pane.HoloViews(self._build_trend(df), height=380, sizing_mode="stretch_width")
-            ]
+            self._trend_pane.object = self._build_trend(df)
+
+            delta_df = self._history_df.copy()
+            if self.selected_runs:
+                delta_df = delta_df[delta_df["run_id"].isin(self.selected_runs)]
+            if self.selected_models:
+                delta_df = delta_df[delta_df["model"].isin(self.selected_models)]
+            if self.selected_queries:
+                delta_df = delta_df[delta_df["query_id"].isin(self.selected_queries)]
+            self._delta_pane.object = self._build_delta(delta_df)
 
             display_cols = [
                 "run_id",
@@ -256,12 +423,15 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 "execution_success",
                 "has_code",
             ]
-            table_df = (
+            self._table_pane.value = (
                 df[display_cols]
                 .copy()
                 .sort_values(["created_at", "query_id", "model", "condition"])
             )
-            self._table_pane.value = table_df
+
+    # ------------------------------------------------------------------
+    # Layout
+    # ------------------------------------------------------------------
 
     def __panel__(self):
         with pn.config.set(sizing_mode="stretch_width"):
@@ -279,6 +449,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 sx={"gap": "12px"},
                 margin=10,
             )
+
             main = pmui.Column(
                 self._no_data_alert,
                 pmui.Typography("Historical Evaluation Trends", variant="h4"),
@@ -287,7 +458,27 @@ class HistoricalDashboard(pn.viewable.Viewer):
                     variant="body2",
                     sx={"color": "text.secondary"},
                 ),
-                pmui.Paper(self._trend_pane, sx={"p": 2}, elevation=1),
+                pmui.Paper(
+                    pmui.Column(
+                        pmui.Typography("Metric Trend by Run", variant="h6"),
+                        self._trend_pane,
+                    ),
+                    sx={"p": 2},
+                    elevation=1,
+                ),
+                pmui.Paper(
+                    pmui.Column(
+                        pmui.Typography("Skills Advantage (Δ) by Run", variant="h6"),
+                        pmui.Typography(
+                            "Δ > 0: with_skills outperforms without_skills",
+                            variant="caption",
+                            sx={"color": "text.secondary"},
+                        ),
+                        self._delta_pane,
+                    ),
+                    sx={"p": 2},
+                    elevation=1,
+                ),
                 pmui.Paper(self._table_pane, sx={"p": 2}, elevation=1),
                 sx={"gap": "16px"},
                 margin=10,
