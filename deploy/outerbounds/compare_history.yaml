@@ -5,7 +5,7 @@ auth:
   public: true
 tags:
   - team: ai-services
-  - owner: tpatrick@anaconda.com
+  - owner: iakort@anaconda.com
 
 dependencies:
   conda:
