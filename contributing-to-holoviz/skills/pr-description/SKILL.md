@@ -2,7 +2,7 @@
 name: pr-description
 description: Writing a clear pull request description for HoloViz packages. Use when drafting or reviewing the description, summary, or write-up of a PR in any HoloViz repository.
 metadata:
-  version: "0.0.1"
+  version: "0.1.0"
   author: holoviz
 ---
 
@@ -21,8 +21,13 @@ https://raw.githubusercontent.com/holoviz/.github/refs/heads/main/.github/pull_r
 - **Before / After:** include for any observable or visual change (behavior, UI, plotting, rendered docs) with screenshots, GIFs, or video, labelled old versus new. Skip it when there is nothing to compare, such as docs or refactors.
 - **AI disclosure:** if AI was used, name the tool and model (for example Claude Code + Opus) and how it was used, and never delete the section. Non-disclosure can result in a ban.
 
-## Guidelines
+## Voice and style
 
-- Keep the description tight. The diff shows *how*; explain *why*.
-- Don't restate the diff line by line.
-- For a large PR, add a short bullet list of the key changes and a "How to test" note.
+Write dense, causal prose rather than a padded list. For a small PR a short paragraph beats headers and bullets; reserve a bullet list for a large PR with several independent changes, and add a short "How to test" note.
+
+- Lead with the change, then the mechanism, e.g. "This PR adds X, where ...". State what changed before how it works.
+- Chain cause and effect within a sentence ("captured once, meaning ...", "watches it, triggering ... so ...") instead of many short, disconnected ones.
+- Explain the motivation once; don't justify every step or restate the diff. State what each part does and trust the reader and the diff for the rest.
+- Keep concrete anchors (key identifiers, field names, a minimal example) even while compressing, so it stays specific.
+- Stay neutral and declarative; drop selling adverbs like "cleanly", "simply", or "robustly".
+- Reserve backticks for concrete symbols (`obs_id`, `None`, function and parameter names); let conceptual names read as plain prose.
