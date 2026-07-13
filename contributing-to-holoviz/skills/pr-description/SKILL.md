@@ -2,7 +2,7 @@
 name: pr-description
 description: Writing a clear pull request description for HoloViz packages. Use when drafting or reviewing the description, summary, or write-up of a PR in any HoloViz repository.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   author: holoviz
 ---
 
@@ -17,7 +17,7 @@ https://raw.githubusercontent.com/holoviz/.github/refs/heads/main/.github/pull_r
 ## Writing each part well
 
 - **Title:** conventional-commit style (`fix:`, `feat:`, `docs:`, `chore:`) summarizing the change in one line.
-- **Description:** 2-3 sentences in your own words on what changed and why, with the motivation and a minimal reproducible example. Flag any breaking change, API change, new dependency, or migration step prominently so a reviewer cannot miss it.
+- **Description:** 2-3 sentences in your own words on what changed and why, with the motivation and a minimal reproducible example. Write the example per the [`minimal-example` skill](../minimal-example/SKILL.md) so a reviewer can paste and run it unchanged. Flag any breaking change, API change, new dependency, or migration step prominently so a reviewer cannot miss it.
 - **Before / After:** include for any observable or visual change (behavior, UI, plotting, rendered docs) with screenshots, GIFs, or video, labelled old versus new. Skip it when there is nothing to compare, such as docs or refactors.
 - **AI disclosure:** if AI was used, name the tool and model (for example Claude Code + Opus) and how it was used, and never delete the section. Non-disclosure can result in a ban.
 
