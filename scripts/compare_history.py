@@ -31,18 +31,7 @@ _METRIC_LABELS = {
     "has_code": "Code Generation Rate",
 }
 
-_CONDITION_DASH = {"with_skills": "solid", "without_skills": "dashed"}
-_CONDITION_MARKER = {"with_skills": "circle", "without_skills": "x"}
-_MODEL_COLORS = [
-    "#1f77b4",
-    "#ff7f0e",
-    "#2ca02c",
-    "#d62728",
-    "#9467bd",
-    "#8c564b",
-    "#e377c2",
-    "#7f7f7f",
-]
+_BINARY_METRICS = {"execution_success", "has_code"}
 
 
 class HistoricalDashboard(pn.viewable.Viewer):
@@ -75,10 +64,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
         params.setdefault("selected_runs", default_runs)
         params.setdefault("selected_models", all_models)
         params.setdefault("selected_queries", all_queries)
-
-        self._model_color = {
-            m: _MODEL_COLORS[i % len(_MODEL_COLORS)] for i, m in enumerate(all_models)
-        }
 
         self._trend_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
         self._delta_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
@@ -185,7 +170,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         return {row.run_id: i for i, row in enumerate(order.itertuples())}
 
     # ------------------------------------------------------------------
-    # Plot 1 — Line + Scatter trend
+    # Plot 1 — Violin trend (distribution per run, split by condition)
     # ------------------------------------------------------------------
 
     def _build_trend(self, df: pd.DataFrame):
@@ -197,99 +182,110 @@ class HistoricalDashboard(pn.viewable.Viewer):
             df[metric] = df[metric].astype(float)
 
         run_to_x = self._run_order(df)
-        xticks = [(v, k) for k, v in run_to_x.items()]
-        # Tight x range: small left margin, half-unit right margin
-        n_runs = len(run_to_x)
-        xlim = (-0.1, n_runs - 0.5)
 
-        grouped = (
+        # Build one violin layout per model; within each, runs on x-axis split by condition
+        plot_df = df.copy()
+        plot_df["run_order"] = plot_df["run_id"].map(run_to_x)
+        plot_df = plot_df.sort_values("run_order")
+
+        models = sorted(plot_df["model"].unique())
+
+        if not models:
+            return hv.Curve([], kdims=["run_id"], vdims=[metric]).opts(
+                responsive=True, height=400, title="No data for selected filters."
+            )
+
+        violin_plots = {}
+        for model in models:
+            mdf = plot_df[plot_df["model"] == model]
+            conditions_present = mdf["condition"].unique().tolist()
+            kdims = ["run_id", "condition"]
+            vdim = hv.Dimension(metric, label=label)
+            violin = hv.Violin(mdf, kdims=kdims, vdims=[vdim])
+            opts: dict = dict(
+                xrotation=30,
+                responsive=True,
+                height=400,
+                show_legend=True,
+                legend_position="top_right",
+                title=f"Metric Distribution: {label} — {model}",
+                ylabel=label,
+                xlabel="Run (chronological)",
+                violin_width=0.6,
+                fontscale=1.1,
+            )
+            if len(conditions_present) > 1:
+                opts["split"] = "condition"
+            violin_plots[model] = violin.opts(**opts)
+
+        if len(violin_plots) == 1:
+            return next(iter(violin_plots.values()))
+
+        return hv.Layout(list(violin_plots.values())).cols(1)
+
+    # ------------------------------------------------------------------
+    # Plot 1b — Grouped bar for binary metrics (execution_success, has_code)
+    # ------------------------------------------------------------------
+
+    def _build_binary_trend(self, df: pd.DataFrame):
+        metric = self.selected_metric
+        label = _METRIC_LABELS[metric]
+
+        df = df.copy()
+        df[metric] = df[metric].astype(float)
+
+        run_to_x = self._run_order(df)
+
+        # Mean rate per (run, model, condition); preserve chronological order
+        agg = (
             df.groupby(["run_id", "model", "condition"], as_index=False)
             .agg(**{metric: (metric, "mean"), "created_at": ("created_at", "first")})
-            .sort_values("created_at")
+            .sort_values(["model", "created_at"])
         )
-        grouped["x"] = grouped["run_id"].map(run_to_x)
-        grouped["series"] = grouped["model"] + " / " + grouped["condition"]
+        agg["run_order"] = agg["run_id"].map(run_to_x)
 
-        hover_spec = [
-            ("Series", "$name"),
-            ("Run", "@run_id"),
-            (label, f"@{{{metric}}}{{0.2f}}"),
-        ]
-
-        line_plots = {}
-        scatter_plots = {}
-        for series_key, grp in grouped.groupby("series"):
-            model = grp["model"].iloc[0]
-            condition = grp["condition"].iloc[0]
-            color = self._model_color.get(model, "#333333")
-            dash = _CONDITION_DASH.get(condition, "solid")
-            marker = _CONDITION_MARKER.get(condition, "circle")
-            grp = grp.sort_values("x")
-
-            line_plots[series_key] = grp.hvplot.line(
-                x="x",
-                y=metric,
-                color=color,
-                line_dash=dash,
-                line_width=2,
-                hover_cols=["run_id", metric],
-                hover_tooltips=hover_spec,
-                responsive=True,
-                height=340,
-            )
-            scatter_plots[series_key] = grp.hvplot.scatter(
-                x="x",
-                y=metric,
-                color=color,
-                marker=marker,
-                size=80,
-                hover_cols=["run_id", metric],
-                hover_tooltips=hover_spec,
-                responsive=True,
-                height=340,
-            )
-
-        if not line_plots:
-            return hv.Curve([], kdims=["x"], vdims=[metric]).opts(
+        models = sorted(agg["model"].unique())
+        if not models:
+            return hv.Curve([], kdims=["run_id"], vdims=[metric]).opts(
                 responsive=True, height=340, title="No data for selected filters."
             )
 
-        overlay = hv.NdOverlay(line_plots) * hv.NdOverlay(scatter_plots)
-
-        extra = {"ylim": (-0.1, 1.1)} if metric in ("execution_success", "has_code") else {}
-        overlay = overlay.opts(
-            hv.opts.NdOverlay(
-                title=f"Metric Trend: {label}",
-                legend_position="top_right",
-                xticks=xticks,
-                xrotation=30,
-                xlabel="Run (chronological)",
+        bar_plots = {}
+        for model in models:
+            mdf = agg[agg["model"] == model].sort_values("run_order")
+            bar = mdf.hvplot.bar(
+                x="run_id",
+                y=metric,
+                by="condition",
                 ylabel=label,
-                xlim=xlim,
+                xlabel="Run (chronological)",
+                title=f"{label} — {model}",
+                ylim=(0, 1.05),
+                xrotation=30,
                 responsive=True,
                 height=340,
-                **extra,
-            ),
-        )
-        return overlay
+                legend="top_right",
+                fontscale=1.1,
+            )
+            bar_plots[model] = bar
+
+        if len(bar_plots) == 1:
+            return next(iter(bar_plots.values()))
+
+        return hv.Layout(list(bar_plots.values())).cols(1)
 
     # ------------------------------------------------------------------
-    # Plot 3 — Skills Advantage Δ
+    # Plot 2b — Skills Advantage Δ for binary metrics (stacked bar of outcomes)
     # ------------------------------------------------------------------
 
-    def _build_delta(self, df: pd.DataFrame):
+    def _build_binary_delta(self, df: pd.DataFrame):
         metric = self.selected_metric
         label = _METRIC_LABELS[metric]
-        delta_col = "delta"
 
-        if metric in ("execution_success", "has_code"):
-            df = df.copy()
-            df[metric] = df[metric].astype(float)
+        df = df.copy()
+        df[metric] = df[metric].astype(float)
 
         run_to_x = self._run_order(df)
-        xticks = [(v, k) for k, v in run_to_x.items()]
-        n_runs = len(run_to_x)
-        xlim = (-0.1, n_runs - 0.5)
 
         agg = df.groupby(["run_id", "model", "query_id", "condition"], as_index=False).agg(
             **{metric: (metric, "mean"), "created_at": ("created_at", "first")}
@@ -302,77 +298,138 @@ class HistoricalDashboard(pn.viewable.Viewer):
         pivot.columns.name = None
 
         if "with_skills" not in pivot.columns or "without_skills" not in pivot.columns:
-            msg = "Delta requires both conditions present in data."
-            return hv.Curve([], kdims=["x"], vdims=[delta_col]).opts(
-                responsive=True, height=280, title=msg
+            return hv.Curve([], kdims=["run_id"], vdims=["count"]).opts(
+                responsive=True, height=340, title="Delta requires both conditions present in data."
             )
 
         pivot = pivot.dropna(subset=["with_skills", "without_skills"])
         if pivot.empty:
-            return hv.Curve([], kdims=["x"], vdims=[delta_col]).opts(
-                responsive=True, height=280, title="No paired rows for delta."
+            return hv.Curve([], kdims=["run_id"], vdims=["count"]).opts(
+                responsive=True, height=340, title="No paired rows for delta."
+            )
+
+        pivot["delta"] = (pivot["with_skills"] - pivot["without_skills"]).round().astype(int)
+        pivot["outcome"] = pivot["delta"].map({1: "helped", 0: "no change", -1: "hurt"})
+        pivot["run_order"] = pivot["run_id"].map(run_to_x)
+
+        _OUTCOME_COLORS = {"helped": "#2ca02c", "no change": "#aec7e8", "hurt": "#d62728"}
+        _OUTCOME_ORDER = ["helped", "no change", "hurt"]
+
+        models = sorted(pivot["model"].unique())
+        if not models:
+            return hv.Curve([], kdims=["run_id"], vdims=["count"]).opts(
+                responsive=True, height=340, title="No data for selected filters."
+            )
+
+        bar_plots = {}
+        for model in models:
+            mdf = (
+                pivot[pivot["model"] == model]
+                .groupby(["run_id", "outcome", "run_order"], as_index=False)
+                .size()
+                .rename(columns={"size": "count"})
+                .sort_values("run_order")
+            )
+            # Ensure all outcome categories present for consistent stacking
+            all_runs = mdf[["run_id", "run_order"]].drop_duplicates().set_index("run_id")
+            full = pd.MultiIndex.from_product(
+                [all_runs.index, _OUTCOME_ORDER], names=["run_id", "outcome"]
+            )
+            mdf = (
+                mdf.drop(columns="run_order")
+                .set_index(["run_id", "outcome"])
+                .reindex(full, fill_value=0)
+                .reset_index()
+                .merge(all_runs, on="run_id")
+                .sort_values("run_order")
+            )
+            bar = mdf.hvplot.bar(
+                x="run_id",
+                y="count",
+                by="outcome",
+                stacked=True,
+                color=[_OUTCOME_COLORS[o] for o in _OUTCOME_ORDER],
+                ylabel="Query count",
+                xlabel="Run (chronological)",
+                title=f"Skills Advantage (Δ): {label} — {model}",
+                xrotation=30,
+                responsive=True,
+                height=340,
+                legend="top_right",
+                fontscale=1.1,
+            )
+            bar_plots[model] = bar
+
+        if len(bar_plots) == 1:
+            return next(iter(bar_plots.values()))
+
+        return hv.Layout(list(bar_plots.values())).cols(1)
+
+    # ------------------------------------------------------------------
+    # Plot 2 — Skills Advantage Δ (violin of per-query deltas per run)
+    # ------------------------------------------------------------------
+
+    def _build_delta(self, df: pd.DataFrame):
+        metric = self.selected_metric
+        label = _METRIC_LABELS[metric]
+        delta_col = "delta"
+
+        run_to_x = self._run_order(df)
+
+        agg = df.groupby(["run_id", "model", "query_id", "condition"], as_index=False).agg(
+            **{metric: (metric, "mean"), "created_at": ("created_at", "first")}
+        )
+        pivot = agg.pivot_table(
+            index=["run_id", "model", "query_id", "created_at"],
+            columns="condition",
+            values=metric,
+        ).reset_index()
+        pivot.columns.name = None
+
+        if "with_skills" not in pivot.columns or "without_skills" not in pivot.columns:
+            return hv.Curve([], kdims=["run_id"], vdims=[delta_col]).opts(
+                responsive=True, height=340, title="Delta requires both conditions present in data."
+            )
+
+        pivot = pivot.dropna(subset=["with_skills", "without_skills"])
+        if pivot.empty:
+            return hv.Curve([], kdims=["run_id"], vdims=[delta_col]).opts(
+                responsive=True, height=340, title="No paired rows for delta."
             )
 
         pivot[delta_col] = pivot["with_skills"] - pivot["without_skills"]
-        pivot["x"] = pivot["run_id"].map(run_to_x)
-        pivot["series"] = pivot["model"] + " / " + pivot["query_id"]
+        pivot["run_order"] = pivot["run_id"].map(run_to_x)
+        pivot = pivot.sort_values("run_order")
 
-        hover_spec = [
-            ("Series", "$name"),
-            ("Run", "@run_id"),
-            (f"Δ {label}", f"@{{{delta_col}}}{{0.3f}}"),
-        ]
-
-        line_plots = {}
-        scatter_plots = {}
-        for series_key, grp in pivot.groupby("series"):
-            model = grp["model"].iloc[0]
-            color = self._model_color.get(model, "#333333")
-            grp = grp.sort_values("x")
-
-            line_plots[series_key] = grp.hvplot.line(
-                x="x",
-                y=delta_col,
-                color=color,
-                line_width=2,
-                hover_cols=["run_id", delta_col],
-                hover_tooltips=hover_spec,
-                responsive=True,
-                height=280,
-            )
-            scatter_plots[series_key] = grp.hvplot.scatter(
-                x="x",
-                y=delta_col,
-                color=color,
-                size=70,
-                hover_cols=["run_id", delta_col],
-                hover_tooltips=hover_spec,
-                responsive=True,
-                height=280,
+        models = sorted(pivot["model"].unique())
+        if not models:
+            return hv.Curve([], kdims=["run_id"], vdims=[delta_col]).opts(
+                responsive=True, height=340, title="No data for selected filters."
             )
 
-        if not line_plots:
-            return hv.Curve([], kdims=["x"], vdims=[delta_col]).opts(
-                responsive=True, height=280, title="No data for selected filters."
-            )
-
-        zero_line = hv.HLine(0).opts(color="gray", line_dash="dashed", line_width=1.5)
-
-        overlay = hv.NdOverlay(line_plots) * hv.NdOverlay(scatter_plots) * zero_line
-        overlay = overlay.opts(
-            hv.opts.NdOverlay(
-                title=f"Skills Advantage (Δ): {label}",
-                legend_position="top_right",
-                xticks=xticks,
+        vdim = hv.Dimension(delta_col, label=f"Δ {label}")
+        violin_plots = {}
+        for model in models:
+            mdf = pivot[pivot["model"] == model]
+            violin = hv.Violin(mdf, kdims=["run_id"], vdims=[vdim])
+            opts: dict = dict(
                 xrotation=30,
-                xlabel="Run (chronological)",
-                ylabel=f"Δ {label}",
-                xlim=xlim,
                 responsive=True,
-                height=280,
-            ),
-        )
-        return overlay
+                height=340,
+                show_legend=False,
+                title=f"Skills Advantage (Δ): {label} — {model}",
+                ylabel=f"Δ {label}",
+                xlabel="Run (chronological)",
+                violin_width=0.6,
+                fontscale=1.1,
+            )
+            zero_line = hv.HLine(0).opts(color="gray", line_dash="dashed", line_width=1.5)
+            violin_plots[model] = violin.opts(**opts) * zero_line
+
+        if len(violin_plots) == 1:
+            return next(iter(violin_plots.values()))
+
+        return hv.Layout(list(violin_plots.values())).cols(1)
 
     # ------------------------------------------------------------------
     # Reactive update — fires whenever any filter param changes
@@ -392,7 +449,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         with pn.io.hold():
             if df.empty:
                 self._trend_pane.object = hv.Curve([], kdims=["x"], vdims=["y"]).opts(
-                    responsive=True, height=340, title="No data for selected filters."
+                    responsive=True, height=400, title="No data for selected filters."
                 )
                 self._delta_pane.object = hv.Curve([], kdims=["x"], vdims=["y"]).opts(
                     responsive=True, height=280, title="No data for selected filters."
@@ -400,7 +457,10 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 self._table_pane.value = pd.DataFrame()
                 return
 
-            self._trend_pane.object = self._build_trend(df)
+            if self.selected_metric in _BINARY_METRICS:
+                self._trend_pane.object = self._build_binary_trend(df)
+            else:
+                self._trend_pane.object = self._build_trend(df)
 
             delta_df = self._history_df.copy()
             if self.selected_runs:
@@ -409,7 +469,10 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 delta_df = delta_df[delta_df["model"].isin(self.selected_models)]
             if self.selected_queries:
                 delta_df = delta_df[delta_df["query_id"].isin(self.selected_queries)]
-            self._delta_pane.object = self._build_delta(delta_df)
+            if self.selected_metric in _BINARY_METRICS:
+                self._delta_pane.object = self._build_binary_delta(delta_df)
+            else:
+                self._delta_pane.object = self._build_delta(delta_df)
 
             display_cols = [
                 "run_id",
