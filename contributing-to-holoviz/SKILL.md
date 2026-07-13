@@ -2,7 +2,7 @@
 name: contributing-to-holoviz
 description: Maintain and contribute to HoloViz packages. Use when reviewing PRs, refactoring code, writing tests, or updating docs in HoloViz repositories (Panel, hvPlot, HoloViews, Param, etc.).
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   author: holoviz
 ---
 
@@ -26,4 +26,5 @@ A single request often spans multiple skills. Read ALL that apply.
 | Write or review tests | `contributing-to-holoviz/skills/testing/SKILL.md` |
 | Write or review docs | `contributing-to-holoviz/skills/documentation/SKILL.md` |
 | Write or review a PR description | `contributing-to-holoviz/skills/pr-description/SKILL.md` |
-| Full PR review | All four above |
+| Write a reproducer or minimal example | `contributing-to-holoviz/skills/minimal-example/SKILL.md` |
+| Full PR review | All five above |

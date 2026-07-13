@@ -2,7 +2,7 @@
 name: cleanup
 description: Code cleanup and refactoring guidelines for HoloViz packages. Use when reviewing PRs, refactoring code, or checking adherence to code quality standards in any HoloViz repository.
 metadata:
-  version: "0.0.2"
+  version: "0.0.3"
   author: holoviz
 ---
 
@@ -32,6 +32,7 @@ This skill covers code quality patterns and common pitfalls when reviewing or re
 - Sort `param` declarations alphabetically with a blank line between each.
 - Include `doc="""..."""` on every public param, starting on a new line.
 - Ensure comments are about *why* and *what must remain true*, not what the syntax does. Good comments explain intent, constraints, workarounds, performance rationale, or API quirks. Avoid restating obvious code or narrating line-by-line. Keep them concise; over-explaining is also a smell.
+- In tests, put the description of what the test covers and why (including any issue link) in the function docstring, not a leading `#` comment; it then travels with the test in `pytest -v` output. Reserve `#` for a non-obvious step in the body.
 - Compute derived values (ranges, extents, validation scans) once and reuse them; don't rescan the data in every method or on every render.
 - Place internal `_`-prefixed params after public params. Use a `_`-prefixed param (e.g. `_cache = param.Dict()`) when the value needs to trigger watches or be serialized. Use a plain class/instance variable (e.g. `self._cache = {}` in `__init__`) for transient internal state that doesn't need param machinery.
 
