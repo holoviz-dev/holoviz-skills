@@ -135,10 +135,9 @@ class SalesDashboard(pn.viewable.Viewer):
         and Tabulator selection. KPIs, charts, and table all consume this."""
     )
 
-    _trigger = param.Integer(
-        default=0,
+    _trigger = param.Event(
         doc="""
-        Signal for DynamicMap — increment to refresh charts while preserving zoom.""",
+        Signal for DynamicMap — trigger to refresh charts while preserving zoom.""",
     )
 
     def __init__(self, df=None, **params):
@@ -477,7 +476,7 @@ class SalesDashboard(pn.viewable.Viewer):
         sidebar_df = self._apply_sidebar_filters()
         self._filtered_df = self._apply_table_selection(sidebar_df)
         self._refresh_indicators()
-        self._trigger += 1
+        self.param.trigger("_trigger")
 
     def _update_all(self, *args):
         sidebar_df = self._apply_sidebar_filters()
@@ -486,7 +485,7 @@ class SalesDashboard(pn.viewable.Viewer):
             self._update_kpis(self._filtered_df)
             self._update_table()
             self._refresh_indicators()
-            self._trigger += 1  # signal DynamicMaps to re-render
+            self.param.trigger("_trigger")  # signal DynamicMaps to re-render
 
     def _update_kpis(self, df):
         if df is None or df.empty:

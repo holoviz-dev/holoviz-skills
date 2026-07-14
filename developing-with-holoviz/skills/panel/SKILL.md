@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "1.0.2"
+  version: "1.0.3"
   author: holoviz
 ---
 
@@ -39,11 +39,11 @@ Read these for specialized topics. Each is a standalone document you can load wi
 ## Viewer Class Pattern
 
 - Recreating panes or layouts inside `@param.depends` causes flickering. Create them once in `__init__`, bind to reactive content.
-- `on_init=True` watchers fire during `super().__init__()`. Create any panes they reference *before* the `super().__init__(**params)` call.
+- **`super().__init__()` ordering matters, in two opposite directions.** Panes/placeholders an `on_init=True` watcher references must be created *before* `super().__init__(**params)` (else `AttributeError` during init). But `.from_param()` widgets must be created *after* it: made before super, a widget's value still syncs to its param, but `@param.depends`/`.watch()` callbacks never fire on widget changes — so dependent plots silently never update. This is the usual cause of a "widgets move but nothing updates" app. Rule of thumb: bare panes before `super()`, `from_param` widgets after.
 - Use `pn.pane.Placeholder` when the content type varies (string → plot → widget). Swap with `.update()` or `.object =`.
 - Implement `__panel__` to return the layout. When served, wrap in `pmui.Page` (see [Using Material UI](using-material-ui.md)); otherwise return the bare component.
 - **Shared UI state**: Add a param (`disabled`, `loading`, `visible`) to a base class and bind widgets to it (e.g., `disabled=self.param.disabled`). Set once to update all widgets — useful for form submit, loading states, or toggling visibility.
-- **Organize `__init__`**: Separate component instantiation from wiring. First create all widgets/panes, then group `on_click`, `pn.bind`, and `.watch()` calls together. Makes it clear what exists vs. how it's connected.
+- **Organize `__init__`**: Separate component instantiation from wiring (respecting the `super()` ordering rule above), then group `on_click`, `pn.bind`, and `.watch()` calls together. Makes it clear what exists vs. how it's connected.
 - **Method naming**: `_on_*` for event handlers (`_on_click`, `_on_submit`), `_update_*` for watchers that sync state (`_update_view`, `_update_button_state`), `_sync_*` for bidirectional syncs.
 - **Wizard/pipeline pattern**: For multi-step flows, see `examples/wizard.py` — `pmui.StepperMenu` driving navigation and per-step state (completed/error/active, `non_linear`), `pn.pane.Placeholder` step swapping, shared `disabled` state, `pn.io.hold()` batching, inline `pmui.Alert` validation, `pmui.Tooltip`, and `pmui.Page`.
 - **KPI dashboard pattern**: For metric dashboards, see `examples/dashboard.py` — `pn.indicators.Trend` KPI cards, `pmui.Badge` selection counter, `pmui.SpeedDial` quick actions, `pmui.Alert` empty-state, `pmui.Tooltip` hints, `pmui.Grid` responsive layout, DynamicMap with trigger pattern, Tabulator `add_filter` + checkbox selection cross-filtering, `pn.bind(watch=True)` wiring, `param.DataFrame` as single source of truth, and `pmui.Page`.
@@ -64,10 +64,12 @@ class Dashboard(pn.viewable.Viewer):
     species = param.ListSelector(default=species_list, objects=species_list)
 
     def __init__(self, **params):
-        # Create panes before super().__init__ — on_init=True watchers fire during super()
-        self._species_widget = pmui.CheckButtonGroup.from_param(self.param.species)
+        # Panes referenced by an on_init=True watcher must exist BEFORE super()
         self._chart_pane = pn.pane.HoloViews(sizing_mode="stretch_width")
         super().__init__(**params)
+        # from_param widgets must be created AFTER super() — before it, widget
+        # changes update the param silently but never fire watchers (dead app).
+        self._species_widget = pmui.CheckButtonGroup.from_param(self.param.species)
         with pn.config.set(sizing_mode="stretch_width"):
             self._sidebar = pmui.Column(self._species_widget)
             self._main = pmui.Column(self._summary, self._chart_pane)

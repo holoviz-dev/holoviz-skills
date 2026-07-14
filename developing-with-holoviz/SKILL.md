@@ -1,8 +1,8 @@
 ---
 name: developing-with-holoviz
-description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param).
+description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param), including Panel apps that embed Bokeh, Matplotlib, or Plotly figures. A named plotting library (e.g. bokeh) is not a reason to skip this skill.
 metadata:
-  version: "0.1.3"
+  version: "0.1.4"
   author: holoviz
 ---
 

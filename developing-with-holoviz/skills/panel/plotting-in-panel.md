@@ -35,10 +35,50 @@ pn.pane.HoloViews(
 - `linked_axes=False` prevents axis linking when combining charts with different axis types in a Layout (`+`). Pair with `.opts(shared_axes=False)` on the Layout itself.
 - `sizing_mode="stretch_width"` is required for responsive HoloViews plots.
 
+### Live Updates: Bind the Render Function Directly (default)
+
+**Start here.** For plots driven by scalar widgets (sliders, selects, toggles), bind the render function directly to its parameters and let the plot re-render on any change — no trigger param, no manual signalling. Use the `_trigger` pattern below only when this is insufficient.
+
+```python
+import holoviews as hv
+import numpy as np
+import panel as pn
+import panel_material_ui as pmui
+import param
+
+pn.extension(throttled=True)
+
+class SineExplorer(pn.viewable.Viewer):
+    amplitude = param.Number(default=1.0, bounds=(0.1, 10.0))
+    frequency = param.Number(default=1.0, bounds=(0.1, 10.0))
+
+    def __init__(self, **params):
+        super().__init__(**params)  # from_param widgets go AFTER super() (see panel/SKILL.md)
+        self._controls = pmui.Column(
+            pmui.FloatSlider.from_param(self.param.amplitude),
+            pmui.FloatSlider.from_param(self.param.frequency),
+        )
+        dmap = hv.DynamicMap(pn.bind(self._render, self.param.amplitude, self.param.frequency))
+        self._plot = pn.pane.HoloViews(dmap, sizing_mode="stretch_width")
+
+    def _render(self, amplitude, frequency):
+        x = np.linspace(0, 10, 500)
+        return hv.Curve((x, amplitude * np.sin(frequency * x)), "x", "y").opts(
+            responsive=True, height=400, framewise=True,  # framewise rescales axes to new data
+        )
+
+    def __panel__(self):
+        return pmui.Row(self._controls, self._plot)
+
+pn.serve(SineExplorer())
+```
+
 ### DynamicMap: Preserve Zoom/Pan Across Data Refreshes
 
+**When to use the trigger pattern.** Prefer direct binding (above). Use a `_trigger` param + `DynamicMap` only to: (1) depend on an unhashable value (`DataFrame`, list) that breaks `DynamicMap`'s argument-identity caching; (2) share one refresh signal across several render methods; or (3) preserve zoom/pan across refreshes (`pane.object = new_plot` resets axes; `DynamicMap` patches in place).
+
 - Setting `pane.object = new_plot` resets axes. DynamicMap patches data in place, preserving zoom/pan.
-- Use a trigger parameter as a signal — DynamicMap caches by argument identity, so read actual data from `self` inside the callback.
+- Use a `param.Event` as the signal (`self.param.trigger("_trigger")`) — it fires watchers then auto-resets, so there's no ever-growing counter. Read actual data from `self` inside the callback; ignore the callback's argument.
 
 ```python
 import holoviews as hv
@@ -54,7 +94,7 @@ species_list = sorted(penguins["species"].unique())
 
 class Dashboard(pn.viewable.Viewer):
     species = param.ListSelector(default=species_list, objects=species_list)
-    _trigger = param.Integer(default=0)
+    _trigger = param.Event()
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -80,7 +120,7 @@ class Dashboard(pn.viewable.Viewer):
 
     @param.depends("species", watch=True, on_init=True)
     def _on_species_changed(self):
-        self._trigger += 1
+        self.param.trigger("_trigger")
 
     def __panel__(self):
         return self._layout
