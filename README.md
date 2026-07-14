@@ -33,6 +33,7 @@ holoviz-skills install --jetbrains     # .junie/skills/            (JetBrains / 
 holoviz-skills install --gemini-cli    # .gemini/skills/
 holoviz-skills install --antigravity   # .agents/skills/           (Google Antigravity)
 holoviz-skills install --kiro          # .kiro/skills/
+holoviz-skills install --kilo-code     # .kilo/skills/            (Kilo Code)
 holoviz-skills install --mistral-vibe  # .vibe/skills/
 ```
 ## Evaluation
