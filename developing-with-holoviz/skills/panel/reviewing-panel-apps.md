@@ -2,13 +2,15 @@
 
 Checklist for reviewing Panel applications. Focus on anti-patterns that cause flickering, wasted redraws, or subtle bugs. For general code style (imports, naming, param ordering), see the [cleanup](../../../contributing-to-holoviz/skills/cleanup/SKILL.md) skill. For a complete example that applies all these patterns, see `examples/wizard.py`.
 
+This checklist operationalizes Panel's official best-practices guides for review; consult them for upstream rationale and additional patterns (graceful exception handling, `obj.param.update`, `FlexBox` layouts): [Developer Experience](https://panel.holoviz.org/how_to/best_practices/dev_experience.html) and [User Experience](https://panel.holoviz.org/how_to/best_practices/user_experience.html).
+
 ## Contents
 
 - [Flickering from Recreated Components](#flickering-from-recreated-components)
 - [Missing Hold on Multi-Property Updates](#missing-hold-on-multi-property-updates)
 - [Watcher Dependency Gaps](#watcher-dependency-gaps)
-- [Bind vs Watch for External Instances](#bind-vs-watch-for-external-instances)
-- [from_param Write-Back Gap](#from_param-write-back-gap)
+- [Reactive Wiring: Prefer Declarative](#reactive-wiring-prefer-declarative)
+- [from_param Widgets Created Before super()](#from_param-widgets-created-before-super)
 - [Unintended Stretch and Collapsed Labels](#unintended-stretch-and-collapsed-labels)
 - [Spacer vs Margin](#spacer-vs-margin)
 - [Mutating Instead of Reassigning](#mutating-instead-of-reassigning)
@@ -106,43 +108,24 @@ def _on_income_change(self):
 
 **What to look for**: read every `self.param_name` inside the method body and verify it appears in the `@param.depends` decorator. Missing dependencies are silent — no error, just stale state.
 
-## Bind vs Watch for External Instances
+## Reactive Wiring: Prefer Declarative
 
-`pn.bind(fn, widget.param.value, watch=True)` works but creates an anonymous binding that's harder to debug and doesn't follow the Param convention. Use `.param.watch()` when reacting to parameters on an external instance.
+Prefer declarative wiring; reach for imperative `.param.watch()` only as a last resort. The full priority ladder — `@param.depends` → `@param.depends(watch=True)` → `pn.bind(..., watch=True)` → `.param.watch()`, every `watch=True` form being side-effects-only — is defined in the [param skill](../param/SKILL.md#watch-vs-paramdepends-vs-link).
+
+**What to look for**: a `.param.watch()` doing what a declarative `pn.bind(fn, other.param.x, watch=True)` or `@param.depends` would do just as well. A plain bind receives the value directly (no `event` unpacking), so it's usually clearer:
 
 ```python
-# WRONG — anonymous binding, fn receives value not event
-pn.bind(self._on_menu_select, self._nav_menu.param.active, watch=True)
-
-def _on_menu_select(self, active):
-    if active and active[0] != self.active_step:
-        self.active_step = active[0]
-
-# CORRECT — explicit watch, fn receives event with .old/.new
+# ⚠️ imperative — reserve for .old/.new or runtime wiring
 self._nav_menu.param.watch(self._on_menu_select, "active")
-
-def _on_menu_select(self, event):
-    active = event.new
-    if active and active[0] != self.active_step:
-        self.active_step = active[0]
+# ✅ declarative — fn receives the value
+pn.bind(self._on_menu_select, self._nav_menu.param.active, watch=True)
 ```
 
-For the object's own parameters, prefer `@param.depends("param_name", watch=True)` — it's declarative and doesn't need event unpacking.
+## from_param Widgets Created Before super()
 
-## from_param Write-Back Gap
+`.from_param()` works for every widget type (button groups included) *if* the widget is created after `super().__init__(**params)`; built before it, watchers silently never fire. It's the [Viewer ordering rule](SKILL.md#viewer-class-pattern), not a widget bug — a direct widget + manual watcher only masks it.
 
-`pmui` button-group widgets (`RadioButtonGroup`, `CheckButtonGroup`, `CheckBoxGroup`) created with `.from_param()` may not propagate the widget's value back to the bound param. The widget updates visually on click, but `@param.depends`/watchers on the param never fire, so the rest of the app silently goes stale.
-
-```python
-# WRONG — clicks change the buttons but chart_type never updates
-self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
-
-# CORRECT — direct widget + explicit watcher
-self._toggle = pmui.RadioButtonGroup(options=["bars", "lines"], value="bars")
-self._toggle.param.watch(lambda e: setattr(self, "chart_type", e.new), "value")
-```
-
-**What to look for**: a `pmui` `*ButtonGroup`/`CheckBoxGroup` built via `.from_param()` whose param has a `@param.depends(..., watch=True)` that "isn't firing." Convert to a direct widget + `.param.watch(..., "value")`.
+**What to look for**: a `.from_param()` widget assigned *before* `super().__init__()` whose `@param.depends(..., watch=True)` "isn't firing" — move it below `super()`. Symptom, cause, and the WRONG/CORRECT fix: [Troubleshooting Panel Apps](troubleshooting.md#widgets-change-but-nothing-updates-init-ordering).
 
 ## Unintended Stretch and Collapsed Labels
 
@@ -228,18 +211,12 @@ def results_view(self):
 
 ## Component Gotchas
 
-Per-component traps that produce silent bugs rather than errors:
+Per-component traps that produce silent bugs rather than errors — flag these in review; see [Troubleshooting Panel Apps](troubleshooting.md) for each cause and fix:
 
-- **Radio with `default=None`**: `RadioBoxGroup`/`RadioButtonGroup` visually highlight the first option even when `value=None`. Clicking that option fires no change event (the UI thinks it's already selected), so users can't select the first option and `@param.depends`/`pn.bind` never trigger on load. Always set a real default, or use `Select` if you need an empty state.
-- **`Selector.objects` as a dict**: assigning a **dict** to `param.Selector.objects` after construction can leave the widget's display labels unpopulated, so a `Select` renders blank. Drive the widget's `options` (a `{label: value}` dict) directly and keep the param's `objects` a plain list of values; sync `value` both ways with a guarded watcher.
-- **Date widgets**: convert to `pd.Timestamp` before comparing to DataFrame columns.
-
-  ```python
-  start_date, end_date = self.date_range
-  filtered = df[(df["date"] >= pd.Timestamp(start_date)) & (df["date"] <= pd.Timestamp(end_date))]
-  ```
-
-- **`Markdown` header flicker**: set `disable_anchors=True` to avoid flicker on header hover.
+- **Radio with `default=None`** — the first option can't be selected and callbacks never fire on load; set a real default (or use `Select` for an empty state).
+- **`Selector.objects` as a dict** — can leave a `Select` rendering blank; keep `objects` a plain list of values and drive `options` (a `{label: value}` dict) directly.
+- **Date widgets** — convert to `pd.Timestamp` before comparing to DataFrame columns.
+- **`Markdown` header flicker** — set `disable_anchors=True`.
 
 ## UX Heuristics
 

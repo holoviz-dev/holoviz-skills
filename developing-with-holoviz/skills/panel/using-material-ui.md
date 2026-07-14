@@ -8,7 +8,7 @@ Building:
 
 - [Lookup](#lookup) — where to fetch pmui docs as markdown
 - [Key Differences from Panel](#key-differences-from-panel)
-- [Page](#page) — incl. [header / AppBar color](#page-header-appbar-color)
+- [Page](#page) — incl. [header / AppBar color](#page-header--appbar-color)
 - [Layouts](#layouts)
 - [Component Gotchas](#component-gotchas)
 
@@ -190,16 +190,7 @@ pmui.Page(
 - `Chip`: use `label=`, not `object=` (deprecated). Chips default to `margin=10`, which blows out tight stacked layouts — set `margin=0` when packing several together. Translucent-pill look: `sx={"color": c, "backgroundColor": f"{c}22"}`.
 - `Accordion` header text: the title renders as a Typography *inside* the summary, so a rule on `.MuiAccordionSummary-root` won't reach it. Target the content to restyle the label: `sx={"& .MuiAccordionSummary-content *": {"fontSize": "13px", "color": "#6d5cff"}}`.
 - `CheckButtonGroup`/`RadioButtonGroup` styling: in sidebars use `orientation="vertical"`, `color="primary"`, `variant="outlined"`.
-- Button groups (`RadioButtonGroup`, `CheckButtonGroup`): `.from_param()` may not write the widget value back to the bound param — clicking changes the buttons but the param never updates, so `@param.depends`/watchers never fire. Create the widget directly and wire it explicitly:
-
-  ```python
-  # ❌ clicks don't propagate — dependent views never update
-  self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
-
-  # ✅ direct widget + explicit watcher
-  self._toggle = pmui.RadioButtonGroup(options=["bars", "lines"], value="bars")
-  self._toggle.param.watch(lambda e: setattr(self, "chart_type", e.new), "value")
-  ```
+- Button groups (`RadioButtonGroup`, `CheckButtonGroup`) work with `.from_param()` like any widget — just create them **after** `super().__init__()`; built before it, their value syncs but `@param.depends`/watchers won't fire (the [ordering rule](SKILL.md#viewer-class-pattern); before/after fix in [Troubleshooting](troubleshooting.md#widgets-change-but-nothing-updates-init-ordering)).
 - `Rating` (and other icon widgets): stretch to fill their container under the default `sizing_mode="stretch_width"`, rendering enormous. Pin them: `pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed")`.
 - `Dialog`: for secondary detail that would crowd the page (or overflow the narrow `Page` contextbar), use a dialog and toggle `.open`. `close_on_click=True` dismisses on backdrop click:
 

@@ -2,7 +2,7 @@
 name: holoviews
 description: Build interactive visualizations with HoloViews elements, opts, streams, and operations. Use when composing plots from element primitives (Curve, Points, Bars, NdOverlay), customizing Bokeh tools/tooltips/formatters, using DynamicMap, streams, or link_selections. Do not use for simple DataFrame plotting (use hvPlot) or Panel app structure (use Panel).
 metadata:
-  version: "0.0.2"
+  version: "0.0.3"
   author: holoviz
 ---
 
@@ -41,6 +41,7 @@ hv.NdOverlay(curves, kdims=["Region"]).opts(
 
 - Options go on the element type they belong to: `legend_position` and `title` on `NdOverlay`, `tools` and `color` on `Curve`.
 - Misplaced options raise `ValueError: unexpected option 'X' for Y type`.
+- A legend with a single entry distinguishes nothing and just adds clutter — suppress it: `.opts(show_legend=len(groups) > 1)` (computed from the same dict/groupby driving the `NdOverlay`, e.g. after a filter narrows a `by=`/`kdims=` grouping down to one category).
 - `.opts()` on pure HoloViews elements is fine. For hvPlot, pass options as hvplot kwargs instead — see the [hvPlot skill](../hvplot/SKILL.md).
 
 ## Hover Tooltips
