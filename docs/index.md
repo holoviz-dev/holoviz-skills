@@ -37,6 +37,7 @@ holoviz-skills install --jetbrains     # .junie/skills/            (JetBrains / 
 holoviz-skills install --gemini-cli    # .gemini/skills/
 holoviz-skills install --antigravity   # .agents/skills/           (Google Antigravity)
 holoviz-skills install --kiro          # .kiro/skills/
+holoviz-skills install --kilo-code     # .kilo/skills/            (Kilo Code)
 holoviz-skills install --mistral-vibe  # .vibe/skills/
 holoviz-skills install --agent         # .agents/skills/          (cross-tool standard, commit to git)
 ```
@@ -45,7 +46,7 @@ Alternatively, use the **Download ZIP** icon at the top of any skill page, or gr
 
 See your tool's documentation for manual setup instructions:
 
-[Claude Code / Cowork](https://code.claude.com/docs/en/skills) · [GitHub Copilot](https://code.visualstudio.com/docs/copilot/customization/agent-skills) · [OpenAI Codex](https://developers.openai.com/codex/skills) · [Cursor](https://cursor.com/docs/skills) · [Windsurf](https://docs.windsurf.com/windsurf/cascade/skills) · [Cline](https://docs.cline.bot/customization/skills) · [JetBrains AI](https://www.jetbrains.com/help/ai-assistant/settings-reference-skills.html) · [Gemini CLI](https://geminicli.com/docs/cli/skills/) · [Antigravity](https://antigravity.google/docs/skills) · [Kiro](https://kiro.dev/docs/skills) · [Mistral Vibe](https://docs.mistral.ai/mistral-vibe/agents-skills)
+[Claude Code / Cowork](https://code.claude.com/docs/en/skills) · [GitHub Copilot](https://code.visualstudio.com/docs/copilot/customization/agent-skills) · [OpenAI Codex](https://developers.openai.com/codex/skills) · [Cursor](https://cursor.com/docs/skills) · [Windsurf](https://docs.windsurf.com/windsurf/cascade/skills) · [Cline](https://docs.cline.bot/customization/skills) · [JetBrains AI](https://www.jetbrains.com/help/ai-assistant/settings-reference-skills.html) · [Gemini CLI](https://geminicli.com/docs/cli/skills/) · [Antigravity](https://antigravity.google/docs/skills) · [Kiro](https://kiro.dev/docs/skills) · [Kilo Code](https://kilo.ai/docs/customize/skills) · [Mistral Vibe](https://docs.mistral.ai/mistral-vibe/agents-skills)
 
 You can also click the **Copy Markdown** icon at the top of each skill page to paste a skill directly into any AI chat. Claude Desktop / Cowork users can install a category as a pre-built plugin from the [latest release](https://github.com/holoviz-dev/holoviz-skills/releases/latest) — one `.plugin` per category, e.g. `developing-with-holoviz.plugin`, `contributing-to-holoviz.plugin`, and `creating-custom-holoviz-skills.plugin`.
 

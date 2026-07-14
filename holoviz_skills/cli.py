@@ -375,6 +375,19 @@ def _make_tools(*, use_global: bool = False) -> dict[str, Tool]:
             ),
             install_fn=_install_dirs,
         ),
+        # --- Kilo Code ---
+        Tool(
+            key="kilo-code",
+            name="Kilo Code",
+            scope=_scope(),
+            install_path=_g(cwd / ".kilo" / "skills", home / ".kilo" / "skills"),
+            detect_fn=lambda: _check(
+                (bool(shutil.which("kilo")), "kilo binary"),
+                ((cwd / ".kilo").exists(), ".kilo exists"),
+                ((home / ".kilo").exists(), "~/.kilo exists"),
+            ),
+            install_fn=_install_dirs,
+        ),
         # --- Mistral ---
         Tool(
             key="mistral-vibe",
@@ -543,6 +556,7 @@ def main(argv: list[str] | None = None) -> int:
             "--antigravity", action="store_true", help=".agents/skills/  (Google Antigravity)"
         )
         p.add_argument("--kiro", action="store_true", help=".kiro/skills/")
+        p.add_argument("--kilo-code", action="store_true", help=".kilo/skills/  (Kilo Code)")
         p.add_argument("--mistral-vibe", action="store_true", help=".vibe/skills/  (Mistral Vibe)")
 
     # install
