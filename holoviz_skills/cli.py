@@ -144,8 +144,26 @@ class Tool:
         except Exception:
             return ""
 
-    def is_installed(self) -> bool:
-        return self.install_path.exists() and any(self.install_path.iterdir())
+    def is_installed(self, skill_names: list[str]) -> bool:
+        """True only if the HoloViz skills themselves are present at the install path.
+
+        Checks for the specific skill units rather than merely a non-empty
+        directory, so unrelated content in a shared standard dir (e.g.
+        ``~/.agents/skills``, used by both the Agent and Codex tools) is not
+        mistaken for an install. Handles both layouts: directory copies
+        (``developing-with-holoviz/``) and flat files
+        (``developing-with-holoviz-panel.md``, ``creating-custom-holoviz-skills.md``).
+        """
+        if not self.install_path.exists():
+            return False
+        entries = [p.name for p in self.install_path.iterdir()]
+        return any(
+            entry == name  # directory install
+            or entry.startswith(f"{name}-")  # flat sub-skill file
+            or entry.startswith(f"{name}.")  # flat single-file skill
+            for name in skill_names
+            for entry in entries
+        )
 
     def install(self, skill_dirs: list[Path], verbose: bool = True) -> int:
         return self.install_fn(skill_dirs, self.install_path, verbose)
@@ -467,7 +485,8 @@ def cmd_list(args: argparse.Namespace) -> int:
     global_tools = _make_tools(use_global=True)
     skill_dirs = _find_skill_dirs(_skills_root())
 
-    print(f"Available skills ({len(skill_dirs)}): {', '.join(d.name for d in skill_dirs)}\n")
+    skill_names = [d.name for d in skill_dirs]
+    print(f"Available skills ({len(skill_dirs)}): {', '.join(skill_names)}\n")
 
     # Build rows: (name, project_path, global_path, status)
     rows: list[tuple[str, str, str, str]] = []
@@ -476,9 +495,9 @@ def cmd_list(args: argparse.Namespace) -> int:
         proj_path = str(pt.install_path)
         glob_path = str(gt.install_path) if gt.install_path != pt.install_path else "—"
         installed_where: list[str] = []
-        if pt.is_installed():
+        if pt.is_installed(skill_names):
             installed_where.append("project")
-        if gt.install_path != pt.install_path and gt.is_installed():
+        if gt.install_path != pt.install_path and gt.is_installed(skill_names):
             installed_where.append("global")
         if installed_where:
             status = "✓ installed (" + ", ".join(installed_where) + ")"
