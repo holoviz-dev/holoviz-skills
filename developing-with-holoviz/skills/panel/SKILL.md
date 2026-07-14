@@ -14,7 +14,7 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 
 ## Contents
 
-- [References](#references) — iterative development, Material UI, plotting, custom components, Playwright testing, app structure & scaling, review
+- [References](#references) — iterative development, Material UI, plotting, data storytelling, custom components, Playwright testing, app structure & scaling, review
 - [Viewer Class Pattern](#viewer-class-pattern)
 - [Widgets and Extensions](#widgets-and-extensions)
 - [Templates and Layouts](#templates-and-layouts)
@@ -32,6 +32,7 @@ Read these for specialized topics. Each is a standalone document you can load wi
 - [Migrating to Material UI](migrating-to-material-ui.md) — converting an existing plain-Panel app to pmui: template→Page, widget swaps, pane/interaction upgrades, what to leave alone
 - [Converting Designs to Material UI](converting-designs-to-material-ui.md) — workflow for turning a screenshot/design/React app into a pmui app: capture references, map to components, build component-first with mock data, assemble, theme last
 - [Plotting in Panel](plotting-in-panel.md) — embedding plots from any library: HoloViews/hvPlot (DynamicMap zoom/pan, responsive sizing), Matplotlib, Plotly, ECharts, Bokeh toolbar tools
+- [Data Storytelling](data-storytelling.md) — assembling explanatory charts into a scrollable editorial article (pmui masthead, narrow reading column, prose-then-chart rhythm, one visual family); see `examples/graphic_story.py`
 - [Using Tabulator](using-tabulator.md) — `add_filter` with widgets, checkbox selection, row content, function-based filtering
 - [Using Pytest Playwright](using-pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components
 - [Reviewing Panel Apps](reviewing-panel-apps.md) — anti-pattern checklist for code review: flickering, missing hold, watcher gaps, reactive-wiring priority, from_param super() ordering, mutation bugs

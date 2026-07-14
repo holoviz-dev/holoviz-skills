@@ -11,7 +11,11 @@ nav = [
   { "Developing with HoloViz" = [
     "developing-with-holoviz/index.md",
     { "Using Param" = "developing-with-holoviz/param.md" },
-    { "Using hvPlot" = "developing-with-holoviz/hvplot.md" },
+    { "Using hvPlot" = [
+      "developing-with-holoviz/hvplot/index.md",
+      { "Composing Exploratory Plots" = "developing-with-holoviz/hvplot/composing-exploratory-plots.md" },
+      { "Distilling Explanatory Plots" = "developing-with-holoviz/hvplot/distilling-explanatory-plots.md" },
+    ] },
     { "Using Panel" = [
       "developing-with-holoviz/panel/index.md",
       { "Iterating on Panel Apps" = "developing-with-holoviz/panel/iterating-on-panel-apps.md" },
@@ -20,12 +24,14 @@ nav = [
       { "Using Pytest Playwright" = "developing-with-holoviz/panel/using-pytest-playwright.md" },
       { "Reviewing Panel Apps" = "developing-with-holoviz/panel/reviewing-panel-apps.md" },
       { "Converting Designs to Material UI" = "developing-with-holoviz/panel/converting-designs-to-material-ui.md" },
+      { "Data Storytelling" = "developing-with-holoviz/panel/data-storytelling.md" },
       { "Designing Panel Architecture" = "developing-with-holoviz/panel/designing-panel-architecture.md" },
       { "Migrating to Material UI" = "developing-with-holoviz/panel/migrating-to-material-ui.md" },
       { "Plotting in Panel" = "developing-with-holoviz/panel/plotting-in-panel.md" },
       { "Using Tabulator" = "developing-with-holoviz/panel/using-tabulator.md" },
       { "Examples" = [
         { "Dashboard" = "developing-with-holoviz/panel/dashboard.md" },
+        { "Graphic Story" = "developing-with-holoviz/panel/graphic_story.md" },
         { "Wizard" = "developing-with-holoviz/panel/wizard.md" },
       ] },
     ] },
