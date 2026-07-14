@@ -135,11 +135,6 @@ class SalesDashboard(pn.viewable.Viewer):
         and Tabulator selection. KPIs, charts, and table all consume this."""
     )
 
-    _trigger = param.Event(
-        doc="""
-        Signal for DynamicMap — trigger to refresh charts while preserving zoom.""",
-    )
-
     def __init__(self, df=None, **params):
         if df is None:
             df = generate_sales_data()
@@ -251,10 +246,10 @@ class SalesDashboard(pn.viewable.Viewer):
         self._table.add_filter(self._region_filter, "Region")
         self._table.add_filter(self._product_filter, "Product")
 
-        # DynamicMaps created after super — lazily render with current data,
-        # preserve zoom/pan on subsequent filter changes via _trigger.
-        curves_dmap = hv.DynamicMap(pn.bind(self._render_curves, self.param._trigger))
-        cumulative_dmap = hv.DynamicMap(pn.bind(self._render_cumulative, self.param._trigger))
+        # DynamicMaps created after super — each @param.depends on _filtered_df,
+        # so they patch data in place (preserving zoom/pan) whenever it changes.
+        curves_dmap = hv.DynamicMap(self._render_curves)
+        cumulative_dmap = hv.DynamicMap(self._render_cumulative)
         self._chart_pane = pn.pane.HoloViews(
             (curves_dmap + cumulative_dmap).opts(shared_axes=False),
             sizing_mode="stretch_width",
@@ -360,7 +355,8 @@ class SalesDashboard(pn.viewable.Viewer):
 
     # -- Chart rendering (DynamicMap callbacks) --
 
-    def _render_curves(self, trigger):
+    @param.depends("_filtered_df")
+    def _render_curves(self):
         """Return NdOverlay of weekly revenue curves by region."""
         df = self._filtered_df
         if df is None or df.empty:
@@ -424,7 +420,8 @@ class SalesDashboard(pn.viewable.Viewer):
             )
         )
 
-    def _render_cumulative(self, trigger):
+    @param.depends("_filtered_df")
+    def _render_cumulative(self):
         """Return cumulative total revenue curve."""
         df = self._filtered_df
         if df is None or df.empty:
