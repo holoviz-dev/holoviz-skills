@@ -2,6 +2,8 @@
 
 Checklist for reviewing Panel applications. Focus on anti-patterns that cause flickering, wasted redraws, or subtle bugs. For general code style (imports, naming, param ordering), see the [cleanup](../../../contributing-to-holoviz/skills/cleanup/SKILL.md) skill. For a complete example that applies all these patterns, see `examples/wizard.py`.
 
+This checklist operationalizes Panel's official best-practices guides for review; consult them for upstream rationale and additional patterns (graceful exception handling, `obj.param.update`, `FlexBox` layouts): [Developer Experience](https://panel.holoviz.org/how_to/best_practices/dev_experience.html) and [User Experience](https://panel.holoviz.org/how_to/best_practices/user_experience.html).
+
 ## Contents
 
 - [Flickering from Recreated Components](#flickering-from-recreated-components)
