@@ -112,6 +112,27 @@ def _iter_flat_units(skill_dir: Path) -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
+def _skill_entries(path: Path, skill_names: list[str]) -> list[Path]:
+    """Entries under ``path`` that belong to the given HoloViz skills.
+
+    Matches both install layouts: directory copies (``developing-with-holoviz/``)
+    and flat files (``developing-with-holoviz-panel.md``,
+    ``creating-custom-holoviz-skills.md``). Used to detect and remove only our
+    own skills, leaving unrelated content in a shared standard dir (e.g.
+    ``~/.agents/skills``, shared by the Agent and Codex tools) untouched.
+    """
+    if not path.exists():
+        return []
+    return [
+        p
+        for p in sorted(path.iterdir())
+        if any(
+            p.name == name or p.name.startswith(f"{name}-") or p.name.startswith(f"{name}.")
+            for name in skill_names
+        )
+    ]
+
+
 class Tool:
     """Represents one AI coding tool and how to install skills into it."""
 
@@ -150,32 +171,29 @@ class Tool:
         Checks for the specific skill units rather than merely a non-empty
         directory, so unrelated content in a shared standard dir (e.g.
         ``~/.agents/skills``, used by both the Agent and Codex tools) is not
-        mistaken for an install. Handles both layouts: directory copies
-        (``developing-with-holoviz/``) and flat files
-        (``developing-with-holoviz-panel.md``, ``creating-custom-holoviz-skills.md``).
+        mistaken for an install.
         """
-        if not self.install_path.exists():
-            return False
-        entries = [p.name for p in self.install_path.iterdir()]
-        return any(
-            entry == name  # directory install
-            or entry.startswith(f"{name}-")  # flat sub-skill file
-            or entry.startswith(f"{name}.")  # flat single-file skill
-            for name in skill_names
-            for entry in entries
-        )
+        return bool(_skill_entries(self.install_path, skill_names))
 
     def install(self, skill_dirs: list[Path], verbose: bool = True) -> int:
         return self.install_fn(skill_dirs, self.install_path, verbose)
 
-    def uninstall(self, verbose: bool = True) -> int:
-        if not self.install_path.exists():
+    def uninstall(self, skill_names: list[str], verbose: bool = True) -> int:
+        """Remove only our own skill entries, leaving unrelated content in a
+        shared directory intact. Cleans up the install dir only if it ends empty."""
+        entries = _skill_entries(self.install_path, skill_names)
+        if not entries:
             print(f"  {self.name}: nothing to remove")
             return 0
-        shutil.rmtree(self.install_path)
+        for entry in entries:
+            shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
+            if verbose:
+                print(f"    - {entry.name}")
+        if not any(self.install_path.iterdir()):
+            self.install_path.rmdir()
         if verbose:
-            print(f"  {self.name}: removed {self.install_path}")
-        return 1
+            print(f"  {self.name}: removed {len(entries)} skill(s) from {self.install_path}")
+        return len(entries)
 
 
 # ---- Install strategies ----
@@ -527,6 +545,7 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def cmd_uninstall(args: argparse.Namespace) -> int:
     tools = _make_tools(use_global=args.use_global)
+    skill_names = [d.name for d in _find_skill_dirs(_skills_root())]
 
     requested = [key for key in tools if getattr(args, _key_attr(key), False)]
     if not requested:
@@ -534,7 +553,7 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
         return 1
 
     for key in requested:
-        tools[key].uninstall()
+        tools[key].uninstall(skill_names)
     return 0
 
 
