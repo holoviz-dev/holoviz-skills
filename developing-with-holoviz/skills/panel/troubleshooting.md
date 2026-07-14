@@ -5,7 +5,7 @@ Symptom-indexed fixes for Panel/pmui apps that serve but misbehave *silently*. L
 ## Contents
 
 - [Widgets change but nothing updates (init ordering)](#widgets-change-but-nothing-updates-init-ordering)
-- [AttributeError during __init__ (on_init ordering)](#attributeerror-during-init-on_init-ordering)
+- [AttributeError during init (on_init ordering)](#attributeerror-during-init-on_init-ordering)
 - [First radio option can't be selected](#first-radio-option-cant-be-selected)
 - [Select renders blank after setting .objects](#select-renders-blank-after-setting-objects)
 - [Date filter returns nothing / type error](#date-filter-returns-nothing--type-error)

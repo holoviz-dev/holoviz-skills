@@ -110,48 +110,22 @@ def _on_income_change(self):
 
 ## Reactive Wiring: Prefer Declarative
 
-Wire reactivity in priority order (full ladder in the [param skill](../param/SKILL.md#watch-vs-paramdepends-vs-link)):
+Prefer declarative wiring; reach for imperative `.param.watch()` only as a last resort. The full priority ladder — `@param.depends` → `@param.depends(watch=True)` → `pn.bind(..., watch=True)` → `.param.watch()`, every `watch=True` form being side-effects-only — is defined in the [param skill](../param/SKILL.md#watch-vs-paramdepends-vs-link).
 
-1. `@param.depends(...)` **without** `watch` — for derived content;
-2. `@param.depends(..., watch=True)` — side effect on the object's *own* params;
-3. `pn.bind(fn, other.param.x, watch=True)` — side effect driven by *another* instance's param (a widget), where `@param.depends` can't reach;
-4. `.param.watch()` — last resort: only when you need `.old`/`.new`, or must wire watchers conditionally at runtime.
-
-`watch=True` in any form is for side effects only, never to return content for display. Reach past `pn.bind(..., watch=True)` to `.param.watch()` only for the last-resort cases — a plain declarative bind needs no `event` unpacking.
+**What to look for**: a `.param.watch()` doing what a declarative `pn.bind(fn, other.param.x, watch=True)` or `@param.depends` would do just as well. A plain bind receives the value directly (no `event` unpacking), so it's usually clearer:
 
 ```python
-# ✅ Own params — declarative depends (option 2)
-@param.depends("active_step", watch=True)
-def _on_step(self): ...
-
-# ✅ External instance's param — declarative bind, fn receives the value (option 3)
+# ⚠️ imperative — reserve for .old/.new or runtime wiring
+self._nav_menu.param.watch(self._on_menu_select, "active")
+# ✅ declarative — fn receives the value
 pn.bind(self._on_menu_select, self._nav_menu.param.active, watch=True)
-
-def _on_menu_select(self, active):
-    if active and active[0] != self.active_step:
-        self.active_step = active[0]
-
-# Reach for .param.watch() only when you need .old/.new or runtime wiring (option 4)
-self._nav_menu.param.watch(self._log_change, "active")
 ```
 
 ## from_param Widgets Created Before super()
 
-`.from_param()` works for every widget type, button groups included — **as long as the widget is created after `super().__init__(**params)`**. Built before it, the widget's value still syncs to the param, but `@param.depends`/watchers on that param never fire: clicking changes the widget while the rest of the app silently goes stale. This is the same ordering rule as the [Viewer Class Pattern](SKILL.md#viewer-class-pattern) — it is not widget-specific, and switching to a direct widget + manual watcher only masks the real cause.
+`.from_param()` works for every widget type (button groups included) *if* the widget is created after `super().__init__(**params)`; built before it, watchers silently never fire. It's the [Viewer ordering rule](SKILL.md#viewer-class-pattern), not a widget bug — a direct widget + manual watcher only masks it.
 
-```python
-# WRONG — from_param widget built before super(); watchers won't fire
-def __init__(self, **params):
-    self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
-    super().__init__(**params)
-
-# CORRECT — build from_param widgets after super()
-def __init__(self, **params):
-    super().__init__(**params)
-    self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
-```
-
-**What to look for**: a `.from_param()` widget assigned *before* `super().__init__()` whose param has a `@param.depends(..., watch=True)` that "isn't firing." Move the widget creation below `super().__init__()`.
+**What to look for**: a `.from_param()` widget assigned *before* `super().__init__()` whose `@param.depends(..., watch=True)` "isn't firing" — move it below `super()`. Symptom, cause, and the WRONG/CORRECT fix: [Troubleshooting Panel Apps](troubleshooting.md#widgets-change-but-nothing-updates-init-ordering).
 
 ## Unintended Stretch and Collapsed Labels
 

@@ -392,11 +392,16 @@ class SalesDashboard(pn.viewable.Viewer):
         if not region_curves:
             region_curves["(none)"] = hv.Curve([], kdims=["date"], vdims=["revenue"])
 
+        # A single-entry legend adds no information (nothing to distinguish),
+        # and legend_position="top_left" otherwise crowds the title — move the
+        # legend outside the plot frame and hide it entirely when there's only
+        # one region to show.
         return (
             hv.NdOverlay(region_curves, kdims=["Region"])
             .opts(
                 "NdOverlay",
-                legend_position="top_left",
+                legend_position="right",
+                show_legend=len(region_curves) > 1,
                 title="Weekly Revenue by Region",
             )
             .opts(

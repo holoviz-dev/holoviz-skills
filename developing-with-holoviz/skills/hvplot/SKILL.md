@@ -2,7 +2,7 @@
 name: hvplot
 description: Plot DataFrames and datasets using a Pandas .plot()-like API for Pandas, Polars, Xarray, DuckDB, Dask, and GeoPandas. Use when the user asks to visualize, plot, or chart tabular or multidimensional data. Do not use for pie charts or 3D viz, or for element composition, streams, or custom Bokeh tools/tooltips (use HoloViews).
 metadata:
-  version: "0.0.2"
+  version: "0.0.3"
   author: holoviz
 ---
 
@@ -30,6 +30,8 @@ Before plotting, consider: what story does the data tell? What comparison matter
 ## Dependencies
 
 Activate the `.hvplot` accessor with the appropriate backend import: `import hvplot.pandas`, `hvplot.polars`, `hvplot.xarray`, `hvplot.duckdb`, or `hvplot.dask`. Backends like Polars and DuckDB must be installed separately. Optional: `datashader` for resampling, `geoviews` or `geopandas` for geographic data. Prefer the Bokeh backend (default) for interactivity, Matplotlib for static/print output, Plotly as a last resort.
+
+Any example below (or elsewhere in this skill set) that calls `hvplot.sampledata.<name>(...)` (e.g. `penguins`, `earthquakes`, `apple_stocks`, `stocks`) requires the separate `hvsampledata` package. It is not installed by hvPlot itself — install it explicitly (`pip install hvsampledata` / `conda install hvsampledata`) or the call raises `AttributeError: Install the package 'hvsampledata' to access datasets from the 'sampledata' module of hvPlot.`
 
 Do NOT add `import holoviews as hv` or `hv.extension('bokeh')` to hvplot-only code. `import hvplot.pandas` activates the Bokeh backend automatically. Only import holoviews when you need HoloViews elements or containers like VLine, HLine, Text, Overlay, etc. For `.opts()` system, formatters, Bokeh tools, streams, and other HoloViews concepts, see the [HoloViews skill](../holoviews/SKILL.md).
 
@@ -265,15 +267,16 @@ apple.hvplot.heatmap(x='index.hour', y='index.month', C='close', cmap='reds', re
 ## Subplots and Layouts
 
 - `col=`/`row=` creates a cleaner faceted grid than `subplots=True` for categorical splits. Use `shared_axes=False` for independent ranges.
+- Narrow subplots (e.g. `width=300`) crowd datetime tick labels until they overlap. Pass a lower `xticks=` count (an integer, not a rotation) so fewer labels are drawn and they stay readable — `xrotation=` does not affect hvPlot/Bokeh datetime axes.
 
 ```python
 stocks = hvplot.sampledata.stocks("pandas")
 
-# Linked subplots, 2 per row
+# Linked subplots, 2 per row — xticks keeps narrow datetime axes readable
 stocks.hvplot(
     x="date", y=["Apple", "Amazon", "Google"],
     subplots=True, shared_axes=False,
-    width=300, height=200,
+    width=300, height=200, xticks=4,
 ).cols(2)
 
 penguins = hvplot.sampledata.penguins("pandas")
@@ -289,6 +292,8 @@ penguins.hvplot.scatter(
 
 These are **top-level functions**, not `.hvplot` accessor methods.
 
+- `parallel_coordinates` plots each numeric column on its own vertical axis but shares one y-scale across all of them. If the columns have very different magnitudes (e.g. `body_mass_g` in the thousands next to `bill_length_mm` in the tens), the small-scale columns flatten to a line near zero and the chart stops being readable. Normalize/rescale columns to a common range (e.g. min-max or z-score) before passing them in, unless they're already comparable.
+
 ```python
 import hvplot
 import hvplot.pandas  # noqa
@@ -299,7 +304,15 @@ penguins = hvplot.sampledata.penguins('pandas')[[
 apple = hvplot.sampledata.apple_stocks('pandas').set_index('date')
 
 hvplot.scatter_matrix(penguins, c='species')          # pairwise scatter with linked brushing
-hvplot.parallel_coordinates(penguins, 'species')       # multivariate structure
+
+# Rescale to [0, 1] first — parallel_coordinates shares one y-axis across all columns
+normalized = penguins.copy()
+num_cols = ['bill_length_mm', 'bill_depth_mm', 'flipper_length_mm', 'body_mass_g']
+normalized[num_cols] = (normalized[num_cols] - normalized[num_cols].min()) / (
+    normalized[num_cols].max() - normalized[num_cols].min()
+)
+hvplot.parallel_coordinates(normalized, 'species')     # multivariate structure
+
 hvplot.andrews_curves(penguins, 'species')             # Fourier-series class separation
 hvplot.lag_plot(apple[['close']], lag=5, alpha=0.3)    # autocorrelation detection
 ```
