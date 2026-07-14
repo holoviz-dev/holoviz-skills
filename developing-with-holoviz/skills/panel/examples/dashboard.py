@@ -5,9 +5,9 @@ Trend indicators for KPI cards, DynamicMap charts that preserve zoom/pan,
 Tabulator checkbox selection that cross-filters charts, and a responsive
 pmui.Grid layout. Modern pmui components: a pmui.Badge selection counter, a
 pmui.SpeedDial for quick actions (reset / reload), a pmui.Alert empty-state,
-and pmui.Tooltip KPI hints. Also demonstrates pn.indicators.Trend, the
-DynamicMap trigger pattern, Tabulator selection-driven filtering,
-param.DataFrame as the single source of truth, and the pmui.Page template.
+and pmui.Tooltip KPI hints. Also demonstrates pn.indicators.Trend,
+DynamicMaps that @param.depends on a param.DataFrame single source of
+truth, Tabulator selection-driven filtering, and the pmui.Page template.
 
 Run: panel serve examples/dashboard.py --dev --show
 """
@@ -475,19 +475,18 @@ class SalesDashboard(pn.viewable.Viewer):
 
     def _on_table_selection(self, event):
         """Re-render charts when table selection changes."""
-        sidebar_df = self._apply_sidebar_filters()
-        self._filtered_df = self._apply_table_selection(sidebar_df)
-        self._refresh_indicators()
-        self.param.trigger("_trigger")
+        with pn.io.hold():
+            sidebar_df = self._apply_sidebar_filters()
+            self._filtered_df = self._apply_table_selection(sidebar_df)
+            self._refresh_indicators()
 
     def _update_all(self, *args):
-        sidebar_df = self._apply_sidebar_filters()
-        self._filtered_df = self._apply_table_selection(sidebar_df)
         with pn.io.hold():
+            sidebar_df = self._apply_sidebar_filters()
+            self._filtered_df = self._apply_table_selection(sidebar_df)
             self._update_kpis(self._filtered_df)
             self._update_table()
             self._refresh_indicators()
-            self.param.trigger("_trigger")  # signal DynamicMaps to re-render
 
     def _update_kpis(self, df):
         if df is None or df.empty:
