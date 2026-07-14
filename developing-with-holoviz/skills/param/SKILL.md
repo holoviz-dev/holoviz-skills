@@ -2,7 +2,7 @@
 name: param
 description: Define Python classes with typed, validated, reactive parameters using Param. Use when building classes with constrained attributes, reactive dependencies between values, or dynamic option cascading. Load alongside the Panel skill for any Panel app using Parameterized classes.
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
   author: holoviz
 ---
 
@@ -188,7 +188,14 @@ Avoid `allow_refs=True` with rx binding (`self.x = widget.param.value.rx()`) whe
 
 ## .watch() vs @param.depends vs .link()
 
-Prefer `@param.depends("param_name", watch=True)` over `.watch()` — it's declarative and avoids callback signatures with `event` arguments. Use `.watch()` only when reacting to parameters on an external instance or wiring watchers conditionally at runtime. If you need `.old`/`.new` for logging or undo, `.watch()` is appropriate.
+Reactive wiring, most to least preferred:
+
+1. **`@param.depends("p1", "p2")` (no `watch`)** — pure; returns content for display, no side effects. Use whenever a value or pane is *derived* from params.
+2. **`@param.depends("p", watch=True)`** — a side effect (update another param, sync state) driven by the object's *own* params. Declarative, no `event` argument.
+3. **`pn.bind(fn, obj.param.x, watch=True)`** — a side effect driven by *another* instance's param (e.g. a widget) where `@param.depends` can't reach. Still declarative; `fn` receives the value.
+4. **`.param.watch(fn, "x")`** — last resort: when you need `.old`/`.new` (logging, undo), or must wire/unwire watchers conditionally at runtime.
+
+`watch=True` in any form is for **side effects only** — never to produce content for display (that's option 1).
 
 For syncing parameters between objects, use `.link()` or `.rx()`:
 

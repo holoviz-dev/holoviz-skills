@@ -34,7 +34,8 @@ Read these for specialized topics. Each is a standalone document you can load wi
 - [Plotting in Panel](plotting-in-panel.md) — embedding plots from any library: HoloViews/hvPlot (DynamicMap zoom/pan, responsive sizing), Matplotlib, Plotly, ECharts, Bokeh toolbar tools
 - [Using Tabulator](using-tabulator.md) — `add_filter` with widgets, checkbox selection, row content, function-based filtering
 - [Using Pytest Playwright](using-pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components
-- [Reviewing Panel Apps](reviewing-panel-apps.md) — anti-pattern checklist for code review: flickering, missing hold, watcher gaps, bind vs watch, mutation bugs
+- [Reviewing Panel Apps](reviewing-panel-apps.md) — anti-pattern checklist for code review: flickering, missing hold, watcher gaps, reactive-wiring priority, from_param super() ordering, mutation bugs
+- [Troubleshooting Panel Apps](troubleshooting.md) — symptom→cause→fix for apps that serve but misbehave silently: init ordering, dead-app, blank Page, responsive/spinner issues, version & deprecation diagnosis
 
 ## Viewer Class Pattern
 
@@ -69,7 +70,7 @@ class Dashboard(pn.viewable.Viewer):
         super().__init__(**params)
         # from_param widgets must be created AFTER super() — before it, widget
         # changes update the param silently but never fire watchers (dead app).
-        self._species_widget = pmui.CheckButtonGroup.from_param(self.param.species)
+        self._species_widget = pmui.CheckBoxGroup.from_param(self.param.species)
         with pn.config.set(sizing_mode="stretch_width"):
             self._sidebar = pmui.Column(self._species_widget)
             self._main = pmui.Column(self._summary, self._chart_pane)
@@ -112,7 +113,7 @@ class BadDashboard(pn.viewable.Viewer):
 ## Widgets and Extensions
 
 - Call `pn.extension(throttled=True)` with any needed JS extensions (`"tabulator"`, `"plotly"`). Never add `"bokeh"`.
-- `.from_param()` auto-creates the right widget type from a parameter — syncs value, bounds, and objects. (Button-group widgets are an exception that needs an explicit watcher — see the from_param write-back gap in [Reviewing Panel Apps](reviewing-panel-apps.md).)
+- `.from_param()` auto-creates the right widget type from a parameter — syncs value, bounds, and objects. Create `from_param` widgets *after* `super().__init__()` (button groups included) or their `@param.depends`/watchers won't fire — see the [ordering rule](#viewer-class-pattern) and the [review checklist](reviewing-panel-apps.md#from_param-widgets-created-before-super).
 - Prefer `pn.bind(self._update, widget1.param.value, widget2.param.value, watch=True)` over lambda-based `.param.watch()` for wiring multiple widgets to a single update method.
 - Default to `sizing_mode="stretch_width"` via `pn.config.set`.
 

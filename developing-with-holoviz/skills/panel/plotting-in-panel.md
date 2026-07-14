@@ -8,7 +8,7 @@ Examples build on the penguins Dashboard from the Panel skill.
 
 - [HoloViews and hvPlot](#holoviews-and-hvplot)
   - [pn.pane.HoloViews Configuration](#pnpaneholoviews-configuration)
-  - [DynamicMap: Preserve Zoom/Pan Across Data Refreshes](#dynamicmap-preserve-zoompan-across-data-refreshes)
+  - [DynamicMap Updates: Depend on the Data, Not a Trigger](#dynamicmap-updates-depend-on-the-data-not-a-trigger)
   - [One Element Per DynamicMap](#one-element-per-dynamicmap)
   - [Responsive Sizing](#responsive-sizing)
 - [Matplotlib](#matplotlib)
@@ -70,7 +70,7 @@ class SineExplorer(pn.viewable.Viewer):
     def __panel__(self):
         return pmui.Row(self._controls, self._plot)
 
-pn.serve(SineExplorer())
+SineExplorer().servable()  # run with: panel serve app.py --dev --show
 ```
 
 ### DynamicMap Updates: Depend on the Data, Not a Trigger
