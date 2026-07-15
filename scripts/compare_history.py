@@ -22,16 +22,12 @@ pn.extension("tabulator", throttled=True)
 
 _DEFAULT_RESULTS_DIR = Path(__file__).parent.parent / "eval_results"
 _RESULTS_DIR = next((Path(a) for a in sys.argv[1:] if Path(a).is_dir()), _DEFAULT_RESULTS_DIR)
-_METRICS = ["tokens_output", "tokens_input", "execution_time", "execution_success", "has_code"]
+_METRICS = ["tokens_output", "tokens_input", "execution_time"]
 _METRIC_LABELS = {
     "tokens_output": "Tokens (output)",
     "tokens_input": "Tokens (input)",
     "execution_time": "Response Time (s)",
-    "execution_success": "Execution Success Rate",
-    "has_code": "Code Generation Rate",
 }
-
-_BINARY_METRICS = {"execution_success", "has_code"}
 
 
 class HistoricalDashboard(pn.viewable.Viewer):
@@ -40,9 +36,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
     selected_queries = param.ListSelector(default=[], objects=[])
     selected_conditions = param.ListSelector(
         default=["with_skills", "without_skills"],
-        objects=["with_skills", "without_skills"],
     )
-    selected_metric = param.Selector(default="tokens_output", objects=_METRICS)
 
     def __init__(self, results_dir: Path, **params):
         self._results_dir = results_dir
@@ -65,9 +59,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
         params.setdefault("selected_models", all_models)
         params.setdefault("selected_queries", all_queries)
 
-        self._trend_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
-        self._history_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
-        self._delta_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
+        self._plots_container = pmui.Column(sizing_mode="stretch_width")
+        self._status_legend = self._build_status_legend()
         self._table_pane = pn.widgets.Tabulator(
             pd.DataFrame(),
             theme="materialize",
@@ -113,12 +106,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
             button_style="outlined",
             sizing_mode="stretch_width",
         )
-        self._metric_select = pmui.Select(
-            label="Metric",
-            options=_METRICS,
-            value="tokens_output",
-            sizing_mode="stretch_width",
-        )
 
         super().__init__(**params)
 
@@ -132,7 +119,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
         self._condition_filter.param.watch(
             lambda e: setattr(self, "selected_conditions", e.new), "value"
         )
-        self._metric_select.param.watch(lambda e: setattr(self, "selected_metric", e.new), "value")
 
     # ------------------------------------------------------------------
     # Data helpers
@@ -165,57 +151,41 @@ class HistoricalDashboard(pn.viewable.Viewer):
             df = df[df["condition"].isin(self.selected_conditions)]
         return df
 
-    def _run_order(self, df: pd.DataFrame) -> dict[str, int]:
-        """Chronological run → x-index (oldest = 0)."""
-        order = df[["run_id", "created_at"]].drop_duplicates("run_id").sort_values("created_at")
-        return {row.run_id: i for i, row in enumerate(order.itertuples())}
-
-    # ------------------------------------------------------------------
-    # Plot 1 — Violin trend (distribution per model, split by condition)
-    # ------------------------------------------------------------------
-
-    def _build_trend(self, df: pd.DataFrame):
-        metric = self.selected_metric
-        label = _METRIC_LABELS[metric]
-
-        if metric in ("execution_success", "has_code"):
-            df = df.copy()
-            df[metric] = df[metric].astype(float)
-
-        plot_df = df.copy().sort_values(["model", "condition", "created_at", "run_id", "query_id"])
-
-        models = sorted(plot_df["model"].unique())
-
-        if not models:
-            return hv.Curve([], kdims=["run_id"], vdims=[metric]).opts(
-                responsive=True, height=400, title="No data for selected filters."
-            )
-
-        vdim = hv.Dimension(metric, label=label)
-        violin = hv.Violin(plot_df, kdims=["model", "condition"], vdims=[vdim])
-        return violin.opts(
-            responsive=True,
-            height=400,
+    def _build_status_legend(self):
+        legend = hv.NdOverlay(
+            {
+                "Success": hv.Scatter([(0, 0)], kdims=["x"], vdims=["y"]),
+                "Failure": hv.Scatter([(1, 0)], kdims=["x"], vdims=["y"]),
+            },
+            kdims="status",
+        ).opts(
             show_legend=True,
-            title=f"Metric Distribution: {label}",
-            ylabel=label,
-            xlabel="Model",
-            violin_width=0.6,
-            fontscale=1.1,
-            split="condition",
-            xrotation=20,
+            legend_position="right",
+            width=180,
+            height=90,
+            xaxis=None,
+            yaxis=None,
+            toolbar=None,
             default_tools=[],
+            fontscale=0.9,
         )
+        return pn.pane.HoloViews(legend, sizing_mode="fixed", width=180, height=90)
 
     # ------------------------------------------------------------------
-    # Plot 1b — Historical run trend (mean value per run, model, condition)
+    # Plots
     # ------------------------------------------------------------------
 
-    def _build_history_trend(self, df: pd.DataFrame):
-        metric = self.selected_metric
+    def _build_history_trend(
+        self,
+        df: pd.DataFrame,
+        metric: str,
+        *,
+        show_legend: bool = True,
+        axis_visible: bool = True,
+    ):
         label = _METRIC_LABELS[metric]
 
-        if metric in ("execution_success", "has_code"):
+        if metric == "execution_success":
             df = df.copy()
             df[metric] = df[metric].astype(float)
 
@@ -229,215 +199,109 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 responsive=True, height=340, title="No data for selected filters."
             )
 
-        return agg.hvplot.line(
+        line = agg.hvplot.line(
             x="run_id",
             y=metric,
             by=["model", "condition"],
             ylabel=label,
-            xlabel="Run",
-            title=f"Historical Run Trend: {label}",
+            xlabel="Run" if axis_visible else "",
             responsive=True,
-            height=340,
-            legend="top_right",
+            height=400,
+            legend="right" if show_legend else False,
             fontscale=1.1,
             line_width=2,
-        ).opts("Curve", default_tools=[])
-
-    # ------------------------------------------------------------------
-    # Plot 1b — Grouped bar for binary metrics (execution_success, has_code)
-    # ------------------------------------------------------------------
-
-    def _build_binary_trend(self, df: pd.DataFrame):
-        metric = self.selected_metric
-        label = _METRIC_LABELS[metric]
-
-        df = df.copy()
-        df[metric] = df[metric].astype(float)
-
-        run_to_x = self._run_order(df)
-
-        # Mean rate per (run, model, condition); preserve chronological order
-        agg = (
-            df.groupby(["run_id", "model", "condition"], as_index=False)
-            .agg(**{metric: (metric, "mean"), "created_at": ("created_at", "first")})
-            .sort_values(["model", "created_at"])
         )
-        agg["run_order"] = agg["run_id"].map(run_to_x)
 
-        models = sorted(agg["model"].unique())
-        if not models:
-            return hv.Curve([], kdims=["run_id"], vdims=[metric]).opts(
-                responsive=True, height=340, title="No data for selected filters."
-            )
-
-        bar_plots = {}
-        for model in models:
-            mdf = agg[agg["model"] == model].sort_values("run_order")
-            bar = mdf.hvplot.bar(
-                x="run_id",
-                y=metric,
-                by="condition",
-                ylabel=label,
-                xlabel="Run (chronological)",
-                title=f"{label} — {model}",
-                ylim=(0, 1.05),
-                responsive=True,
-                height=340,
-                legend="top_right",
-                fontscale=1.1,
-            ).opts("Bars", default_tools=[])
-            bar_plots[model] = bar
-
-        if len(bar_plots) == 1:
-            return next(iter(bar_plots.values()))
-
-        return hv.Layout(list(bar_plots.values())).cols(1)
-
-    # ------------------------------------------------------------------
-    # Plot 2b — Skills Advantage Δ for binary metrics (stacked bar of outcomes)
-    # ------------------------------------------------------------------
-
-    def _build_binary_delta(self, df: pd.DataFrame):
-        metric = self.selected_metric
-        label = _METRIC_LABELS[metric]
-
-        df = df.copy()
-        df[metric] = df[metric].astype(float)
-
-        run_to_x = self._run_order(df)
-
-        agg = df.groupby(["run_id", "model", "query_id", "condition"], as_index=False).agg(
-            **{metric: (metric, "mean"), "created_at": ("created_at", "first")}
+        scatter = agg.hvplot.scatter(
+            x="run_id",
+            y=metric,
+            by=["model", "condition"],
+            xlabel="Run" if axis_visible else "",
+            legend=False,
         )
-        pivot = agg.pivot_table(
-            index=["run_id", "model", "query_id", "created_at"],
-            columns="condition",
-            values=metric,
-        ).reset_index()
-        pivot.columns.name = None
 
-        if "with_skills" not in pivot.columns or "without_skills" not in pivot.columns:
-            return hv.Curve([], kdims=["run_id"], vdims=["count"]).opts(
-                responsive=True, height=340, title="Delta requires both conditions present in data."
-            )
-
-        pivot = pivot.dropna(subset=["with_skills", "without_skills"])
-        if pivot.empty:
-            return hv.Curve([], kdims=["run_id"], vdims=["count"]).opts(
-                responsive=True, height=340, title="No paired rows for delta."
-            )
-
-        pivot["delta"] = (pivot["with_skills"] - pivot["without_skills"]).round().astype(int)
-        pivot["outcome"] = pivot["delta"].map({1: "helped", 0: "no change", -1: "hurt"})
-        pivot["run_order"] = pivot["run_id"].map(run_to_x)
-
-        _OUTCOME_COLORS = {"helped": "#2ca02c", "no change": "#aec7e8", "hurt": "#d62728"}
-        _OUTCOME_ORDER = ["helped", "no change", "hurt"]
-
-        models = sorted(pivot["model"].unique())
-        if not models:
-            return hv.Curve([], kdims=["run_id"], vdims=["count"]).opts(
-                responsive=True, height=340, title="No data for selected filters."
-            )
-
-        bar_plots = {}
-        for model in models:
-            mdf = (
-                pivot[pivot["model"] == model]
-                .groupby(["run_id", "outcome", "run_order"], as_index=False)
-                .size()
-                .rename(columns={"size": "count"})
-                .sort_values("run_order")
-            )
-            # Ensure all outcome categories present for consistent stacking
-            all_runs = mdf[["run_id", "run_order"]].drop_duplicates().set_index("run_id")
-            full = pd.MultiIndex.from_product(
-                [all_runs.index, _OUTCOME_ORDER], names=["run_id", "outcome"]
-            )
-            mdf = (
-                mdf.drop(columns="run_order")
-                .set_index(["run_id", "outcome"])
-                .reindex(full, fill_value=0)
-                .reset_index()
-                .merge(all_runs, on="run_id")
-                .sort_values("run_order")
-            )
-            bar = mdf.hvplot.bar(
-                x="run_id",
-                y="count",
-                by="outcome",
-                stacked=True,
-                color=[_OUTCOME_COLORS[o] for o in _OUTCOME_ORDER],
-                ylabel="Query count",
-                xlabel="Run (chronological)",
-                title=f"Skills Advantage (Δ): {label} — {model}",
-                responsive=True,
-                height=340,
-                legend="top_right",
-                fontscale=1.1,
-            ).opts(default_tools=[])
-            bar_plots[model] = bar
-
-        if len(bar_plots) == 1:
-            return next(iter(bar_plots.values()))
-
-        return hv.Layout(list(bar_plots.values())).cols(2)
-
-    # ------------------------------------------------------------------
-    # Plot 2 — Skills Advantage Δ (violin of per-query deltas per model)
-    # ------------------------------------------------------------------
-
-    def _build_delta(self, df: pd.DataFrame):
-        metric = self.selected_metric
-        label = _METRIC_LABELS[metric]
-        delta_col = "delta"
-
-        agg = df.groupby(["run_id", "model", "query_id", "condition"], as_index=False).agg(
-            **{metric: (metric, "mean"), "created_at": ("created_at", "first")}
+        return (line * scatter).opts(
+            legend_position="top_right",
+            xaxis="bottom" if axis_visible else None,
+            default_tools=["reset"],
+            tools=["hover"],
+            toolbar=None,
         )
-        pivot = agg.pivot_table(
-            index=["run_id", "model", "query_id", "created_at"],
-            columns="condition",
-            values=metric,
-        ).reset_index()
-        pivot.columns.name = None
 
-        if "with_skills" not in pivot.columns or "without_skills" not in pivot.columns:
-            return hv.Curve([], kdims=["run_id"], vdims=[delta_col]).opts(
-                responsive=True, height=340, title="Delta requires both conditions present in data."
-            )
+    def _centered_footer(self, text: str):
+        return pn.Row(
+            pn.Spacer(),
+            pmui.Typography(
+                text, variant="caption", align="center", sx={"color": "text.secondary"}
+            ),
+            pn.Spacer(),
+            sizing_mode="stretch_width",
+        )
 
-        pivot = pivot.dropna(subset=["with_skills", "without_skills"])
-        if pivot.empty:
-            return hv.Curve([], kdims=["run_id"], vdims=[delta_col]).opts(
-                responsive=True, height=340, title="No paired rows for delta."
-            )
+    def _build_metric_violin(
+        self,
+        df: pd.DataFrame,
+        metric: str,
+        *,
+        show_legend: bool = True,
+        axis_visible: bool = True,
+    ):
+        metric_df = df.copy()
+        if metric == "execution_success":
+            metric_df[metric] = metric_df[metric].astype(float)
 
-        pivot[delta_col] = pivot["with_skills"] - pivot["without_skills"]
+        violin = hv.Violin(metric_df, kdims=["model", "condition"], vdims=[metric]).opts(
+            responsive=True,
+            height=400,
+            show_legend=show_legend,
+            ylabel=_METRIC_LABELS[metric],
+            xlabel="Model" if axis_visible else "",
+            fontscale=1.1,
+            split="condition",
+            legend_position="top_right",
+        )
+        status = metric_df["execution_success"].astype(bool)
+        success_points = metric_df[status].hvplot.scatter(
+            x="model",
+            y=metric,
+            by="condition",
+            color="#2ca02c",
+            alpha=0.45,
+            size=18,
+            jitter=0.25,
+            responsive=True,
+            height=400,
+            legend=False,
+        )
+        failure_points = metric_df[~status].hvplot.scatter(
+            x="model",
+            y=metric,
+            by="condition",
+            color="#d62728",
+            alpha=0.45,
+            size=18,
+            jitter=0.25,
+            responsive=True,
+            height=400,
+            legend=False,
+        )
+        return (violin * success_points * failure_points).opts(
+            default_tools=["reset"],
+            tools=["hover"],
+            xaxis="bottom" if axis_visible else None,
+            toolbar=None,
+        )
 
-        models = sorted(pivot["model"].unique())
-        if not models:
-            return hv.Curve([], kdims=["run_id"], vdims=[delta_col]).opts(
-                responsive=True, height=340, title="No data for selected filters."
-            )
-
-        vdim = hv.Dimension(delta_col, label=f"Δ {label}")
-        violin = hv.Violin(pivot, kdims=["model"], vdims=[vdim])
-        zero_line = hv.HLine(0).opts(color="gray", line_dash="dashed", line_width=1.5)
-        return (
-            violin.opts(
-                responsive=True,
-                height=340,
-                show_legend=False,
-                title=f"Skills Advantage (Δ): {label}",
-                ylabel=f"Δ {label}",
-                xlabel="Model",
-                violin_width=0.6,
-                fontscale=1.1,
-                xrotation=20,
-                default_tools=[],
-            )
-            * zero_line
+    def _build_metric_trend(
+        self,
+        df: pd.DataFrame,
+        metric: str,
+        *,
+        show_legend: bool = True,
+        axis_visible: bool = True,
+    ):
+        return self._build_history_trend(
+            df, metric, show_legend=show_legend, axis_visible=axis_visible
         )
 
     # ------------------------------------------------------------------
@@ -449,7 +313,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
         "selected_models",
         "selected_queries",
         "selected_conditions",
-        "selected_metric",
         watch=True,
         on_init=True,
     )
@@ -457,33 +320,78 @@ class HistoricalDashboard(pn.viewable.Viewer):
         df = self._filtered_df()
         with pn.io.hold():
             if df.empty:
-                self._trend_pane.object = hv.Curve([], kdims=["x"], vdims=["y"]).opts(
-                    responsive=True, height=400, title="No data for selected filters."
-                )
-                self._delta_pane.object = hv.Curve([], kdims=["x"], vdims=["y"]).opts(
-                    responsive=True, height=280, title="No data for selected filters."
-                )
+                self._plots_container.objects = [
+                    pmui.Paper(
+                        pmui.Typography("No data for selected filters.", variant="body2"),
+                        sx={"p": 2},
+                        elevation=1,
+                    )
+                ]
                 self._table_pane.value = pd.DataFrame()
                 return
 
-            if self.selected_metric in _BINARY_METRICS:
-                self._trend_pane.object = self._build_binary_trend(df)
-            else:
-                self._trend_pane.object = self._build_trend(df)
+            violin_sections = []
+            trend_sections = []
+            for i, metric in enumerate(_METRICS):
+                is_last = i == len(_METRICS) - 1
+                violin_sections.append(
+                    pmui.Column(
+                        self._build_metric_violin(
+                            df,
+                            metric,
+                            show_legend=(i == 0),
+                            axis_visible=is_last,
+                        ),
+                        sx={"gap": "6px"},
+                    )
+                )
+                trend_sections.append(
+                    pmui.Column(
+                        self._build_metric_trend(
+                            df,
+                            metric,
+                            show_legend=(i == 0),
+                            axis_visible=is_last,
+                        ),
+                        sx={"gap": "6px"},
+                    )
+                )
 
-            self._history_pane.object = self._build_history_trend(df)
-
-            delta_df = self._history_df.copy()
-            if self.selected_runs:
-                delta_df = delta_df[delta_df["run_id"].isin(self.selected_runs)]
-            if self.selected_models:
-                delta_df = delta_df[delta_df["model"].isin(self.selected_models)]
-            if self.selected_queries:
-                delta_df = delta_df[delta_df["query_id"].isin(self.selected_queries)]
-            if self.selected_metric in _BINARY_METRICS:
-                self._delta_pane.object = self._build_binary_delta(delta_df)
-            else:
-                self._delta_pane.object = self._build_delta(delta_df)
+            self._plots_container.objects = [
+                pmui.Grid(
+                    pmui.Grid(
+                        pmui.Paper(
+                            pmui.Column(
+                                pmui.Typography("Metric Distribution", variant="h5"),
+                                *violin_sections,
+                                self._centered_footer("Model"),
+                                sx={"gap": "16px"},
+                            ),
+                            sx={"p": 2},
+                            styles={"height": "100%"},
+                            elevation=1,
+                        ),
+                        size={"xs": 12, "lg": 6},
+                    ),
+                    pmui.Grid(
+                        pmui.Paper(
+                            pmui.Column(
+                                pmui.Typography("Historical Run Trend", variant="h5"),
+                                *trend_sections,
+                                self._centered_footer("Run"),
+                                sx={"gap": "16px"},
+                            ),
+                            sx={"p": 2},
+                            styles={"height": "100%"},
+                            elevation=1,
+                        ),
+                        size={"xs": 12, "lg": 6},
+                    ),
+                    container=True,
+                    spacing=2,
+                    sizing_mode="stretch_width",
+                )
+            ]
 
             display_cols = [
                 "run_id",
@@ -495,7 +403,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 "tokens_input",
                 "execution_time",
                 "execution_success",
-                "has_code",
             ]
             self._table_pane.value = (
                 df[display_cols]
@@ -511,8 +418,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
         with pn.config.set(sizing_mode="stretch_width"):
             sidebar = pmui.Column(
                 pmui.Typography("Filters", variant="h6"),
-                self._metric_select,
-                pmui.Divider(),
                 self._run_filter,
                 pmui.Divider(),
                 self._model_filter,
@@ -520,6 +425,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 self._query_filter,
                 pmui.Divider(),
                 self._condition_filter,
+                self._status_legend,
                 sx={"gap": "12px"},
                 margin=10,
             )
@@ -532,40 +438,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                     variant="body2",
                     sx={"color": "text.secondary"},
                 ),
-                pmui.Paper(
-                    pmui.Column(
-                        pmui.Typography("Metric Trend by Run", variant="h6"),
-                        self._trend_pane,
-                    ),
-                    sx={"p": 2},
-                    elevation=1,
-                ),
-                pmui.Paper(
-                    pmui.Column(
-                        pmui.Typography("Historical Run Trend", variant="h6"),
-                        pmui.Typography(
-                            "Mean value per run, grouped by model and condition.",
-                            variant="caption",
-                            sx={"color": "text.secondary"},
-                        ),
-                        self._history_pane,
-                    ),
-                    sx={"p": 2},
-                    elevation=1,
-                ),
-                pmui.Paper(
-                    pmui.Column(
-                        pmui.Typography("Skills Advantage (Δ) by Run", variant="h6"),
-                        pmui.Typography(
-                            "Δ > 0: with_skills outperforms without_skills",
-                            variant="caption",
-                            sx={"color": "text.secondary"},
-                        ),
-                        self._delta_pane,
-                    ),
-                    sx={"p": 2},
-                    elevation=1,
-                ),
+                self._plots_container,
                 pmui.Paper(self._table_pane, sx={"p": 2}, elevation=1),
                 sx={"gap": "16px"},
                 margin=10,
@@ -574,6 +447,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         return pmui.Page(
             title="HoloViz Skills - Eval Trends",
             sidebar=[sidebar],
+            sidebar_open=False,
             main=[main],
         )
 
