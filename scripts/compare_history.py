@@ -170,7 +170,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         return {row.run_id: i for i, row in enumerate(order.itertuples())}
 
     # ------------------------------------------------------------------
-    # Plot 1 — Violin trend (distribution per run, split by condition)
+    # Plot 1 — Violin trend (distribution per model, split by condition)
     # ------------------------------------------------------------------
 
     def _build_trend(self, df: pd.DataFrame):
@@ -181,12 +181,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             df = df.copy()
             df[metric] = df[metric].astype(float)
 
-        run_to_x = self._run_order(df)
-
-        # Build one violin layout per model; within each, runs on x-axis split by condition
-        plot_df = df.copy()
-        plot_df["run_order"] = plot_df["run_id"].map(run_to_x)
-        plot_df = plot_df.sort_values("run_order")
+        plot_df = df.copy().sort_values(["model", "condition", "created_at", "run_id", "query_id"])
 
         models = sorted(plot_df["model"].unique())
 
@@ -195,33 +190,21 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 responsive=True, height=400, title="No data for selected filters."
             )
 
-        violin_plots = {}
-        for model in models:
-            mdf = plot_df[plot_df["model"] == model]
-            conditions_present = mdf["condition"].unique().tolist()
-            kdims = ["run_id", "condition"]
-            vdim = hv.Dimension(metric, label=label)
-            violin = hv.Violin(mdf, kdims=kdims, vdims=[vdim])
-            opts: dict = dict(
-                xrotation=30,
-                responsive=True,
-                height=400,
-                show_legend=True,
-                legend_position="top_right",
-                title=f"Metric Distribution: {label} — {model}",
-                ylabel=label,
-                xlabel="Run (chronological)",
-                violin_width=0.6,
-                fontscale=1.1,
-            )
-            if len(conditions_present) > 1:
-                opts["split"] = "condition"
-            violin_plots[model] = violin.opts(**opts)
-
-        if len(violin_plots) == 1:
-            return next(iter(violin_plots.values()))
-
-        return hv.Layout(list(violin_plots.values())).cols(1)
+        vdim = hv.Dimension(metric, label=label)
+        violin = hv.Violin(plot_df, kdims=["model", "condition"], vdims=[vdim])
+        return violin.opts(
+            responsive=True,
+            height=400,
+            show_legend=True,
+            title=f"Metric Distribution: {label}",
+            ylabel=label,
+            xlabel="Model",
+            violin_width=0.6,
+            fontscale=1.1,
+            split="condition",
+            xrotation=20,
+            toolbar=None,
+        )
 
     # ------------------------------------------------------------------
     # Plot 1b — Grouped bar for binary metrics (execution_success, has_code)
@@ -265,7 +248,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 height=340,
                 legend="top_right",
                 fontscale=1.1,
-            )
+            ).opts(default_tools=[])
             bar_plots[model] = bar
 
         if len(bar_plots) == 1:
@@ -355,24 +338,22 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 height=340,
                 legend="top_right",
                 fontscale=1.1,
-            )
+            ).opts(default_tools=[])
             bar_plots[model] = bar
 
         if len(bar_plots) == 1:
             return next(iter(bar_plots.values()))
 
-        return hv.Layout(list(bar_plots.values())).cols(1)
+        return hv.Layout(list(bar_plots.values())).cols(2)
 
     # ------------------------------------------------------------------
-    # Plot 2 — Skills Advantage Δ (violin of per-query deltas per run)
+    # Plot 2 — Skills Advantage Δ (violin of per-query deltas per model)
     # ------------------------------------------------------------------
 
     def _build_delta(self, df: pd.DataFrame):
         metric = self.selected_metric
         label = _METRIC_LABELS[metric]
         delta_col = "delta"
-
-        run_to_x = self._run_order(df)
 
         agg = df.groupby(["run_id", "model", "query_id", "condition"], as_index=False).agg(
             **{metric: (metric, "mean"), "created_at": ("created_at", "first")}
@@ -396,8 +377,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
             )
 
         pivot[delta_col] = pivot["with_skills"] - pivot["without_skills"]
-        pivot["run_order"] = pivot["run_id"].map(run_to_x)
-        pivot = pivot.sort_values("run_order")
 
         models = sorted(pivot["model"].unique())
         if not models:
@@ -406,28 +385,23 @@ class HistoricalDashboard(pn.viewable.Viewer):
             )
 
         vdim = hv.Dimension(delta_col, label=f"Δ {label}")
-        violin_plots = {}
-        for model in models:
-            mdf = pivot[pivot["model"] == model]
-            violin = hv.Violin(mdf, kdims=["run_id"], vdims=[vdim])
-            opts: dict = dict(
-                xrotation=30,
+        violin = hv.Violin(pivot, kdims=["model"], vdims=[vdim])
+        zero_line = hv.HLine(0).opts(color="gray", line_dash="dashed", line_width=1.5)
+        return (
+            violin.opts(
                 responsive=True,
                 height=340,
                 show_legend=False,
-                title=f"Skills Advantage (Δ): {label} — {model}",
+                title=f"Skills Advantage (Δ): {label}",
                 ylabel=f"Δ {label}",
-                xlabel="Run (chronological)",
+                xlabel="Model",
                 violin_width=0.6,
                 fontscale=1.1,
+                xrotation=20,
+                toolbar=None,
             )
-            zero_line = hv.HLine(0).opts(color="gray", line_dash="dashed", line_width=1.5)
-            violin_plots[model] = violin.opts(**opts) * zero_line
-
-        if len(violin_plots) == 1:
-            return next(iter(violin_plots.values()))
-
-        return hv.Layout(list(violin_plots.values())).cols(1)
+            * zero_line
+        )
 
     # ------------------------------------------------------------------
     # Reactive update — fires whenever any filter param changes
