@@ -66,6 +66,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         params.setdefault("selected_queries", all_queries)
 
         self._trend_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
+        self._history_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
         self._delta_pane = pn.pane.HoloViews(None, sizing_mode="stretch_width", linked_axes=False)
         self._table_pane = pn.widgets.Tabulator(
             pd.DataFrame(),
@@ -203,8 +204,44 @@ class HistoricalDashboard(pn.viewable.Viewer):
             fontscale=1.1,
             split="condition",
             xrotation=20,
-            toolbar=None,
+            default_tools=[],
         )
+
+    # ------------------------------------------------------------------
+    # Plot 1b — Historical run trend (mean value per run, model, condition)
+    # ------------------------------------------------------------------
+
+    def _build_history_trend(self, df: pd.DataFrame):
+        metric = self.selected_metric
+        label = _METRIC_LABELS[metric]
+
+        if metric in ("execution_success", "has_code"):
+            df = df.copy()
+            df[metric] = df[metric].astype(float)
+
+        agg = (
+            df.groupby(["run_id", "model", "condition"], as_index=False)
+            .agg(**{metric: (metric, "mean"), "created_at": ("created_at", "first")})
+            .sort_values(["created_at", "run_id", "model", "condition"])
+        )
+        if agg.empty:
+            return hv.Curve([], kdims=["run_id"], vdims=[metric]).opts(
+                responsive=True, height=340, title="No data for selected filters."
+            )
+
+        return agg.hvplot.line(
+            x="run_id",
+            y=metric,
+            by=["model", "condition"],
+            ylabel=label,
+            xlabel="Run",
+            title=f"Historical Run Trend: {label}",
+            responsive=True,
+            height=340,
+            legend="top_right",
+            fontscale=1.1,
+            line_width=2,
+        ).opts("Curve", default_tools=[])
 
     # ------------------------------------------------------------------
     # Plot 1b — Grouped bar for binary metrics (execution_success, has_code)
@@ -248,7 +285,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 height=340,
                 legend="top_right",
                 fontscale=1.1,
-            ).opts(default_tools=[])
+            ).opts("Bars", default_tools=[])
             bar_plots[model] = bar
 
         if len(bar_plots) == 1:
@@ -398,7 +435,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 violin_width=0.6,
                 fontscale=1.1,
                 xrotation=20,
-                toolbar=None,
+                default_tools=[],
             )
             * zero_line
         )
@@ -433,6 +470,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 self._trend_pane.object = self._build_binary_trend(df)
             else:
                 self._trend_pane.object = self._build_trend(df)
+
+            self._history_pane.object = self._build_history_trend(df)
 
             delta_df = self._history_df.copy()
             if self.selected_runs:
@@ -497,6 +536,19 @@ class HistoricalDashboard(pn.viewable.Viewer):
                     pmui.Column(
                         pmui.Typography("Metric Trend by Run", variant="h6"),
                         self._trend_pane,
+                    ),
+                    sx={"p": 2},
+                    elevation=1,
+                ),
+                pmui.Paper(
+                    pmui.Column(
+                        pmui.Typography("Historical Run Trend", variant="h6"),
+                        pmui.Typography(
+                            "Mean value per run, grouped by model and condition.",
+                            variant="caption",
+                            sx={"color": "text.secondary"},
+                        ),
+                        self._history_pane,
                     ),
                     sx={"p": 2},
                     elevation=1,
