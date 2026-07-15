@@ -90,7 +90,7 @@ pmui.Page(
 - `pn.widgets.ButtonIcon` migrates 1:1 to `pmui.ButtonIcon`, but `pmui.IconButton` is the idiomatic Material name if you're touching it anyway.
 - Replace an auto-generated `pn.Param(obj.param)` panel with explicit `pmui.*.from_param(...)` so you control each widget's label, color, and visibility.
 - `.from_param()` syncs value, bounds, and objects.
-- **Caveat:** button-group widgets (`RadioButtonGroup`, `CheckButtonGroup`, `CheckBoxGroup`) may not write their value back to the bound param — create them directly and wire an explicit watcher (full pattern in [Using Material UI](using-material-ui.md)).
+- **Caveat:** `.from_param()` widgets (button groups included) must be created *after* `super().__init__()`, or their `@param.depends`/watchers won't fire (see [Using Material UI](using-material-ui.md) and the [review checklist](reviewing-panel-apps.md#from_param-widgets-created-before-super)).
 - For which pmui widget matches each Param type, see [Using Material UI](using-material-ui.md#key-differences-from-panel).
 
 ```python

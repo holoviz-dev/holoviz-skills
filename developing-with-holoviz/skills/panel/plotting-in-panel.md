@@ -8,7 +8,7 @@ Examples build on the penguins Dashboard from the Panel skill.
 
 - [HoloViews and hvPlot](#holoviews-and-hvplot)
   - [pn.pane.HoloViews Configuration](#pnpaneholoviews-configuration)
-  - [DynamicMap: Preserve Zoom/Pan Across Data Refreshes](#dynamicmap-preserve-zoompan-across-data-refreshes)
+  - [DynamicMap Updates: Depend on the Data, Not a Trigger](#dynamicmap-updates-depend-on-the-data-not-a-trigger)
   - [One Element Per DynamicMap](#one-element-per-dynamicmap)
   - [Responsive Sizing](#responsive-sizing)
 - [Matplotlib](#matplotlib)
@@ -35,10 +35,50 @@ pn.pane.HoloViews(
 - `linked_axes=False` prevents axis linking when combining charts with different axis types in a Layout (`+`). Pair with `.opts(shared_axes=False)` on the Layout itself.
 - `sizing_mode="stretch_width"` is required for responsive HoloViews plots.
 
-### DynamicMap: Preserve Zoom/Pan Across Data Refreshes
+### Live Updates: Bind the Render Function Directly (default)
 
-- Setting `pane.object = new_plot` resets axes. DynamicMap patches data in place, preserving zoom/pan.
-- Use a trigger parameter as a signal — DynamicMap caches by argument identity, so read actual data from `self` inside the callback.
+**Start here.** For plots driven by scalar widgets (sliders, selects, toggles), bind the render function directly to its parameters and let the plot re-render on any change, no trigger param and no manual signalling. For a pure style change (color, alpha), skip the callback entirely with `element.apply.opts(color=w.param.value)`. For an expensive render, bind to `param.value_throttled` instead of `param.value` so it fires on mouse-up rather than on every drag step. A manual `_trigger` is a last resort (see below).
+
+```python
+import holoviews as hv
+import numpy as np
+import panel as pn
+import panel_material_ui as pmui
+import param
+
+pn.extension(throttled=True)
+
+class SineExplorer(pn.viewable.Viewer):
+    amplitude = param.Number(default=1.0, bounds=(0.1, 10.0))
+    frequency = param.Number(default=1.0, bounds=(0.1, 10.0))
+
+    def __init__(self, **params):
+        super().__init__(**params)  # from_param widgets go AFTER super() (see panel/SKILL.md)
+        self._controls = pmui.Column(
+            pmui.FloatSlider.from_param(self.param.amplitude),
+            pmui.FloatSlider.from_param(self.param.frequency),
+        )
+        dmap = hv.DynamicMap(pn.bind(self._render, self.param.amplitude, self.param.frequency))
+        self._plot = pn.pane.HoloViews(dmap, sizing_mode="stretch_width")
+
+    def _render(self, amplitude, frequency):
+        x = np.linspace(0, 10, 500)
+        return hv.Curve((x, amplitude * np.sin(frequency * x)), "x", "y").opts(
+            responsive=True, height=400, framewise=True,  # framewise rescales axes to new data
+        )
+
+    def __panel__(self):
+        return pmui.Row(self._controls, self._plot)
+
+SineExplorer().servable()  # run with: panel serve app.py --dev --show
+```
+
+### DynamicMap Updates: Depend on the Data, Not a Trigger
+
+`DynamicMap` preserves zoom/pan and patches only changed data on every refresh (that is inherent to `DynamicMap`; `pane.object = new_plot` resets the axes). Drive it by depending on the actual data, in one of two forms:
+
+- `hv.DynamicMap(pn.bind(self._render, self.param.x, self.param.y))` — bind to the params.
+- Decorate the render method with `@param.depends("x", "y")` (no `watch`) and pass the method itself: `hv.DynamicMap(self._render)`. Preferred when the data lives on `self` (e.g. a `DataFrame`), since nothing is passed as an argument for `DynamicMap` to hash.
 
 ```python
 import holoviews as hv
@@ -54,37 +94,46 @@ species_list = sorted(penguins["species"].unique())
 
 class Dashboard(pn.viewable.Viewer):
     species = param.ListSelector(default=species_list, objects=species_list)
-    _trigger = param.Integer(default=0)
 
     def __init__(self, **params):
         super().__init__(**params)
-        dmap = hv.DynamicMap(pn.bind(self._render_scatter, self.param._trigger))
+        # from_param widget AFTER super() (see panel/SKILL.md)
+        self._species_widget = pmui.CheckBoxGroup.from_param(self.param.species)
+        dmap = hv.DynamicMap(self._render_scatter)  # method carries its own @param.depends
         self._chart_pane = pn.pane.HoloViews(
-            dmap, sizing_mode="stretch_width", theme="light_minimal",
+            dmap, sizing_mode="stretch_both", theme="light_minimal",
         )
-        self._layout = pmui.Column(self._chart_pane)
 
     def _filtered(self):
         return penguins[penguins["species"].isin(self.species)]
 
-    def _render_scatter(self, trigger):
+    @param.depends("species")
+    def _render_scatter(self):
         df = self._filtered()
         if df.empty:
             return hv.Scatter([], kdims=["bill_length_mm"], vdims=["bill_depth_mm"]).opts(
-                responsive=True, height=300,
+                responsive=True,
             )
         return df.hvplot.scatter(
             x="bill_length_mm", y="bill_depth_mm", by="species",
-            responsive=True, height=300,
+            responsive=True,
+            title="Penguin bill dimensions by species",
+            xlabel="Bill length (mm)", ylabel="Bill depth (mm)",
         )
 
-    @param.depends("species", watch=True, on_init=True)
-    def _on_species_changed(self):
-        self._trigger += 1
-
     def __panel__(self):
-        return self._layout
+        if pn.state.served:
+            return pmui.Page(
+                title="Penguins",
+                sidebar=[self._species_widget],
+                main=[self._chart_pane],
+            )
+        return pmui.Column(self._species_widget, self._chart_pane)
 ```
+
+**Multiple plots: one source of truth.** When several plots read the same derived state, don't have each plot watch the raw widgets. Compute the state once into a single `param.DataFrame` via one pipeline watcher (`@param.depends(..., watch=True, on_init=True)`), batch that recompute with [`pn.io.hold()`](https://panel.holoviz.org/how_to/performance/hold.html) so it is one redraw, and have every `DynamicMap` `@param.depends` on that one param. That param changing is the single redraw signal for all of them. See [Designing Panel Architecture](designing-panel-architecture.md) for the full `DataStore` pattern.
+
+If what changed genuinely isn't a Parameter you can bind or depend on, a `param.Event` fired with `self.param.trigger("_trigger")` can serve as a manual redraw signal — but prefer making that state a Parameter.
 
 ### One Element Per DynamicMap
 
@@ -98,11 +147,12 @@ class Dashboard(pn.viewable.Viewer):
     ...
     def __init__(self, **params):
         super().__init__(**params)
-        scatter_dmap = hv.DynamicMap(pn.bind(self._render_scatter, self.param._trigger))
-        mean_dmap = hv.DynamicMap(pn.bind(self._render_mean_line, self.param._trigger))
+        scatter_dmap = hv.DynamicMap(self._render_scatter)
+        mean_dmap = hv.DynamicMap(self._render_mean_line)
         self._chart_pane = pn.pane.HoloViews(scatter_dmap * mean_dmap, sizing_mode="stretch_width")
 
-    def _render_scatter(self, trigger):
+    @param.depends("species")
+    def _render_scatter(self):
         df = self._filtered()
         if df.empty:
             return hv.Scatter([], kdims=["bill_length_mm"], vdims=["bill_depth_mm"]).opts(
@@ -113,7 +163,8 @@ class Dashboard(pn.viewable.Viewer):
             responsive=True, height=300,
         )
 
-    def _render_mean_line(self, trigger):
+    @param.depends("species")
+    def _render_mean_line(self):
         df = self._filtered()
         avg = df["bill_depth_mm"].mean() if not df.empty else 0
         return hv.HLine(avg).opts(color="orange", line_dash="dashed")
@@ -126,7 +177,7 @@ hvPlot internally sets `width=700`. This conflicts with `responsive=True` if app
 - **hvPlot**: pass `responsive=True` and `height=N` as **arguments to the hvplot call**, not via `.opts()`. hvPlot's default `width=700` persists through `.opts()` and can't be removed.
 - **Pure HoloViews**: `.opts(responsive=True, height=N)` is fine — HoloViews doesn't inject a default width.
 - Never set both `width` and `responsive=True` — `width` wins silently.
-- Set `sizing_mode="stretch_width"` on the `pn.pane.HoloViews`.
+- Set `sizing_mode="stretch_width"` on the `pn.pane.HoloViews`. To fill height as well (e.g. a chart that should occupy the whole page/`main` area), use `sizing_mode="stretch_both"` and omit `height` — the pane provides the vertical space and `responsive=True` fills it.
 - **Overlays**: all elements must have consistent sizing. If one element has `responsive=True` and another has hvPlot's default `width=700`, the overlay warns "responsive mode could not be enabled". Pass `responsive=True, height=N` to every hvPlot call in the overlay.
 - **Multi-chart layouts** (`plot_a + plot_b`): use `.opts(shared_axes=False)` on the Layout and `linked_axes=False` on `pn.pane.HoloViews` when charts have different axis types (e.g. time series + categorical bars).
 

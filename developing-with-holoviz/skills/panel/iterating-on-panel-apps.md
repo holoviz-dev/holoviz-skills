@@ -139,17 +139,7 @@ When you do capture multiple states, batch them into a single Playwright session
 
 ## Common Errors
 
-### on_init=True AttributeError
-
-```
-AttributeError: 'MyViewer' object has no attribute '_some_widget'
-```
-
-`@param.depends(..., on_init=True)` watchers fire during `super().__init__()`. Create any panes they reference *before* the `super().__init__(**params)` call.
-
-### Selector with default=None
-
-Radio widgets (`RadioBoxGroup`, `RadioButtonGroup`) visually highlight the first option even when `value=None`. Clicking that option doesn't fire a change event — users can't select the first option and `@param.depends` callbacks never trigger. Always set a real default value for radio widgets.
+Init-ordering failures (`on_init` `AttributeError`; the "widgets move but nothing updates" dead app) and per-component silent bugs (radio `default=None`, `Selector.objects`, date comparisons) are symptom-indexed in [Troubleshooting Panel Apps](troubleshooting.md). The error specific to *this* screenshot loop:
 
 ### Screenshot shows a loading spinner
 

@@ -5,9 +5,9 @@ Trend indicators for KPI cards, DynamicMap charts that preserve zoom/pan,
 Tabulator checkbox selection that cross-filters charts, and a responsive
 pmui.Grid layout. Modern pmui components: a pmui.Badge selection counter, a
 pmui.SpeedDial for quick actions (reset / reload), a pmui.Alert empty-state,
-and pmui.Tooltip KPI hints. Also demonstrates pn.indicators.Trend, the
-DynamicMap trigger pattern, Tabulator selection-driven filtering,
-param.DataFrame as the single source of truth, and the pmui.Page template.
+and pmui.Tooltip KPI hints. Also demonstrates pn.indicators.Trend,
+DynamicMaps that @param.depends on a param.DataFrame single source of
+truth, Tabulator selection-driven filtering, and the pmui.Page template.
 
 Run: panel serve examples/dashboard.py --dev --show
 """
@@ -135,12 +135,6 @@ class SalesDashboard(pn.viewable.Viewer):
         and Tabulator selection. KPIs, charts, and table all consume this."""
     )
 
-    _trigger = param.Integer(
-        default=0,
-        doc="""
-        Signal for DynamicMap — increment to refresh charts while preserving zoom.""",
-    )
-
     def __init__(self, df=None, **params):
         if df is None:
             df = generate_sales_data()
@@ -252,10 +246,10 @@ class SalesDashboard(pn.viewable.Viewer):
         self._table.add_filter(self._region_filter, "Region")
         self._table.add_filter(self._product_filter, "Product")
 
-        # DynamicMaps created after super — lazily render with current data,
-        # preserve zoom/pan on subsequent filter changes via _trigger.
-        curves_dmap = hv.DynamicMap(pn.bind(self._render_curves, self.param._trigger))
-        cumulative_dmap = hv.DynamicMap(pn.bind(self._render_cumulative, self.param._trigger))
+        # DynamicMaps created after super — each @param.depends on _filtered_df,
+        # so they patch data in place (preserving zoom/pan) whenever it changes.
+        curves_dmap = hv.DynamicMap(self._render_curves)
+        cumulative_dmap = hv.DynamicMap(self._render_cumulative)
         self._chart_pane = pn.pane.HoloViews(
             (curves_dmap + cumulative_dmap).opts(shared_axes=False),
             sizing_mode="stretch_width",
@@ -361,7 +355,8 @@ class SalesDashboard(pn.viewable.Viewer):
 
     # -- Chart rendering (DynamicMap callbacks) --
 
-    def _render_curves(self, trigger):
+    @param.depends("_filtered_df")
+    def _render_curves(self):
         """Return NdOverlay of weekly revenue curves by region."""
         df = self._filtered_df
         if df is None or df.empty:
@@ -393,11 +388,16 @@ class SalesDashboard(pn.viewable.Viewer):
         if not region_curves:
             region_curves["(none)"] = hv.Curve([], kdims=["date"], vdims=["revenue"])
 
+        # A single-entry legend adds no information (nothing to distinguish),
+        # and legend_position="top_left" otherwise crowds the title — move the
+        # legend outside the plot frame and hide it entirely when there's only
+        # one region to show.
         return (
             hv.NdOverlay(region_curves, kdims=["Region"])
             .opts(
                 "NdOverlay",
-                legend_position="top_left",
+                legend_position="right",
+                show_legend=len(region_curves) > 1,
                 title="Weekly Revenue by Region",
             )
             .opts(
@@ -420,7 +420,8 @@ class SalesDashboard(pn.viewable.Viewer):
             )
         )
 
-    def _render_cumulative(self, trigger):
+    @param.depends("_filtered_df")
+    def _render_cumulative(self):
         """Return cumulative total revenue curve."""
         df = self._filtered_df
         if df is None or df.empty:
@@ -474,19 +475,18 @@ class SalesDashboard(pn.viewable.Viewer):
 
     def _on_table_selection(self, event):
         """Re-render charts when table selection changes."""
-        sidebar_df = self._apply_sidebar_filters()
-        self._filtered_df = self._apply_table_selection(sidebar_df)
-        self._refresh_indicators()
-        self._trigger += 1
+        with pn.io.hold():
+            sidebar_df = self._apply_sidebar_filters()
+            self._filtered_df = self._apply_table_selection(sidebar_df)
+            self._refresh_indicators()
 
     def _update_all(self, *args):
-        sidebar_df = self._apply_sidebar_filters()
-        self._filtered_df = self._apply_table_selection(sidebar_df)
         with pn.io.hold():
+            sidebar_df = self._apply_sidebar_filters()
+            self._filtered_df = self._apply_table_selection(sidebar_df)
             self._update_kpis(self._filtered_df)
             self._update_table()
             self._refresh_indicators()
-            self._trigger += 1  # signal DynamicMaps to re-render
 
     def _update_kpis(self, df):
         if df is None or df.empty:
