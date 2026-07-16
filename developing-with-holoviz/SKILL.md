@@ -38,6 +38,7 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 | Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/designing-panel-architecture.md` |
 | Migrate an existing plain-Panel app to Material UI / pmui | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/migrating-to-material-ui.md` |
 | Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/troubleshooting.md` |
+| Show, plot, chart, or visualize something live in the browser with the panel-live-server `show`/`screenshot` MCP tools (when those tools are available) | `developing-with-holoviz/skills/panel-live-server/SKILL.md` |
 
 ## Skill Map
 
@@ -47,3 +48,4 @@ A single request often spans multiple skills. Read ALL that apply. The Panel ski
 | [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
 | [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections |
 | [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, templates, serving, performance, plotting gotchas. Carries 11 topic references (Material UI, custom components, plotting, Tabulator, Playwright testing, review, iterating, architecture, migration, converting designs, troubleshooting) — the Loading Table above routes to each; `panel/SKILL.md`'s References section is the full index. |
+| [panel-live-server](skills/panel-live-server/SKILL.md) | The `show`/`screenshot` MCP tools: inline vs server method, ending inline in an expression, extension declaration, screenshots for appearance questions, large/multidimensional data, snippet-level troubleshooting |

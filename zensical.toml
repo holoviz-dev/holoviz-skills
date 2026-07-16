@@ -23,6 +23,7 @@ nav = [
       { "Designing Panel Architecture" = "developing-with-holoviz/panel/designing-panel-architecture.md" },
       { "Migrating to Material UI" = "developing-with-holoviz/panel/migrating-to-material-ui.md" },
       { "Plotting in Panel" = "developing-with-holoviz/panel/plotting-in-panel.md" },
+      { "Troubleshooting Panel Apps" = "developing-with-holoviz/panel/troubleshooting.md" },
       { "Using Tabulator" = "developing-with-holoviz/panel/using-tabulator.md" },
       { "Examples" = [
         { "Dashboard" = "developing-with-holoviz/panel/dashboard.md" },
@@ -30,6 +31,7 @@ nav = [
       ] },
     ] },
     { "Using HoloViews" = "developing-with-holoviz/holoviews.md" },
+    { "Using Panel Live Server" = "developing-with-holoviz/panel-live-server.md" },
   ] },
   { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",
