@@ -221,7 +221,6 @@ Search each library's own docs, in the same order as
 | Datashader | `https://datashader.org/search.html?q=<topic>` |
 | GeoViews | `https://geoviews.org/search.html?q=<topic>` |
 
-For a specific Panel component, go straight to its reference page at
-`https://panel.holoviz.org/reference/{section}/{Component}.html`, where `section` is one of `panes`, `widgets`, `layouts`, `chat`, `global`, `indicators`, `templates`, `custom_components`.
+For a specific Panel component, go straight to its reference page at `https://panel.holoviz.org/reference/{section}/{Component}.html`, where `section` is one of `panes`, `widgets`, `layouts`, `chat`, `global`, `indicators`, `templates`, `custom_components`.
 
 Panel Live Server itself: `https://github.com/panel-extensions/panel-live-server`
