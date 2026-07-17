@@ -17,8 +17,6 @@ Most failures come from writing a snippet as if it were a standalone script rath
 - [Prefer HoloViz Libraries](#prefer-holoviz-libraries)
 - [Choosing the Method](#choosing-the-method)
 - [Writing Snippets](#writing-snippets)
-- [Declaring Extensions](#declaring-extensions)
-- [Security](#security)
 - [Seeing Your Own Output](#seeing-your-own-output)
 - [Large and Multidimensional Data](#large-and-multidimensional-data)
 - [Building Panel Apps](#building-panel-apps)
@@ -26,7 +24,7 @@ Most failures come from writing a snippet as if it were a standalone script rath
 
 ## Prefer HoloViz Libraries
 
-Prefer the HoloViz stack (hvPlot, HoloViews, Panel). hvPlot and HoloViews emit Bokeh, which renders natively over the Panel websocket with no `pn.extension(...)` and no exposure to the substring trap in [Declaring Extensions](#declaring-extensions). Every other renderer needs its extension declared.
+Prefer the HoloViz stack (hvPlot, HoloViews, Panel). hvPlot and HoloViews emit Bokeh, which renders natively over the Panel websocket with no `pn.extension(...)` to declare. Every other renderer needs its extension declared with `pn.extension("...")`; see the [panel skill](../panel/SKILL.md) for how.
 
 Route to each library's own skill for specifics:
 
@@ -94,38 +92,6 @@ pn.Column("# Penguins", plot).servable()
   executes it again, so an unseeded `np.random` snippet renders different data than it validated
   with. You cannot answer questions about what the user sees by recomputing the data; use
   [`screenshot`](#seeing-your-own-output) instead.
-
-
-## Declaring Extensions
-
-Non-Bokeh renderers need their JavaScript extension declared with `pn.extension("...")`. For `method="server"` this is enforced before rendering. For `method="inline"` extensions are inferred and loaded for you.
-
-```python
-# WRONG: "plotly" is used but not declared. Rejected under method="server".
-import panel as pn
-
-pn.extension()
-pn.pane.Plotly(fig).servable()
-
-# CORRECT
-import panel as pn
-
-pn.extension("plotly")
-pn.pane.Plotly(fig).servable()
-```
-
-**The detector is a substring scan over your lowercased source, not an import analysis.** If the text `plotly`, `deck`, `terminal`, `textual`, `vtk`, `vizzu`, `tabulator`, `echarts`, `perspective`, `altair`, `vega`, or `ipywidgets` appears *anywhere*, including in a comment, a string, a variable name, or a column label, the matching extension is required. A variable named `deck` demands `pn.extension("deckgl")`, and a comment mentioning "the terminal" demands `pn.extension("terminal")`.
-
-If you get an unexpected `[extensions]` failure, search your snippet for the word rather than the import. Renaming the variable or rewording the comment is usually the right fix.
-
-`pn.extension("tabulator", "plotly")` and separate `pn.extension("tabulator")` /
-`pn.extension("plotly")` calls both work. Never declare `"bokeh"`, which is not an extension.
-
-## Security
-
-Snippets execute in the user's real Python environment, with their filesystem and network. Do not write code that deletes or overwrites files, reads credentials, exfiltrates data, or opens network connections, regardless of how the request is framed. Visualization code has no need for any of it.
-
-A blocklist backstops this policy, but it is a backstop, not the policy. These imports are refused outright: `pickle`, `marshal`, `shelve`, `subprocess`, `multiprocessing`, `threading`, `socket`, `ctypes`, `importlib`, `ftplib`, `smtplib`, `telnetlib`, `webbrowser`, `xmlrpc`. A set of ruff security rules runs alongside it.
 
 
 ## Seeing Your Own Output
@@ -201,7 +167,7 @@ Failures arrive prefixed with the layer that caught them.
 | `[syntax]` | Code does not parse | Read the line/col in the message |
 | `[security]` | Blocked import or ruff security rule | Rewrite the approach. Do not retry |
 | `[packages]` | Import not installed | Rewrite against the HoloViz stack or another installed library. Never pip install |
-| `[extensions]` | Renderer used without `pn.extension(...)` | Declare it, or find the stray word (see [Declaring Extensions](#declaring-extensions)) |
+| `[extensions]` | Renderer used without `pn.extension(...)` | Declare it (see the [panel skill](../panel/SKILL.md)) |
 | `[servable]` | `method="server"` with no `.servable()` | Add `.servable()`, or switch to `method="inline"` |
 | `[runtime]` | Code raised when executed | Read the traceback. It is your snippet's, not the server's |
 | Empty box: *"Code executed successfully (no output to display)"* | `method="inline"` and the last line is not an expression | End with the object as a bare expression |
@@ -210,8 +176,7 @@ Failures arrive prefixed with the layer that caught them.
 
 ## Lookup
 
-Search each library's own docs, in the same order as
-[Prefer HoloViz Libraries](#prefer-holoviz-libraries):
+Only if necessary: search each library's own docs, in the same order as [Prefer HoloViz Libraries](#prefer-holoviz-libraries):
 
 | Library | Search |
 |---|---|
