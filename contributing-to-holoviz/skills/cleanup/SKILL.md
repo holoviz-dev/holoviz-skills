@@ -29,6 +29,7 @@ This skill covers code quality patterns and common pitfalls when reviewing or re
 - `@staticmethod` is fine when the method is part of the class's public interface or is only meaningful in the context of that class. Move to module level or a `utils` module only if it has clear reuse elsewhere.
 - Return or continue early to avoid deep nesting. Prefer comprehensions over loops that just build a list. Refactor code with more than three levels of nesting into helper functions.
 - Use consistent naming. If a class is `FollowUpSuggestion`, the variable should be `follow_up_suggestion`, not `followup_suggestion` or `follow_up_suggestions`.
+- Name constants (values fixed at definition) in `UPPER_SNAKE_CASE`, prefixing with `_` when private, e.g. `_STORY_TAB = 1` or `DEFAULT_LIMIT = 100`. Values that are reassigned or mutated at runtime stay `lower_snake_case`.
 - Sort `param` declarations alphabetically with a blank line between each.
 - Include `doc="""..."""` on every public param, starting on a new line.
 - Ensure comments are about *why* and *what must remain true*, not what the syntax does. Good comments explain intent, constraints, workarounds, performance rationale, or API quirks. Avoid restating obvious code or narrating line-by-line. Keep them concise; over-explaining is also a smell.
