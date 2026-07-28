@@ -2,16 +2,17 @@
 name: param
 description: Define Python classes with typed, validated, reactive parameters using Param. Use when building classes with constrained attributes, reactive dependencies between values, or dynamic option cascading. Load alongside the Panel skill for any Panel app using Parameterized classes.
 metadata:
-  version: "1.0.2"
+  version: "0.1.0"
   author: holoviz
 ---
 
-# Using Param
+# Param
 
 Correct patterns and common pitfalls for Param — the reactive parameter library that underpins Panel, HoloViews, and the HoloViz ecosystem.
 
 ## Contents
 
+- [Lookup](#lookup) — site search
 - [Parameterized Classes](#parameterized-classes)
 - [Reactive Dependencies (@param.depends)](#reactive-dependencies-paramdepends)
 - [Dependent Parameters](#dependent-parameters)
@@ -21,11 +22,18 @@ Correct patterns and common pitfalls for Param — the reactive parameter librar
 - [allow_refs](#allow_refs)
 - [Custom Parameter Types](#custom-parameter-types)
 
+## Lookup
+
+Web-search `https://param.holoviz.org/search.html?q=<topic>` for anything not covered below;
+the [Reactive Expressions guide](https://param.holoviz.org/user_guide/Reactive_Expressions.html)
+is the deepest reference for `rx`.
+
 ## Parameterized Classes
 
 - Add `# pyright: reportAssignmentType=false` at the top — Param's descriptors conflict with static type checkers.
 - Add type annotations (`target: str = param.String(...)`) for IDE autocomplete — Param doesn't enforce them at runtime.
 - **Never use `name` as a parameter** — reserved by Param for the instance name.
+- **Never name a param in UPPERCASE_SNAKE_CASE.** A param is reactive, settable, watchable instance state, so an all-caps name misreads as a frozen module constant — `self.MAX_ROWS = 50` looks illegal and isn't. It also leaks into UIs: Param's default label formatter only upper-cases the first character (`pname[:1].upper() + pname[1:]`) rather than title-casing, so `MAX_ROWS` becomes the shouty widget label "MAX ROWS" while `max_rows` becomes "Max rows". Use `lowercase_snake_case` for params and keep genuine constants at module level.
 - `self.param.param_key` is the Parameter object; `self.param_key` is the current value. Use `self.param.param_key` with `.from_param()` and pane constructors.
 
 ```python
@@ -98,7 +106,7 @@ class CountrySelector(param.Parameterized):
 - **Single source of truth**: For navigation buttons (back/next), have handlers modify one shared parameter (e.g., `active_step`), then watch that parameter once. All UI state derives from one place.
 - **Reassign, don't mutate**: In-place operations (`+=`, `list.append()`, `dict.update()`) don't trigger watchers. Always reassign: `self.x = self.x + 1`, `self.items = self.items + [new]`, `self.data = {**self.data, key: val}`.
 - `default_factory` for mutable/dynamic defaults — without it, all instances share the same object. Alternative: `instantiate=True`.
-- Param does **not** auto-coerce types (unlike Pydantic). `param.Integer(value="25")` raises `ValueError`.
+- Param does **not** auto-coerce types (unlike Pydantic). Assigning `obj.limit = "25"` to a `param.Integer` attribute raises `ValueError`.
 
 ```python
 import uuid
@@ -142,8 +150,8 @@ button = pn.widgets.Button(name=pn.bind(lambda x: f"Add {x}", select))
 
 ```python
 # Chain operations — indexing, slicing, methods all work
-menu = MenuList(active=(0,))
-step = menu.param.active.rx()[0]  # extract first element reactively
+select = pn.widgets.Select(options=["a", "b", "c"])
+step = select.param.value.rx()  # reactive ref to the selected value
 
 # Conditional with rx.where (replaces if/else lambdas)
 bar_color = toggle.param.value.rx.where("success", "warning")
@@ -168,13 +176,14 @@ class Wizard(pn.viewable.Viewer):
     active_step = param.Integer(default=0)
 
     def __init__(self, **params):
-        self._menu = MenuList(items=[...], active=(0,))
-        pn.bind(self._on_menu_select, self._menu.param.active, watch=True)
         super().__init__(**params)
+        self._menu = pn.widgets.RadioButtonGroup(options=["Step 1", "Step 2", "Step 3"])
+        pn.bind(self._on_menu_select, self._menu.param.value, watch=True)
 
-    def _on_menu_select(self, active):
-        if active and active[0] != self.active_step:
-            self.active_step = active[0]
+    def _on_menu_select(self, value):
+        new_step = self._menu.options.index(value)
+        if new_step != self.active_step:
+            self.active_step = new_step
 ```
 
 Avoid `allow_refs=True` with rx binding (`self.x = widget.param.value.rx()`) when you also need to directly assign to that parameter — the binding breaks on direct assignment.
@@ -208,9 +217,9 @@ class Wizard(param.Parameterized):
     active_step = param.Integer(default=0, allow_refs=True)
 
     def __init__(self, **params):
-        self._menu = MenuList(items=[...], active=(0,))
         super().__init__(**params)
-        self.active_step = self._menu.param.active.rx()[0]  # menu -> step sync
+        self._menu = pn.widgets.RadioButtonGroup(options=["Step 1", "Step 2", "Step 3"])
+        self.active_step = self._menu.param.value.rx.pipe(self._menu.options.index)  # menu -> step sync
 ```
 
 For inline reactive string formatting, prefer `.rx()` over a `pn.bind`/lambda callback — see [Reactive Expressions (rx)](#reactive-expressions-rx).

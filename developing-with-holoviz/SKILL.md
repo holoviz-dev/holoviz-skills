@@ -1,8 +1,9 @@
 ---
 name: developing-with-holoviz
 description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param), including Panel apps that embed Bokeh, Matplotlib, or Plotly figures. A named plotting library (e.g. bokeh) is not a reason to skip this skill.
+user-invocable: false
 metadata:
-  version: "0.1.5"
+  version: "0.1.0"
   author: holoviz
 ---
 
@@ -20,33 +21,36 @@ For new apps, prefer `panel-material-ui` over standard Panel templates — it pr
 
 ## Loading Table
 
-A single request often spans multiple skills. Read ALL that apply. The Panel skill has reference files under `developing-with-holoviz/skills/panel/` for specialized topics — read those too when relevant.
+A single request often spans multiple skills. Read ALL that apply. Paths below are relative to this file's directory (`developing-with-holoviz/`).
 
 | User Need | File(s) to read with `view` |
 |---|---|
-| Typed, validated, reactive parameters | `developing-with-holoviz/skills/param/SKILL.md` |
-| Quick exploratory plots from DataFrames / xarray | `developing-with-holoviz/skills/hvplot/SKILL.md` |
-| Compose a layered, faceted view to compare a metric across groups | `developing-with-holoviz/skills/hvplot/SKILL.md` + `developing-with-holoviz/skills/hvplot/composing-exploratory-plots.md` |
-| Make a chart explanatory for an audience (one message, presentation-ready) | `developing-with-holoviz/skills/hvplot/SKILL.md` + `developing-with-holoviz/skills/hvplot/distilling-explanatory-plots.md` |
-| Build a data story / graphic article (charts + narrative) | `developing-with-holoviz/skills/hvplot/distilling-explanatory-plots.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` + `developing-with-holoviz/skills/panel/data-storytelling.md` |
-| Dashboard, data app, or interactive tool | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` |
-| Convert a design / screenshot / React app into a Material UI (pmui) app | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-material-ui.md` + `developing-with-holoviz/skills/panel/converting-designs-to-material-ui.md` (+ `building-custom-components.md` for rich/clickable pieces) |
-| HoloViews elements, opts, tooltips, formatters, tools | `developing-with-holoviz/skills/holoviews/SKILL.md` |
-| Embedding plots in Panel (HoloViews/hvPlot, Matplotlib, Plotly, ECharts; DynamicMap, responsive sizing) | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/plotting-in-panel.md` + `developing-with-holoviz/skills/holoviews/SKILL.md` |
-| Display, filter, sort, or select rows in a data table | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/using-tabulator.md` |
-| Custom components — pure-Python (Viewer/PyComponent) or JS/React/AnyWidget | `developing-with-holoviz/skills/param/SKILL.md` + `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/building-custom-components.md` |
-| Playwright UI testing for Panel components | `developing-with-holoviz/skills/panel/building-custom-components.md` + `developing-with-holoviz/skills/panel/using-pytest-playwright.md` |
-| Review or audit a Panel app | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/reviewing-panel-apps.md` |
-| Serve, screenshot, and debug a Panel app in a dev loop | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/iterating-on-panel-apps.md` |
-| Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/designing-panel-architecture.md` |
-| Migrate an existing plain-Panel app to Material UI / pmui | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/migrating-to-material-ui.md` |
-| Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `developing-with-holoviz/skills/panel/SKILL.md` + `developing-with-holoviz/skills/panel/troubleshooting.md` |
+| Typed, validated, reactive parameters | `skills/param/SKILL.md` |
+| Quick exploratory plots from DataFrames / xarray | `skills/hvplot/SKILL.md` |
+| Compose a layered, faceted view to compare a metric across groups | `skills/hvplot/SKILL.md` + `skills/hvplot/composing-exploratory-plots.md` |
+| Make a chart explanatory for an audience (one message, presentation-ready) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` |
+| Build a data story / graphic article (charts + narrative) | `skills/hvplot/distilling-explanatory-plots.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/data-storytelling.md` |
+| Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` |
+| Convert a design / screenshot / React app into a Material UI (pmui) app | `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/converting-designs-to-material-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
+| HoloViews elements, opts, tooltips, formatters, tools | `skills/holoviews/SKILL.md` |
+| Remove chart junk / clean a plot — hide toolbar, disable wheel-zoom, one-axis gridlines, share axes, place legend | `skills/decluttering-plots/SKILL.md` |
+| Embedding plots in Panel (HoloViews/hvPlot, Matplotlib, Plotly, ECharts; DynamicMap, responsive sizing) | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/plotting-in-panel.md` + `skills/holoviews/SKILL.md` |
+| Stop repeating the same option on every component or chart — session defaults, `pn.config`, `hv.opts.defaults`, class param defaults | `skills/panel/SKILL.md` + `skills/holoviews/SKILL.md` |
+| Display, filter, sort, or select rows in a data table | `skills/panel/SKILL.md` + `skills/panel/using-tabulator.md` |
+| Custom components — pure-Python (Viewer/PyComponent) or JS/React/AnyWidget | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/building-custom-components.md` |
+| Playwright UI testing for Panel components | `skills/panel/building-custom-components.md` + `skills/panel/using-pytest-playwright.md` |
+| Review or audit a Panel app | `skills/panel/SKILL.md` + `skills/panel/reviewing-panel-apps.md` |
+| Serve, screenshot, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
+| Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
+| Migrate an existing plain-Panel app to Material UI / pmui | `skills/panel/SKILL.md` + `skills/panel/migrating-to-material-ui.md` |
+| Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting.md` |
 
 ## Skill Map
 
 | Sub-skill | Covers |
 |---|---|
 | [param](skills/param/SKILL.md) | `@param.depends`, `watch=True`, `.watch()`, parameter types, dependent parameters |
-| [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots. Carries Composing Exploratory Plots and Distilling Explanatory Plots references. |
-| [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections |
-| [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, templates, serving, performance, plotting gotchas. Carries 11 topic references (Material UI, custom components, plotting, data storytelling, Tabulator, Playwright testing, review, architecture, migration) — the Loading Table above routes to each; `panel/SKILL.md`'s References section is the full index. |
+| [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
+| [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, session defaults (`hv.opts.defaults`), hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections |
+| [decluttering-plots](skills/decluttering-plots/SKILL.md) | Strip Bokeh chart junk via `.opts()`: hide the toolbar, disable wheel-zoom (`default_tools`/`active_tools`), one-axis gridlines (`gridstyle`), hide/share axes, legend placement, nested categorical axes, and where to apply opts (element vs overlay/layout). |
+| [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, defaults, templates, serving, performance, plotting gotchas; 12 topic references indexed in its own References section |

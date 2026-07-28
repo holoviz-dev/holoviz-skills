@@ -10,13 +10,13 @@ nav = [
   { "Home" = "index.md" },
   { "Developing with HoloViz" = [
     "developing-with-holoviz/index.md",
-    { "Using Param" = "developing-with-holoviz/param.md" },
-    { "Using hvPlot" = [
+    { "Param" = "developing-with-holoviz/param.md" },
+    { "hvPlot" = [
       "developing-with-holoviz/hvplot/index.md",
       { "Composing Exploratory Plots" = "developing-with-holoviz/hvplot/composing-exploratory-plots.md" },
       { "Distilling Explanatory Plots" = "developing-with-holoviz/hvplot/distilling-explanatory-plots.md" },
     ] },
-    { "Using Panel" = [
+    { "Panel" = [
       "developing-with-holoviz/panel/index.md",
       { "Iterating on Panel Apps" = "developing-with-holoviz/panel/iterating-on-panel-apps.md" },
       { "Building Custom Components" = "developing-with-holoviz/panel/building-custom-components.md" },
@@ -28,6 +28,7 @@ nav = [
       { "Designing Panel Architecture" = "developing-with-holoviz/panel/designing-panel-architecture.md" },
       { "Migrating to Material UI" = "developing-with-holoviz/panel/migrating-to-material-ui.md" },
       { "Plotting in Panel" = "developing-with-holoviz/panel/plotting-in-panel.md" },
+      { "Troubleshooting Panel Apps" = "developing-with-holoviz/panel/troubleshooting.md" },
       { "Using Tabulator" = "developing-with-holoviz/panel/using-tabulator.md" },
       { "Examples" = [
         { "Dashboard" = "developing-with-holoviz/panel/dashboard.md" },
@@ -35,11 +36,12 @@ nav = [
         { "Wizard" = "developing-with-holoviz/panel/wizard.md" },
       ] },
     ] },
-    { "Using HoloViews" = "developing-with-holoviz/holoviews.md" },
+    { "HoloViews" = "developing-with-holoviz/holoviews.md" },
+    { "Decluttering Plots" = "developing-with-holoviz/decluttering-plots.md" },
   ] },
   { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",
-    { "Code Cleanup" = "contributing-to-holoviz/cleanup.md" },
+    { "Cleanup" = "contributing-to-holoviz/cleanup.md" },
     { "Documentation" = "contributing-to-holoviz/documentation.md" },
     { "Minimal Examples" = "contributing-to-holoviz/minimal-example.md" },
     { "PR Descriptions" = "contributing-to-holoviz/pr-description.md" },

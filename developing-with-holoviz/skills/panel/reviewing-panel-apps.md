@@ -1,6 +1,6 @@
 # Reviewing Panel Apps
 
-Checklist for reviewing Panel applications. Focus on anti-patterns that cause flickering, wasted redraws, or subtle bugs. For general code style (imports, naming, param ordering), see the [cleanup](../../../contributing-to-holoviz/skills/cleanup/SKILL.md) skill. For a complete example that applies all these patterns, see `examples/wizard.py`.
+Checklist for reviewing Panel applications. Focus on anti-patterns that cause flickering, wasted redraws, or subtle bugs. For general code style (imports, naming, param ordering), see also the [cleanup](../../../contributing-to-holoviz/skills/cleanup/SKILL.md) skill — note this reference is only available if the `contributing-to-holoviz` skill category is also installed alongside `developing-with-holoviz`, since the two ship as separate plugin artifacts. For a complete example that applies all these patterns, see `examples/wizard.py`.
 
 This checklist operationalizes Panel's official best-practices guides for review; consult them for upstream rationale and additional patterns (graceful exception handling, `obj.param.update`, `FlexBox` layouts): [Developer Experience](https://panel.holoviz.org/how_to/best_practices/dev_experience.html) and [User Experience](https://panel.holoviz.org/how_to/best_practices/user_experience.html).
 
@@ -63,30 +63,7 @@ def _update_details(self):
 
 ## Missing Hold on Multi-Property Updates
 
-When a watcher updates multiple widget properties, each assignment triggers a separate redraw. Wrap in `pn.io.hold()` to batch them into one.
-
-```python
-# WRONG — 6 separate redraws
-@param.depends("active_step", watch=True, on_init=True)
-def _update_view(self):
-    self._breadcrumbs.active = self.active_step
-    self._back_btn.visible = self.active_step > 0
-    self._next_btn.label = "Submit" if is_last else "Continue"
-    self._next_btn.disabled = not current_step.complete
-    self._content.update(current_step)
-    self._progress_bar.value = progress
-
-# CORRECT — one redraw
-@param.depends("active_step", watch=True, on_init=True)
-def _update_view(self):
-    with pn.io.hold():
-        self._breadcrumbs.active = self.active_step
-        self._back_btn.visible = self.active_step > 0
-        self._next_btn.label = "Submit" if is_last else "Continue"
-        self._next_btn.disabled = not current_step.complete
-        self._content.update(current_step)
-        self._progress_bar.value = progress
-```
+A watcher that assigns to 3+ widget properties without batching triggers a separate redraw per assignment. Wrap in `pn.io.hold()` — see [panel/SKILL.md](SKILL.md#performance) for the pattern.
 
 **What to look for**: any watcher that assigns to 3+ widget properties without `pn.io.hold()`. Two assignments are borderline; three or more should always be held.
 
@@ -123,7 +100,7 @@ pn.bind(self._on_menu_select, self._nav_menu.param.active, watch=True)
 
 ## from_param Widgets Created Before super()
 
-`.from_param()` works for every widget type (button groups included) *if* the widget is created after `super().__init__(**params)`; built before it, watchers silently never fire. It's the [Viewer ordering rule](SKILL.md#viewer-class-pattern), not a widget bug — a direct widget + manual watcher only masks it.
+`.from_param()` widgets created before `super().__init__(**params)` have watchers that silently never fire — see [panel/SKILL.md](SKILL.md#viewer-class-pattern) for the full ordering rule.
 
 **What to look for**: a `.from_param()` widget assigned *before* `super().__init__()` whose `@param.depends(..., watch=True)` "isn't firing" — move it below `super()`. Symptom, cause, and the WRONG/CORRECT fix: [Troubleshooting Panel Apps](troubleshooting.md#widgets-change-but-nothing-updates-init-ordering).
 

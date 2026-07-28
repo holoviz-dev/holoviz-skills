@@ -1,8 +1,7 @@
 # Composing Exploratory Plots
 
-Reach for this when one plot type isn't enough — you want a metric at several
-levels of detail and compared across groups. These are the composition decisions
-a single `.hvplot` call won't make for you.
+Composition decisions a single `.hvplot` call won't make for you: showing a metric at several
+levels of detail, compared across groups.
 
 ## Contents
 
@@ -16,10 +15,9 @@ a single `.hvplot` call won't make for you.
 
 ## Lay out for comparison
 
-Put small multiples in a row or grid with a shared axis so values compare at a
-glance; facet with `groupby=`, then `.layout().cols(n)` (or `.grid()`). Don't
-stack panels vertically or let each panel scale its own axis when the point is to
-compare — the reader can't eyeball differences across independent scales.
+Facet with `groupby=`, then `.layout().cols(n)` (or `.grid()`), so a shared axis lets values
+compare at a glance. Don't stack vertically or let panels scale independently — differences
+across independent scales can't be eyeballed.
 
 ## Layer marks at multiple resolutions
 
@@ -32,9 +30,8 @@ and rewards a closer look.
 
 Mute the context layers so the focus stands out: `box_fill_alpha=0`,
 `violin_fill_alpha=0`, one neutral/black color, `legend=False` on redundant
-layers, low `alpha` plus jitter on raw points. Keep one focus layer and one color
-encoding per figure; left alone a model stacks competing fills and legends. For
-the `.opts()` mechanics behind these, see the [HoloViews skill](../holoviews/SKILL.md).
+layers, low `alpha` plus jitter on raw points. One focus layer and one color
+encoding per figure; left alone a model stacks competing fills and legends.
 
 ## Compose only compatible elements
 
@@ -65,12 +62,10 @@ ls = hv.link_selections.instance()
 ls(scatter + hist + table)
 ```
 
-Don't add `box_select`/`lasso_select` tools yourself: `link_selections` adds
-them, and adding them manually breaks the linking. `box_select` scales to large
-data; `lasso_select` is finer but slower and needs `shapely` (`pyarrow` is
-required at runtime either way). This is interactive-only, so it belongs in
-exploration, not a static explanatory export. See the
-[HoloViews skill](../holoviews/SKILL.md) for the mechanics.
+Don't add `box_select`/`lasso_select` yourself — `link_selections` adds them, and adding them
+manually breaks the linking. `box_select` scales to large data; `lasso_select` is finer but
+slower and needs `shapely` (`pyarrow` is required either way). Interactive-only, so it belongs
+in exploration, not a static export. Mechanics: [HoloViews skill](../holoviews/SKILL.md).
 
 ## Example
 
@@ -82,6 +77,7 @@ import hvplot.pandas  # noqa
 import pandas as pd
 
 autompg = pd.read_csv("https://raw.githubusercontent.com/mwaskom/seaborn-data/master/mpg.csv")
+# no hvplot.sampledata entry for this dataset, hence the URL
 autompg["categories"] = pd.cut(
     autompg["mpg"], bins=[0, 10, 20, 30, 40],
     labels=["inefficient", "average", "efficient", "very efficient"], ordered=True,
@@ -95,7 +91,6 @@ box     = autompg.hvplot.box(y="mpg", by="origin", groupby="categories", width=2
 (violin * scatter * box).layout().cols(len(autompg["categories"].cat.categories))
 ```
 
-`groupby="categories"` becomes the facet dimension once `.layout()` turns the
-`HoloMap` into panels; the three marks share a single categorical `origin` x
-within each panel, and the box and jittered scatter recede so the violin reads
-first.
+`groupby="categories"` becomes the facet dimension once `.layout()` turns the `HoloMap` into
+panels; all three marks share one categorical `origin` x within each panel, and the muted box
+and scatter recede so the violin reads first.

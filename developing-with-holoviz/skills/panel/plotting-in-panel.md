@@ -8,6 +8,7 @@ Examples build on the penguins Dashboard from the Panel skill.
 
 - [HoloViews and hvPlot](#holoviews-and-hvplot)
   - [pn.pane.HoloViews Configuration](#pnpaneholoviews-configuration)
+  - [Live Updates: Bind the Render Function Directly (default)](#live-updates-bind-the-render-function-directly-default)
   - [DynamicMap Updates: Depend on the Data, Not a Trigger](#dynamicmap-updates-depend-on-the-data-not-a-trigger)
   - [One Element Per DynamicMap](#one-element-per-dynamicmap)
   - [Responsive Sizing](#responsive-sizing)
@@ -31,6 +32,7 @@ pn.pane.HoloViews(
 )
 ```
 
+- `responsive=True` and `height=N` go in the **hvPlot call**, never via `.opts()` and never via `hv.opts.defaults` — hvPlot writes its own `width=700` onto the element unless one of `responsive`/`aspect`/`frame_width`/`frame_height` is passed to the call, and that per-object value outranks any session default. See [Session Defaults](../holoviews/SKILL.md#session-defaults) for what *can* be defaulted.
 - `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`. (Inside a `pmui.Page`/`ThemeToggle`, plots auto-theme — see [Using Material UI](using-material-ui.md#chart-theming).)
 - `linked_axes=False` prevents axis linking when combining charts with different axis types in a Layout (`+`). Pair with `.opts(shared_axes=False)` on the Layout itself.
 - `sizing_mode="stretch_width"` is required for responsive HoloViews plots.
@@ -103,6 +105,12 @@ class Dashboard(pn.viewable.Viewer):
         self._chart_pane = pn.pane.HoloViews(
             dmap, sizing_mode="stretch_both", theme="light_minimal",
         )
+        # Build the Page once — __panel__ returns it unconditionally.
+        self._page = pmui.Page(
+            title="Penguins",
+            sidebar=[self._species_widget],
+            main=[self._chart_pane],
+        )
 
     def _filtered(self):
         return penguins[penguins["species"].isin(self.species)]
@@ -122,16 +130,10 @@ class Dashboard(pn.viewable.Viewer):
         )
 
     def __panel__(self):
-        if pn.state.served:
-            return pmui.Page(
-                title="Penguins",
-                sidebar=[self._species_widget],
-                main=[self._chart_pane],
-            )
-        return pmui.Column(self._species_widget, self._chart_pane)
+        return self._page
 ```
 
-**Multiple plots: one source of truth.** When several plots read the same derived state, don't have each plot watch the raw widgets. Compute the state once into a single `param.DataFrame` via one pipeline watcher (`@param.depends(..., watch=True, on_init=True)`), batch that recompute with [`pn.io.hold()`](https://panel.holoviz.org/how_to/performance/hold.html) so it is one redraw, and have every `DynamicMap` `@param.depends` on that one param. That param changing is the single redraw signal for all of them. See [Designing Panel Architecture](designing-panel-architecture.md) for the full `DataStore` pattern.
+**Multiple plots: one source of truth.** When several plots read the same derived state, don't have each plot watch the raw widgets. Compute the state once into a single `param.DataFrame` via one pipeline watcher (`@param.depends(..., watch=True, on_init=True)`), batch that recompute with `pn.io.hold()` (see [panel/SKILL.md](SKILL.md#performance)) so it is one redraw, and have every `DynamicMap` `@param.depends` on that one param. That param changing is the single redraw signal for all of them. See [Designing Panel Architecture](designing-panel-architecture.md) for the full `DataStore` pattern.
 
 If what changed genuinely isn't a Parameter you can bind or depend on, a `param.Event` fired with `self.param.trigger("_trigger")` can serve as a manual redraw signal — but prefer making that state a Parameter.
 
@@ -251,8 +253,4 @@ chart_pane = pn.pane.ECharts(
 
 ## Bokeh Toolbar Tools
 
-For Bokeh-backed plots (including HoloViews/hvPlot output):
-
-- `default_tools=["reset"]` strips all default Bokeh toolbar tools except reset; add specific tools via `tools=["hover", "xwheel_zoom"]`.
-- `active_tools=["xwheel_zoom"]` sets which tools are active by default.
-- For cumulative/monotonic curves, `hover_mode="vline"` gives a better tooltip experience.
+For stripping/configuring the Bokeh toolbar on Bokeh-backed plots (including HoloViews/hvPlot output) — `default_tools`, `active_tools`, `toolbar=None`, gridlines, shared/hidden axes — see [Decluttering Plots](../decluttering-plots/SKILL.md). One Panel-specific note: for cumulative/monotonic curves, `hover_mode="vline"` gives a better tooltip experience.

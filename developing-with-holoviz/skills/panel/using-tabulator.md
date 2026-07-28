@@ -107,3 +107,10 @@ self._table = pn.widgets.Tabulator(
 
 - The function is called lazily when the user expands a row (clicks the `+` icon).
 - Set `embed_content=True` to pre-render all row content on load instead of lazily — useful when there are few rows and you want instant expansion, but expensive with many rows.
+- **Carry extra data in a hidden column rather than a closure.** `row_content` receives the row from the table's own `value`, and `hidden_columns` only hides a column in the frontend — the data is still on the row. So a detail column (long text, generated code) can travel in the frame and be read as `row["Code"]`, which keeps `row_content` a plain module-level function instead of a closure over a lookup dict:
+
+  ```python
+  pn.widgets.Tabulator(df, row_content=row_detail, hidden_columns=["Code"])
+  ```
+
+  The tradeoff: hidden columns are still serialized to the browser on load, whereas a closure keeps the data server-side and `row_content` only renders on expand. Fine for tens of rows; reach for `functools.partial(row_detail, lookup)` instead when the payload is large.

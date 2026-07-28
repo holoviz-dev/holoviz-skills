@@ -1,12 +1,12 @@
 ---
 name: hvplot
-description: Plot DataFrames and datasets using a Pandas .plot()-like API for Pandas, Polars, Xarray, DuckDB, Dask, and GeoPandas. Use when the user asks to visualize, plot, or chart tabular or multidimensional data. Do not use for pie charts or 3D viz, or for element composition, streams, or custom Bokeh tools/tooltips (use HoloViews).
+description: Plot DataFrames and datasets using a Pandas .plot()-like API for Pandas, Polars, Xarray, DuckDB, Dask, and GeoPandas. Use when the user asks to visualize, plot, or chart tabular or multidimensional data. Do not use for element composition, streams, or custom Bokeh tools/tooltips (use HoloViews).
 metadata:
-  version: "0.0.4"
+  version: "0.1.0"
   author: holoviz
 ---
 
-# Using hvPlot
+# hvPlot
 
 This skill provides correct patterns and common pitfalls for hvPlot to visualize data interactively.
 
@@ -15,6 +15,7 @@ Before plotting, consider: what story does the data tell? What comparison matter
 ## Contents
 
 - [References](#references) — composing exploratory and distilling explanatory plots
+- [Lookup](#lookup) — plotting-options reference and site search
 - [Dependencies](#dependencies)
 - [Serving and Iterating](#serving-and-iterating)
 - [Plot Labels](#plot-labels)
@@ -34,6 +35,11 @@ Read these for specialized topics. Each is a standalone document you can load wi
 
 - [Composing Exploratory Plots](composing-exploratory-plots.md) — layered marks (violin/box/scatter), shared-axis layout for comparison, overlay discipline, faceting around the nested-categorical-axis limit, ordered categoricals, cross-filtering with linked selections
 - [Distilling Explanatory Plots](distilling-explanatory-plots.md) — one-message charts for an audience: takeaway title, gray context + one highlight, direct inline labels, in-place annotation, killing chart junk, assuming no interaction
+
+## Lookup
+
+- Plotting options by group (axes, geographic, styling, resampling): `https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/{group}.html`
+- Anything else: web-search `https://hvplot.holoviz.org/search.html?q=<topic>`.
 
 ## Dependencies
 
@@ -96,7 +102,7 @@ earthquakes.hvplot.points(
 ## Geographic Plots
 
 - `geo=True` enables geographic (web-mercator) projection and tile basemaps. Requires `geoviews` to be installed.
-- `tiles=` accepts these built-in strings: `"CartoDark"`, `"CartoLight"`, `"CartoMidnight"`, `"OSM"`, `"EsriImagery"`, `"EsriTerrain"` or ``xyzservices.TileProvider`` instances **Do not use `"CartoDB.DarkMatter"`, `"CartoDB Dark_Matter"`.** See https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/geographic.html#tiles
+- `tiles=` accepts these built-in strings: `"CartoDark"`, `"CartoLight"`, `"OSM"`, `"EsriImagery"`, `"EsriTerrain"` or ``xyzservices.TileProvider`` instances **Do not use `"CartoDB.DarkMatter"`, `"CartoDB Dark_Matter"`.** See https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/geographic.html#tiles
 - Do not convert to a GeoDataFrame or reproject to EPSG:3857 manually. Pass `geo=True` and hvplot handles projection.
 
 ```python
@@ -184,10 +190,10 @@ earthquakes.hvplot.points(
 - Sort values so the largest is at top (or bottom) for easy comparison.
 - For `barh`, `.set_index("category")` before plotting. Without this, `sort_values()` leaves a numeric index that renders as NaN on the y-axis.
 - Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
-- Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, `show_frame=False`.
+- Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, and `show_frame=False` via `.opts()` (it's a HoloViews plot option, not a bare hvPlot kwarg).
 - Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely. Pass `responsive=True` and `hover=False` on both plot and labels calls. Inside bars: `y="pos"` where `pos = value * 0.98`, `text_align="right"`, `text_color="white"`. Outside bars: `pos = value + offset`, `text_align="left"`, `text_color="black"`. For stacked bars + labels, the labels DataFrame must include stacked columns via `hover_cols`.
 - `backend_opts` accesses Bokeh model properties (e.g. `"outline_line_alpha": 0`). `.opts()` accesses HoloViews plot options (e.g. `show_frame=False`).
-- Prefer hvPlot kwargs over `.opts()` — they take precedence. Pass `responsive=True` in the hvPlot call, not via `.opts()`, which can conflict with default dimensions.
+- Prefer hvPlot kwargs over `.opts()` for `responsive`/sizing — hvPlot writes its own `width=700` onto the element that `.opts(responsive=True)` cannot remove. See [Plotting in Panel](../panel/plotting-in-panel.md#responsive-sizing) for the full explanation.
 - Use `NumeralTickFormatter(format='0a')` for large-number axes via `xformatter=`/`yformatter=`.
 - Use `fontscale=` for readability.
 - This example is heavily stylized to illustrate what's possible; use discretion.
@@ -228,9 +234,10 @@ barh * labels
 
 ## Interaction
 
-- Hide the toolbar for polished output: `backend_opts={"plot.toolbar.autohide": True}` (shows on hover) or `.opts(toolbar=None)` (removes entirely). Hide on secondary panels in a layout (e.g. the bottom chart) and keep on the main chart.
+For the full guidance on stripping toolbar/tool chart junk (`toolbar=None`, `default_tools=[]`, `active_tools=[]`), see [Decluttering Plots](../decluttering-plots/SKILL.md). A supplementary/alternative option for polished output without fully removing the toolbar: `backend_opts={"plot.toolbar.autohide": True}` (hides it until hover).
+
 - For timeseries, use `hover_mode='vline'` to snap the crosshair to the nearest x-value — much easier to read than the default point hover.
-- Configure wheel zoom axis: `tools=['xwheel_zoom']` for timeseries (zoom x only), `tools=['ywheel_zoom']` for vertical, or default `'wheel_zoom'` for both. Replace the active tool with `active_scroll=`.
+- Configure wheel zoom axis: `tools=['xwheel_zoom']` for timeseries (zoom x only), `tools=['ywheel_zoom']` for vertical, or default `'wheel_zoom'` for both. Set the active tool with `active_tools=['xwheel_zoom']` (a list).
 
 ```python
 # Timeseries with vline crosshair, x-only zoom, toolbar hidden

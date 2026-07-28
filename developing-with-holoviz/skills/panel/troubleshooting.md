@@ -8,11 +8,11 @@ Symptom-indexed fixes for Panel/pmui apps that serve but misbehave *silently*. L
 - [AttributeError during init (on_init ordering)](#attributeerror-during-init-on_init-ordering)
 - [First radio option can't be selected](#first-radio-option-cant-be-selected)
 - [Select renders blank after setting .objects](#select-renders-blank-after-setting-objects)
-- [Date filter returns nothing / type error](#date-filter-returns-nothing--type-error)
+- [Date filter returns nothing / type error](#date-filter-returns-nothing-type-error)
 - [Markdown header flickers on hover](#markdown-header-flickers-on-hover)
-- [Component rebuilds / flickers on every change](#component-rebuilds--flickers-on-every-change)
+- [Component rebuilds / flickers on every change](#component-rebuilds-flickers-on-every-change)
 - [pmui.Page renders blank (no header/sidebar)](#pmuipage-renders-blank-no-headersidebar)
-- ["responsive mode could not be enabled" / won't resize](#responsive-mode-could-not-be-enabled--wont-resize)
+- ["responsive mode could not be enabled" / won't resize](#responsive-mode-could-not-be-enabled-wont-resize)
 - [Screenshot shows a loading spinner](#screenshot-shows-a-loading-spinner)
 - [Behavior or deprecation differs across versions](#behavior-or-deprecation-differs-across-versions)
 
@@ -59,7 +59,7 @@ A `@param.depends` method (no `watch=True`) returns a *new* layout/widget each c
 
 ## pmui.Page renders blank (no header/sidebar)
 
-`__panel__` returns the `Page` only under `if pn.state.served:`, and that guard is `False` when `__panel__` runs — so you fall through to the bare layout. Fix: for an always-served app, build the `Page` once in `__init__` and return it unconditionally ([Page rules](using-material-ui.md#page)).
+Gating `__panel__`'s `Page` return on `if pn.state.served:` is a bug — that guard is `False` when `__panel__` runs, so you fall through to the bare fallback layout. Fix: build the `Page` once in `__init__` (e.g. `self._page = pmui.Page(...)`) and return it unconditionally from `__panel__` (`return self._page`) ([Page rules](using-material-ui.md#page)).
 
 ## "responsive mode could not be enabled" / won't resize
 

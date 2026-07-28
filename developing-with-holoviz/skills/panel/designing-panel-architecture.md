@@ -95,14 +95,16 @@ class App(pn.viewable.Viewer):
     data_store = param.ClassSelector(class_=DataStore)
     views = param.List()
 
-    def __panel__(self):
+    def __init__(self, **params):
+        super().__init__(**params)
         main = pn.Column(*(view(data_store=self.data_store) for view in self.views))
-        if pn.state.served:
-            page = pmui.Page(title=self.title)
-            page.sidebar.append(self.data_store.filters)
-            page.main.append(main)
-            return page
-        return pn.Row(self.data_store.filters, main)
+        # Build the Page once — __panel__ returns it unconditionally.
+        self._page = pmui.Page(title=self.title)
+        self._page.sidebar.append(self.data_store.filters)
+        self._page.main.append(main)
+
+    def __panel__(self):
+        return self._page
 
 # Wire it up
 df = make_data()
@@ -143,7 +145,7 @@ def from_data(cls, df):
 Two ways to expose derived data from a `DataStore`:
 
 - **Method + `@param.depends`** (above) — recomputed each time a consumer calls it. Simple; fine when one or two views read it.
-- **Stored `param.DataFrame`** — when *many* components read the same derived frame, compute it once into a param with a `watch=True, on_init=True` watcher and have views depend on that param. Avoids recomputing the filter for every consumer.
+- **Stored `param.DataFrame`** — when *many* components read the same derived frame, compute it once into a param with a `watch=True, on_init=True` watcher and have views depend on that param. Avoids recomputing the filter for every consumer. **Note:** this refactors `filtered` from a *method* into a *parameter* — every consumer that called `self.data_store.filtered()` (or passed the bound method, as `Table.__panel__` does above) must switch to reading `self.data_store.filtered` (the attribute, no call) or binding to `self.data_store.param.filtered`:
 
 ```python
 class DataStore(param.Parameterized):
@@ -156,24 +158,25 @@ class DataStore(param.Parameterized):
     def _update_filtered(self):
         ...
         self.filtered = self.data.loc[mask]
+
+# Table.__panel__ updates accordingly — bind to the param, not a method call:
+class Table(View):
+    def __panel__(self):
+        return pn.widgets.Tabulator(
+            self.data_store.param.filtered, pagination="remote", page_size=12,
+            sizing_mode="stretch_width",
+        )
 ```
 
 ## Reactive Expressions (`pn.rx`)
 
-For declarative *data pipelines* — as opposed to `pn.bind`, which wires inputs to a function — `pn.rx` wraps a value (often a DataFrame) so ordinary operations build a reactive expression. Widgets become reactive refs via `widget.rx()`. Full guide: Param's [Reactive Expressions](https://param.holoviz.org/user_guide/Reactive_Expressions.html); the idioms below are the ones agents miss:
+For declarative *data pipelines* — as opposed to `pn.bind`, which wires inputs to a function — `pn.rx` wraps a value (often a DataFrame) so ordinary operations build a reactive expression. Widgets become reactive refs via `widget.rx()`. For the full `rx` API (`.rx.pipe`, `.rx.where`, `.rx.len()`, gotchas), see [Reactive Expressions (rx)](../param/SKILL.md#reactive-expressions-rx). The Panel-specific pattern — building a Tabulator/pane directly from a chained `pn.rx` pipeline over widget refs — is the idiom to reach for here:
 
 ```python
 rxdf = pn.rx(turbines)
 view = rxdf[rxdf.p_year.between(*year.rx()) & rxdf.p_cap.between(*capacity.rx())][cols]
 pn.widgets.Tabulator(view, pagination="remote", page_size=5)
 ```
-
-Useful `.rx` methods (call a plain function or builtin reactively without unwrapping):
-
-- `expr.rx.pipe(fn)` — apply an arbitrary function: `df.t_manu.unique().rx.pipe(list)`.
-- `expr.rx.where(a, b)` — reactive ternary.
-- `expr.rx.len()` — reactive `len()`.
-- `pn.rx("# Hello {}").format(widget.param.value)` — reactive string formatting.
 
 Reach for `pn.rx` when the transform reads naturally as an expression; reach for `pn.bind`/`@param.depends` when it's a function or method.
 
@@ -182,15 +185,19 @@ Reach for `pn.rx` when the transform reads naturally as an expression; reach for
 Mark a derived parameter `constant=True` so external code can't write it, then update it only inside `param.edit_constant`:
 
 ```python
+import operator
+
 class Calculator(param.Parameterized):
     left = param.Number(default=1)
+    right = param.Number(default=1)
     op = param.Selector(default="+", objects=["+", "-", "*", "/"])
     result = param.Number(default=0, constant=True)     # read-only to the outside
 
-    @param.depends("left", "op", watch=True, on_init=True)
+    @param.depends("left", "right", "op", watch=True, on_init=True)
     def _calculate(self):
+        ops = {"+": operator.add, "-": operator.sub, "*": operator.mul, "/": operator.truediv}
         with param.edit_constant(self):
-            self.result = ...
+            self.result = ops[self.op](self.left, self.right)
 ```
 
 ## Wiring Shortcuts
@@ -278,14 +285,7 @@ Profile a callback with `@pn.io.profile("name", engine=...)` (engines: `pyinstru
 
 ## Batching, Loading, and Memory
 
-- **Batch updates:** wrap multiple component assignments in `pn.io.hold()` so they trigger a single redraw instead of one per assignment.
-
-  ```python
-  with pn.io.hold():
-      self.chart = new_chart
-      self.table = new_table
-      self.summary = new_summary
-  ```
+- **Batch updates:** wrap multiple component assignments in `pn.io.hold()` so they trigger a single redraw instead of one per assignment — see [panel/SKILL.md](SKILL.md#performance).
 
 - **Defer heavy components:** `pn.extension(defer_load=True, loading_indicator=True)` renders the page first and loads slow panes afterward with a spinner.
 - **Loading spinner:** wrap a slow update in the component's `loading` flag — `with self._main.param.update(loading=True): ...` sets it on enter and reverts on exit. **Caveat:** a synchronous callback won't flush the spinner until it returns; make the slow work `async` if you need it visible *during* the load.

@@ -2,13 +2,18 @@
 name: cleanup
 description: Code cleanup and refactoring guidelines for HoloViz packages. Use when reviewing PRs, refactoring code, or checking adherence to code quality standards in any HoloViz repository.
 metadata:
-  version: "0.0.3"
+  version: "0.1.0"
   author: holoviz
 ---
 
-# Code Cleanup
+# Cleanup
 
 This skill covers code quality patterns and common pitfalls when reviewing or refactoring HoloViz code.
+
+## Contents
+
+- [Review](#review)
+- [Code Style](#code-style)
 
 ## Review
 

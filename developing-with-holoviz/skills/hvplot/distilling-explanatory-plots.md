@@ -1,10 +1,8 @@
 # Distilling Explanatory Plots
 
-An explanatory plot is for an audience, not for you: it makes one point and
-strips away everything that doesn't serve it. This is the opposite of
-[Composing Exploratory Plots](composing-exploratory-plots.md), which shows
-everything and invites interaction. These are the moves a model skips when it
-defaults to a generic chart.
+An explanatory plot is for an audience: it makes one point and strips away everything that
+doesn't serve it — the opposite of [Composing Exploratory Plots](composing-exploratory-plots.md),
+which shows everything and invites interaction.
 
 ## Contents
 
@@ -24,17 +22,15 @@ The title is the finding, not the variable: `"Skills cut output tokens 38%"`, no
 
 ## Subtract to one message
 
-Keep the single mark that makes the point and drop the rest. Where the
-exploratory view layered violin, box, and scatter across facets, the explanatory
-version is usually one series or one comparison. Pick the encoding that makes
-that comparison trivial: sorted bars for a ranking, a line for a trend, a slope
-or dumbbell for before/after.
+Keep the single mark that makes the point and drop the rest — where the exploratory view
+layered violin, box, and scatter across facets, the explanatory version is usually one series
+or one comparison. Pick the encoding that makes it trivial: sorted bars for a ranking, a line
+for a trend, a slope or dumbbell for before/after.
 
 ## Direct labels, not a legend
 
-Label the series on the mark itself with `hv.Text` at the line end (or
-`hv.Labels`) and set `show_legend=False`. The label sits on the thing it names,
-so the reader's eye never leaves the data to decode a color key.
+Label the series on the mark itself with `hv.Text` at the line end (or `hv.Labels`) and set
+`show_legend=False`, so the eye never leaves the data to decode a color key.
 
 ## Gray context, one highlight
 
@@ -43,10 +39,9 @@ carries the message. One focus, one color encoding per figure.
 
 ## Annotate in the static view
 
-Mark the point with `hv.Text`, `hv.VLine`/`hv.HLine`, or an arrow — the event,
-the threshold, the delta. Assume no interaction: readers won't hover or click, so
-the default static view must carry the whole message. Set `toolbar=None` (or
-`disabled_tools`) rather than relying on hover tooltips.
+Mark the point with `hv.Text`, `hv.VLine`/`hv.HLine`, or an arrow — the event, the threshold,
+the delta. Assume no interaction: readers won't hover, so the static view must carry the whole
+message. Set `toolbar=None`, or control which tools appear via `default_tools=[]` / `tools=[]`, rather than relying on hover tooltips — see [Decluttering Plots](../decluttering-plots/SKILL.md) for the full toolbar/tools guidance.
 
 ## Kill chart junk
 

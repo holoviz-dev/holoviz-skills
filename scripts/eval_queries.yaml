@@ -1,5 +1,18 @@
 # Evaluation queries for testing HoloViz skills
 # Each query tests whether SKILL.md files improve Copilot's responses
+#
+# Coverage note: only the hvplot skill has queries below. The other skills in
+# this repo (routing skills, param, panel + references, holoviews,
+# decluttering-plots, cleanup, documentation, minimal-example, pr-description,
+# testing, creating-custom-holoviz-skills) have no eval coverage yet.
+#
+# NOTE: `expected_output` and `category` fields below are NOT read or
+# enforced by scripts/eval.py (see load_queries/run_generation, which only use
+# `id`, `prompt`, and `timeout`). They are documentation-only / reserved for
+# future use. `expected_output: static_plot` is the only value that lines up
+# with what `execute_generated.py` can actually save today (HoloViews
+# `Dimensioned` or Bokeh `Model` objects); a `panel_app` value would not be
+# executed by anything currently.
 
 queries:
   - id: hvplot_interactive_scatter

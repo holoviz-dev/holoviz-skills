@@ -2,6 +2,15 @@
 
 Automated system to measure whether SKILL.md files improve Copilot's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces a comparison report.
 
+## Coverage
+
+`scripts/eval_queries.yaml` currently defines only 2 queries (`hvplot_earthquake_plot`,
+`hvplot_interactive_scatter`), both testing the `hvplot` skill. None of the other 12
+skills (both routing skills, `param`, `panel` and its references, `holoviews`,
+`decluttering-plots`, `cleanup`, `documentation`, `minimal-example`, `pr-description`,
+`testing`, `creating-custom-holoviz-skills`) have any eval coverage yet. Contributions
+adding queries for other skills are welcome — see "Adding Queries" below.
+
 ## Requirements
 
 - A GitHub Copilot subscription (Individual, Business, or Enterprise) or access via the GitHub Copilot API
@@ -69,7 +78,7 @@ Options:
 
 ```bash
 # Full pipeline, specific queries only
-python scripts/eval.py --queries earthquake_plot
+python scripts/eval.py --queries hvplot_earthquake_plot
 
 # With-skills condition only (skip Copilot without-skills run)
 python scripts/eval.py --skills with
@@ -122,7 +131,7 @@ queries:
   - id: my_new_query
     prompt: |
       Your prompt here...
-    expected_output: static_plot   # or panel_app
+    expected_output: static_plot
     timeout: 30
     category: hvplot_basics
 ```
@@ -130,9 +139,15 @@ queries:
 Fields:
 - `id` — unique slug (lowercase, underscores or hyphens)
 - `prompt` — the question/task sent to Copilot
-- `expected_output` — `static_plot` or `panel_app`
 - `timeout` — per-query Copilot timeout in seconds
-- `category` — optional grouping tag
+- `expected_output` — **not currently read or enforced by `eval.py`**; only
+  `static_plot` outputs are actually supported by `execute_generated.py` (it
+  can save HoloViews `Dimensioned` objects and Bokeh `Model` objects to
+  `plot_output.html`). A `panel_app` value has no execution path today (no
+  `servable()`/Panel-app handling exists) and will not do anything if used.
+  This field exists for human documentation / future use only.
+- `category` — optional grouping tag, also **not currently read or used** by
+  `eval.py`. Documentation only, for future use.
 
 ## Troubleshooting
 

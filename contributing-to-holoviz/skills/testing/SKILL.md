@@ -2,13 +2,18 @@
 name: testing
 description: Testing guidelines for HoloViz packages. Use when writing tests, reviewing test coverage in PRs, or identifying missing edge cases in any HoloViz repository.
 metadata:
-  version: "0.0.2"
+  version: "0.1.0"
   author: holoviz
 ---
 
 # Testing
 
 This skill covers testing patterns and edge cases specific to HoloViz repositories.
+
+## Contents
+
+- [General Guidelines](#general-guidelines)
+- [Edge Cases and Logical Errors](#edge-cases-and-logical-errors)
 
 ## General Guidelines
 
