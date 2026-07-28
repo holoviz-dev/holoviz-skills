@@ -33,7 +33,8 @@ docs/developing-with-holoviz/
 docs/contributing-to-holoviz/
 docs/creating-custom-holoviz-skills.md
 
-# Staged skills (generated at build time by scripts/build_stubs.py)
+# Staged skills — copied in at build time by hatch's force-include
+# (see [tool.hatch.build.targets.*.force-include] in pyproject.toml).
 holoviz_skills/skills/
 
 # Version file (generated at build time by hatch-vcs)

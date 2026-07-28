@@ -29,7 +29,7 @@ This skill covers testing patterns and edge cases specific to HoloViz repositori
 - Test for NaN and datetime types (np, pd) — these are common edge cases across HoloViz that are easy to miss.
 - Also probe (where the logic branches on them): empty/single-element inputs, duplicate/colliding labels, negative/reversed values, unsorted input.
 - Parameterize tests when the same logic is exercised with different inputs.
-- Name tests for intent; skip comments that just restate what the test does.
+- Name tests for intent. Put what the test covers and why — including any issue link — in the function **docstring**, not a leading `#` comment: the docstring travels with the test in `pytest -v` output. Reserve `#` for a genuinely non-obvious step in the body, and skip comments that just restate what the test does.
 
 ```python
 # WRONG — only tests the happy path

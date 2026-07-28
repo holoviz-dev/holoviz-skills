@@ -25,7 +25,7 @@ This is a **routing skill**. You MUST use the `view` tool to read every sub-skil
 
 ## Loading Table
 
-A single request often spans multiple skills. Read ALL that apply.
+A single request often spans multiple skills. Read ALL that apply. Paths below are relative to this file's directory (`contributing-to-holoviz/`).
 
 | User Need | Sub-skill file(s) to read with `view` |
 |---|---|

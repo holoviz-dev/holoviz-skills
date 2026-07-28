@@ -2,8 +2,8 @@
 # Each query tests whether SKILL.md files improve Copilot's responses
 #
 # Coverage note: only the hvplot skill has queries below. The other skills in
-# this repo (routing skills, param, panel + references, holoviews,
-# decluttering-plots, cleanup, documentation, minimal-example, pr-description,
+# this repo (routing skills, param, panel + references, holoviews + references,
+# cleanup, documentation, minimal-example, pr-description,
 # testing, creating-custom-holoviz-skills) have no eval coverage yet.
 #
 # NOTE: `expected_output` and `category` fields below are NOT read or

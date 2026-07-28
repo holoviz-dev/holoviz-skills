@@ -101,8 +101,13 @@ earthquakes.hvplot.points(
 
 ## Geographic Plots
 
-- `geo=True` enables geographic (web-mercator) projection and tile basemaps. Requires `geoviews` to be installed.
-- `tiles=` accepts these built-in strings: `"CartoDark"`, `"CartoLight"`, `"OSM"`, `"EsriImagery"`, `"EsriTerrain"` or ``xyzservices.TileProvider`` instances **Do not use `"CartoDB.DarkMatter"`, `"CartoDB Dark_Matter"`.** See https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/geographic.html#tiles
+- `geo=True` enables geographic (web-mercator) projection. It **requires `geoviews`**, and so does `coastline=True` — both raise `ModuleNotFoundError: The 'geoviews' package must be installed in order to use geographic features`. `tiles=` alone does **not** need geoviews, so reach for `tiles=` when you just want a basemap under lon/lat data.
+- `tiles=` accepts `True`, an `xyzservices.TileProvider`, or a tile-source *name* — but **the set of valid names depends on `geo=`**, because `geo=False` resolves against HoloViews' tile sources (10) and `geo=True` against GeoViews' (32).
+  - Portable either way (safe default): `"CartoDark"`, `"CartoLight"`, `"EsriImagery"`, `"EsriNatGeo"`, `"EsriReference"`, `"EsriTerrain"`, `"EsriUSATopo"`, `"OSM"`, `"OpenTopoMap"`.
+  - `"EsriStreet"` works **only without** `geo=True`; under `geo=True` it raises `ValueError: EsriStreet tiles not recognized`. Use `"EsriWorldStreetMap"` there instead.
+  - `geo=True` additionally unlocks GeoViews-only names (`"CartoMidnight"`, `"EsriWorldHillshade"`, `"EsriWorldPhysical"`, the polar/ocean sets, …) that fail without it.
+  - **Never use `"CartoDB.DarkMatter"` or `"CartoDB Dark_Matter"`** — rejected in both modes.
+  - Enumerate the live set with `holoviews.element.tiles.tile_sources` or `geoviews.tile_sources.tile_sources`. See https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/geographic.html#tiles
 - Do not convert to a GeoDataFrame or reproject to EPSG:3857 manually. Pass `geo=True` and hvplot handles projection.
 
 ```python
@@ -188,8 +193,8 @@ earthquakes.hvplot.points(
 ## Styling
 
 - Sort values so the largest is at top (or bottom) for easy comparison.
-- For `barh`, `.set_index("category")` before plotting. Without this, `sort_values()` leaves a numeric index that renders as NaN on the y-axis.
-- Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring (a list of hex values via `color=` does not work for bar/barh). For stacked bars with `by=`, pass the same dict via `cmap=`.
+- For `barh`, `.set_index("category")` before plotting. Without this, `sort_values()` leaves a numeric index and hvPlot plots *that* — the y-axis is labelled `index` with numeric ticks instead of your category labels. With the index set you get proper categorical factors and correct axis labels. (Passing `x=`/`y=` explicitly also works.)
+- Use a single neutral color by default; reserve color encoding for when it maps to data. Use `c="column", cmap={val: "#hex", ...}` for categorical coloring. A **list** of hex values via `color=` does not error for bar/barh — it silently applies only the first entry to every bar, which is easy to miss. For stacked bars with `by=`, pass the same dict via `cmap=`.
 - Simplify when labels carry the information: `xaxis=False`, `yaxis=False`, and `show_frame=False` via `.opts()` (it's a HoloViews plot option, not a bare hvPlot kwarg).
 - Overlay `hvplot.labels` to show values directly on bars, eliminating the need for axis ticks entirely. Pass `responsive=True` and `hover=False` on both plot and labels calls. Inside bars: `y="pos"` where `pos = value * 0.98`, `text_align="right"`, `text_color="white"`. Outside bars: `pos = value + offset`, `text_align="left"`, `text_color="black"`. For stacked bars + labels, the labels DataFrame must include stacked columns via `hover_cols`.
 - `backend_opts` accesses Bokeh model properties (e.g. `"outline_line_alpha": 0`). `.opts()` accesses HoloViews plot options (e.g. `show_frame=False`).
@@ -234,7 +239,7 @@ barh * labels
 
 ## Interaction
 
-For the full guidance on stripping toolbar/tool chart junk (`toolbar=None`, `default_tools=[]`, `active_tools=[]`), see [Decluttering Plots](../decluttering-plots/SKILL.md). A supplementary/alternative option for polished output without fully removing the toolbar: `backend_opts={"plot.toolbar.autohide": True}` (hides it until hover).
+For the full guidance on stripping toolbar/tool chart junk (`toolbar=None`, `default_tools=[]`, `active_tools=[]`), see [Decluttering Plots](../holoviews/decluttering-plots.md). A supplementary/alternative option for polished output without fully removing the toolbar: `backend_opts={"plot.toolbar.autohide": True}` (hides it until hover).
 
 - For timeseries, use `hover_mode='vline'` to snap the crosshair to the nearest x-value — much easier to read than the default point hover.
 - Configure wheel zoom axis: `tools=['xwheel_zoom']` for timeseries (zoom x only), `tools=['ywheel_zoom']` for vertical, or default `'wheel_zoom'` for both. Set the active tool with `active_tools=['xwheel_zoom']` (a list).
@@ -253,7 +258,7 @@ apple.hvplot.line(
 ## Timeseries
 
 - `subcoordinate_y=True` gives each series its own y sub-axis — useful for multi-stock views with different scales.
-- Access datetime index components directly: `'index.month'`, `'index.hour'`, `'index.year'` work inside hvPlot for aggregation.
+- Access datetime index components directly: `'index.month'`, `'index.hour'`, `'index.year'` work inside hvPlot for aggregation. Pick components the data actually varies over — on daily data every timestamp has hour 0, so an `index.hour` axis collapses to a single value and the chart says nothing.
 - Use `xformatter=DatetimeTickFormatter(months='%b %Y')` for custom date formatting.
 - For large timeseries, use `downsample=True` (LTTB algorithm) to reduce points sent to the browser while preserving visual shape. Updates dynamically on zoom.
 
@@ -275,8 +280,8 @@ apple.hvplot.line(
     downsample=True,
 )
 
-# Aggregate by datetime component
-apple.hvplot.heatmap(x='index.hour', y='index.month', C='close', cmap='reds', reduce_function=np.mean)
+# Aggregate by datetime component — year × month, both of which vary in daily data
+apple.hvplot.heatmap(x='index.year', y='index.month', C='close', cmap='reds', reduce_function=np.mean)
 ```
 
 ## Subplots and Layouts

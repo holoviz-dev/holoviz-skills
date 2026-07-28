@@ -14,6 +14,7 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 
 ## Contents
 
+- [References](#references) — decluttering plots
 - [Lookup](#lookup) — site search
 - [Opts System](#opts-system)
 - [Session Defaults](#session-defaults)
@@ -23,6 +24,12 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 - [DynamicMap](#dynamicmap)
 - [Streams](#streams)
 - [Cross-Filtering with link_selections](#cross-filtering-with-link_selections)
+
+## References
+
+Read these for specialized topics. Each is a standalone document you can load with the `view` tool.
+
+- [Decluttering Plots](decluttering-plots.md) — stripping Bokeh chart junk with `.opts()`: hide the toolbar, disable wheel-zoom (`default_tools`/`active_tools`), one-axis gridlines (`gridstyle`), hide/share axes across stacked plots, legend placement, nested categorical axes, and why these opts belong on the top-level overlay/layout rather than per element
 
 ## Lookup
 
@@ -47,7 +54,7 @@ hv.NdOverlay(curves, kdims=["Region"]).opts(
 ```
 
 - Options go on the element type they belong to: `legend_position` and `title` on `NdOverlay`, `tools` and `color` on `Curve`.
-- Misplaced options raise `ValueError: unexpected option 'X' for Y type`.
+- Misplaced options raise `ValueError: Unexpected option 'X' for Y type across all extensions.` The message then either lists near-misses ("Similar options for current extension ('bokeh') are: [...]") or says "No similar options found." — read that tail, it usually names the option you meant.
 - A legend with a single entry distinguishes nothing and just adds clutter — suppress it: `.opts(show_legend=len(groups) > 1)` (computed from the same dict/groupby driving the `NdOverlay`, e.g. after a filter narrows a `by=`/`kdims=` grouping down to one category).
 - `.opts()` on pure HoloViews elements is fine. For hvPlot, pass options as hvplot kwargs instead — see the [hvPlot skill](../hvplot/SKILL.md).
 
@@ -142,7 +149,7 @@ hv.Curve(df, "date", "revenue").opts(
 
 To strip chart junk wholesale — hide the toolbar, disable accidental wheel-zoom, put gridlines
 on one axis, share/hide axes across stacked plots — and for the gotcha that these opts must go
-on the top-level plot (overlay/layout), see [Decluttering Plots](../decluttering-plots/SKILL.md).
+on the top-level plot (overlay/layout), see [Decluttering Plots](decluttering-plots.md).
 
 ## DynamicMap
 
@@ -212,12 +219,12 @@ layout = (source + target).opts(merge_tools=False).cols(1)
 
 `hv.link_selections` provides automatic cross-filtering across static elements.
 
-- **Does NOT work with DynamicMap** — use Tabulator selection + `pn.bind(watch=True)` instead (see `examples/dashboard.py` in the Panel skill).
+- **DynamicMap support is conditional, and fails quietly.** `link_selections` has an explicit `DynamicMap` branch: it links fine when the DynamicMap's element type is introspectable (`dmap.type` is an `Element` subclass — i.e. the *same-element-type* rule from [DynamicMap](#dynamicmap) above), and also handles `dynamic_mul` overlays and `dynamic_operation` chains. Anything else it cannot recurse into is returned **unlinked** with only a `param.warning`: `linked selection: Encountered DynamicMap that we don't know how to recurse into`. So there is no exception to catch — if cross-filtering silently does nothing, check the logs for that warning, then fall back to Tabulator selection + `pn.bind(watch=True)` (see `examples/dashboard.py` in the Panel skill).
 - Use `.instance()` to create a reusable linker.
 - `hv.operation.histogram(element, dimension='x')` for numeric histograms — preserves data lineage.
 - For categorical bars, subclass `hv.Operation` (see below).
-- Don't add selection tools manually — `link_selections` adds them.
-- Requires `pyarrow` at runtime. Lasso also requires `shapely`.
+- Don't add selection tools manually — `link_selections` adds `box_select` and `lasso_select` itself.
+- Lasso selection on tabular data needs **`spatialpandas` *or* `shapely`** (spatialpandas is preferred when both are present); with neither you get `ImportError: Lasso selection on tabular data requires either spatialpandas or shapely to be available.` Note the lasso *tool* still appears in the toolbar either way — the error only surfaces when a lasso is actually drawn.
 
 ```python
 from holoviews.operation import histogram

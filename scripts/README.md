@@ -5,9 +5,9 @@ Automated system to measure whether SKILL.md files improve Copilot's responses t
 ## Coverage
 
 `scripts/eval_queries.yaml` currently defines only 2 queries (`hvplot_earthquake_plot`,
-`hvplot_interactive_scatter`), both testing the `hvplot` skill. None of the other 12
-skills (both routing skills, `param`, `panel` and its references, `holoviews`,
-`decluttering-plots`, `cleanup`, `documentation`, `minimal-example`, `pr-description`,
+`hvplot_interactive_scatter`), both testing the `hvplot` skill. None of the other 11
+skills (both routing skills, `param`, `panel` and its references, `holoviews` and its
+references, `cleanup`, `documentation`, `minimal-example`, `pr-description`,
 `testing`, `creating-custom-holoviz-skills`) have any eval coverage yet. Contributions
 adding queries for other skills are welcome — see "Adding Queries" below.
 

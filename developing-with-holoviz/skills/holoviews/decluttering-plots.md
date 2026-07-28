@@ -1,19 +1,12 @@
----
-name: decluttering-plots
-description: Strip chart junk from HoloViews / hvPlot Bokeh plots with .opts — hide the toolbar, disable wheel-zoom and pan (default_tools/active_tools), draw gridlines on one axis, hide or share axes across stacked plots, and place the legend. Use when a plot looks cluttered, scroll-zooms the chart by accident, has gridlines on both axes, repeats axis labels down a column of charts, or otherwise needs clean, presentation-ready styling. Do not use for choosing what to emphasize / annotate (that is distilling-explanatory-plots).
-metadata:
-  version: "0.1.0"
-  author: holoviz
----
-
 # Decluttering Plots
 
 Dashboard and presentation plots carry Bokeh "chart junk" by default: a toolbar, wheel-zoom
 that fires when you scroll the page, gridlines on both axes, and repeated axis labels when
-charts are stacked. This skill covers the `.opts()` mechanics to strip that. It is the *how*
-(mechanical styling); for the *what* (which series to emphasize, annotation, color as
-meaning) see [Distilling Explanatory Plots](../hvplot/distilling-explanatory-plots.md). For
-the general opts system see [Using HoloViews](../holoviews/SKILL.md).
+charts are stacked. This reference covers the `.opts()` mechanics to strip that — it is the
+*how* (mechanical styling). For the *what* (which series to emphasize, annotation, color as
+meaning) see [Distilling Explanatory Plots](../hvplot/distilling-explanatory-plots.md). These
+options apply to any Bokeh-backed HoloViews object, hvPlot output included — see
+[hvPlot vs .opts](#hvplot-vs-opts) for the two APIs' division of labour.
 
 ## Contents
 
@@ -52,6 +45,11 @@ to `pn.pane.HoloViews(...)`:
 def clean(plot):
     return plot.opts(toolbar=None, default_tools=[], active_tools=[])
 ```
+
+For a whole family of charts, prefer setting these once for the session with
+`hv.opts.defaults(...)` instead of a per-object helper — see
+[Session Defaults](SKILL.md#session-defaults), which also covers why hvPlot's sizing options
+are the one thing that cannot be defaulted this way.
 
 ### Applying options by element type
 
@@ -125,42 +123,76 @@ top.opts(xaxis=None, xlabel="")        # and every panel except the last
 bottom.opts(xlabel="model / task")     # only the bottom panel labels the shared axis
 ```
 
-- Rotate long categorical tick labels rather than letting them collide: `rot=25` in an hvPlot call (e.g. `df.hvplot.bar(rot=25)`), or `.opts(xrotation=25)` for HoloViews elements. Don't pass `rot=` to `.opts()` — it's hvPlot-only.
+- Rotate long categorical tick labels rather than letting them collide: `.opts(xrotation=25)` (`yrotation=` for the other axis).
 
 ## Legend placement
 
-- **hvPlot:** `legend="top_right"` (a position string) places the legend *inside* the plot
-  at that corner. Prefer this over the default, which can render a wide external legend
-  column that squeezes the plot into a sliver.
-- **HoloViews:** `legend_position="top_right"` (with `show_legend=True/False`).
+- `legend_position="top_right"` places the legend *inside* the plot at that corner. Prefer an
+  inside corner over the default, which can render a wide external legend column that squeezes
+  the plot into a sliver.
 - Positions: `top_left`, `top_right`, `bottom_left`, `bottom_right`, plus
   `top`/`bottom`/`left`/`right`.
-- In a stack of related charts, show the legend on the **first** panel only and set
-  `legend=False` on the rest, so it isn't repeated down the column.
+- `show_legend=False` drops it entirely. In a stack of related charts, show the legend on the
+  **first** panel only and set `show_legend=False` on the rest, so it isn't repeated down the
+  column.
+- A legend with a single entry distinguishes nothing — suppress it with
+  `show_legend=len(groups) > 1` (see [Opts System](SKILL.md#opts-system)).
+- Legend options belong on the **container** (`Overlay`/`NdOverlay`), not the elements inside
+  it — see [Apply at the top level](#apply-at-the-top-level).
+
+```python
+overlay.opts(legend_position="top_right", show_legend=len(groups) > 1)
+```
 
 ## Nested categorical axes
 
 Collapsing two grouping columns into one flat `"a · b"` label forces long, angled ticks.
-`Bars`, `Violin`, and `BoxWhisker` accept **multiple kdims** (`by=[...]`) for a nested
-categorical x-axis — the inner group sits under the outer group, which reads far cleaner:
+`Bars`, `Violin`, and `BoxWhisker` accept **multiple kdims** for a nested categorical x-axis —
+the inner group sits under the outer group, which reads far cleaner. Order matters: the *last*
+kdim is the inner level.
 
 ```python
-df.hvplot.bar(y="count", by=["model", "task"])        # task nested under model
-df.hvplot.violin(y="latency_ms", by=["model", "task"])
+hv.Bars(df, kdims=["model", "task"], vdims=["count"])            # task nested under model
+hv.Violin(df, kdims=["model", "task"], vdims=["latency_ms"])
 ```
 
-Caveat: a jittered `scatter` overlay can't align to a two-level categorical x. If you need
-raw points overlaid on the violin/box, use a single flat combined series
-(`x="model · task"`) instead; otherwise keep the nested `by=[...]` axis and drop the overlay.
+`Bars` draws the nested axis via `multi_level=True` (the default). `.opts(multi_level=False)`
+flattens it back to one tick per outer group, and `.opts(stacked=True)` turns the second kdim
+into stack segments instead of a second axis level. `Bars` accepts at most **3** kdims.
+
+Caveat: a jittered `Scatter`/`Points` overlay can't align to a two-level categorical x. If you
+need raw points over the violin/box, build a single flat combined key dimension instead:
+
+```python
+df["model · task"] = df["model"] + " · " + df["task"]
+hv.Violin(df, kdims=["model · task"], vdims=["latency_ms"]) * hv.Scatter(
+    df, "model · task", "latency_ms"
+).opts(jitter=0.3, alpha=0.3)
+```
+
+Otherwise keep the nested kdims and drop the overlay.
 
 ## hvPlot vs .opts
 
-- `responsive=True` and `height=` must be **hvPlot call arguments**, not `.opts()`: hvPlot
-  injects a default `width=700` that `.opts(responsive=True)` cannot override. See
-  [Plotting in Panel](../panel/plotting-in-panel.md#responsive-sizing).
+Everything above is written as `.opts()` on HoloViews elements. If you arrived here holding
+hvPlot output, it is a HoloViews object, so every option applies unchanged — but hvPlot spells
+several of them differently in its own call signature:
+
+| This reference (`.opts()`) | hvPlot call kwarg |
+|---|---|
+| `xrotation=25` | `rot=25` |
+| `legend_position="top_right"` | `legend="top_right"` |
+| `show_legend=False` | `legend=False` |
+| `show_grid=True` (both axes) | `grid=True` |
+| multiple `kdims=[...]` | `by=[...]` |
+
+`rot`, `legend`, and `grid` are hvPlot-only — passing them to `.opts()` raises. The reverse also
+holds: `gridstyle` has no hvPlot kwarg, so one-axis gridlines always go through `.opts()`.
+
 - The decluttering options here (`toolbar`, `default_tools`, `active_tools`, `tools`,
   `show_grid`, `gridstyle`, `xaxis`) are plot options. Pass them via `.opts()` — reliable on
   overlays and layouts — or as hvPlot kwargs for a single element. When in doubt, use
   `.opts()` on the final object (see [Apply at the top level](#apply-at-the-top-level)).
-- hvPlot's `grid=True` maps to `show_grid=True` (both axes); for one-axis control use
-  `gridstyle` via `.opts()`.
+- The one thing that does **not** work via `.opts()`: `responsive=True` and `height=` must be
+  hvPlot **call arguments**. See [Responsive Sizing](../panel/plotting-in-panel.md#responsive-sizing)
+  for why.

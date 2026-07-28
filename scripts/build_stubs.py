@@ -38,12 +38,23 @@ ASSETS_DIR = DOCS_DIR / "assets"
 ZENSICAL_TOML = REPO_ROOT / "zensical.toml"
 
 # Top-level directories to skip when scanning for skills.
+#
+# `holoviz_skills` matters even though it has no SKILL.md in a clean checkout:
+# `holoviz_skills/skills/` is the wheel staging path (hatch force-include, see
+# pyproject.toml). If a build leaves it behind, scanning it would emit a
+# duplicate "Holoviz Skills" docs category and rewrite the nav. `artifacts`,
+# `dist`, and `_build_plugin_tmp` are build outputs containing skill copies for
+# the same reason.
 EXCLUDE_DIRS = {
     ".cache",
     ".git",
     ".github",
     ".pixi",
+    "_build_plugin_tmp",
+    "artifacts",
+    "dist",
     "docs",
+    "holoviz_skills",
     "scripts",
     "site",
 }

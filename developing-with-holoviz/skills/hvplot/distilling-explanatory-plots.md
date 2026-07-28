@@ -41,7 +41,7 @@ carries the message. One focus, one color encoding per figure.
 
 Mark the point with `hv.Text`, `hv.VLine`/`hv.HLine`, or an arrow — the event, the threshold,
 the delta. Assume no interaction: readers won't hover, so the static view must carry the whole
-message. Set `toolbar=None`, or control which tools appear via `default_tools=[]` / `tools=[]`, rather than relying on hover tooltips — see [Decluttering Plots](../decluttering-plots/SKILL.md) for the full toolbar/tools guidance.
+message. Set `toolbar=None`, or control which tools appear via `default_tools=[]` / `tools=[]`, rather than relying on hover tooltips — see [Decluttering Plots](../holoviews/decluttering-plots.md) for the full toolbar/tools guidance.
 
 ## Kill chart junk
 

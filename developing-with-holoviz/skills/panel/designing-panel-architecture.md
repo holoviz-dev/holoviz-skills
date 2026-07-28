@@ -219,7 +219,7 @@ Beyond `.from_param()` (see [Using Material UI](using-material-ui.md#key-differe
 
 ## Imperative vs Declarative
 
-Default to **declarative** (`@param.depends`, `pn.bind`, `pn.rx`) for data/UI derivations — easier to test and compose. Keep **imperative** `.param.watch` only for true side effects: logging, persisting settings, notifications.
+Default to **declarative** (`@param.depends`, `pn.bind`, `pn.rx`) for data/UI derivations — easier to test and compose. Keep **imperative** `.param.watch` only for true side effects: logging, persisting settings, notifications. The full priority ladder is in the [param skill](../param/SKILL.md#watch-vs-paramdepends-vs-link).
 
 ```python
 def log_filter_change(event):

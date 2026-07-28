@@ -11,6 +11,12 @@ metadata:
 
 This is a **routing skill**. You MUST use the `view` tool to read every sub-skill file listed in the table below that matches the task BEFORE writing any code or giving any answer. Do not skip this step!
 
+## Contents
+
+- [Instructions](#instructions)
+- [Loading Table](#loading-table)
+- [Skill Map](#skill-map)
+
 ## Instructions
 
 1. Identify which sub-skill(s) apply from the Loading Table below.
@@ -33,7 +39,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` |
 | Convert a design / screenshot / React app into a Material UI (pmui) app | `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/converting-designs-to-material-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
 | HoloViews elements, opts, tooltips, formatters, tools | `skills/holoviews/SKILL.md` |
-| Remove chart junk / clean a plot — hide toolbar, disable wheel-zoom, one-axis gridlines, share axes, place legend | `skills/decluttering-plots/SKILL.md` |
+| Remove chart junk / clean a plot — hide toolbar, disable wheel-zoom, one-axis gridlines, share axes, place legend | `skills/holoviews/SKILL.md` + `skills/holoviews/decluttering-plots.md` |
 | Embedding plots in Panel (HoloViews/hvPlot, Matplotlib, Plotly, ECharts; DynamicMap, responsive sizing) | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/plotting-in-panel.md` + `skills/holoviews/SKILL.md` |
 | Stop repeating the same option on every component or chart — session defaults, `pn.config`, `hv.opts.defaults`, class param defaults | `skills/panel/SKILL.md` + `skills/holoviews/SKILL.md` |
 | Display, filter, sort, or select rows in a data table | `skills/panel/SKILL.md` + `skills/panel/using-tabulator.md` |
@@ -51,6 +57,5 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 |---|---|
 | [param](skills/param/SKILL.md) | `@param.depends`, `watch=True`, `.watch()`, parameter types, dependent parameters |
 | [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
-| [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, session defaults (`hv.opts.defaults`), hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections |
-| [decluttering-plots](skills/decluttering-plots/SKILL.md) | Strip Bokeh chart junk via `.opts()`: hide the toolbar, disable wheel-zoom (`default_tools`/`active_tools`), one-axis gridlines (`gridstyle`), hide/share axes, legend placement, nested categorical axes, and where to apply opts (element vs overlay/layout). |
+| [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, session defaults (`hv.opts.defaults`), hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections. Carries the Decluttering Plots reference. |
 | [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, defaults, templates, serving, performance, plotting gotchas; 12 topic references indexed in its own References section |

@@ -86,7 +86,7 @@ class MyApp(pn.viewable.Viewer):
 - Add `margin=10` to outer `main` layouts so they stand out from sidebar.
 - Only use a sidebar when there are multiple control widgets. For a single selector, use inline `RadioButtonGroup` or `Select` in the main area with `pmui.Container` — avoids wasting viewport on a near-empty sidebar.
 - Sidebar order: logo → description → widgets → docs.
-- **Page not rendering (no header/sidebar)**: gating the `Page` construction/return on `if pn.state.served:` inside `__panel__` is a bug — that guard can evaluate `False` when `__panel__` runs, silently giving you a blank/fallback layout with no top bar. Always build the `Page` once in `__init__` (e.g. `self._page = pmui.Page(...)`) and return it unconditionally from `__panel__` (`return self._page`).
+- **Page not rendering (no header/sidebar)**: gating the `Page` construction/return on `if pn.state.served:` inside `__panel__` is a bug — that guard is **always** `False` there, even under `panel serve`, so you silently get the blank/fallback layout with no top bar. `pn.state.served` checks whether its *immediate caller's* module is the served script, and it is Panel that calls `__panel__`, not your module. Always build the `Page` once in `__init__` (e.g. `self._page = pmui.Page(...)`) and return it unconditionally from `__panel__` (`return self._page`). `pn.state.served` remains correct at **module level** of the served script (`if pn.state.served: App().servable()`) — see [Troubleshooting](troubleshooting.md#pmuipage-renders-blank-no-headersidebar).
 
 ```python
 # ✅ Lists
@@ -191,7 +191,19 @@ pmui.Page(
 - `Accordion` header text: the title renders as a Typography *inside* the summary, so a rule on `.MuiAccordionSummary-root` won't reach it. Target the content to restyle the label: `sx={"& .MuiAccordionSummary-content *": {"fontSize": "13px", "color": "#6d5cff"}}`.
 - `CheckButtonGroup`/`RadioButtonGroup` styling: in sidebars use `orientation="vertical"`, `color="primary"`, `variant="outlined"`.
 - Button groups (`RadioButtonGroup`, `CheckButtonGroup`) follow the same `.from_param()` after-`super()` ordering rule as any widget — see [panel/SKILL.md](SKILL.md#viewer-class-pattern) for why.
-- `Rating` (and other icon widgets): stretch to fill their container under the default `sizing_mode="stretch_width"`, rendering enormous. Pin them: `pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed")`.
+- `Rating` (and other icon widgets): stretch to fill their container under the default `sizing_mode="stretch_width"`, rendering enormous. Inline `Markdown`/`HTML` labels next to an `HSpacer` in the same `Row` fail the other way — they collapse to near-zero width and wrap one character per line. Pin both with an explicit `width` plus `sizing_mode="fixed"`:
+
+  ```python
+  # ❌ Rating fills the row (giant stars); the label wraps vertically
+  pmui.Row(pn.pane.Markdown("**Rating:**"), pmui.Rating(end=5), pn.layout.HSpacer())
+
+  # ✅ pinned
+  pmui.Row(
+      pn.pane.HTML("<b>Rating:</b>", width=64, sizing_mode="fixed"),
+      pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed"),
+      pn.layout.HSpacer(),
+  )
+  ```
 - `Dialog`: for secondary detail that would crowd the page (or overflow the narrow `Page` contextbar), use a dialog and toggle `.open`. `close_on_click=True` dismisses on backdrop click:
 
   ```python

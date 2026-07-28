@@ -36,8 +36,10 @@ nav = [
         { "Wizard" = "developing-with-holoviz/panel/wizard.md" },
       ] },
     ] },
-    { "HoloViews" = "developing-with-holoviz/holoviews.md" },
-    { "Decluttering Plots" = "developing-with-holoviz/decluttering-plots.md" },
+    { "HoloViews" = [
+      "developing-with-holoviz/holoviews/index.md",
+      { "Decluttering Plots" = "developing-with-holoviz/holoviews/decluttering-plots.md" },
+    ] },
   ] },
   { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",

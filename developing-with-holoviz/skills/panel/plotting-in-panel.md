@@ -253,4 +253,4 @@ chart_pane = pn.pane.ECharts(
 
 ## Bokeh Toolbar Tools
 
-For stripping/configuring the Bokeh toolbar on Bokeh-backed plots (including HoloViews/hvPlot output) — `default_tools`, `active_tools`, `toolbar=None`, gridlines, shared/hidden axes — see [Decluttering Plots](../decluttering-plots/SKILL.md). One Panel-specific note: for cumulative/monotonic curves, `hover_mode="vline"` gives a better tooltip experience.
+For stripping/configuring the Bokeh toolbar on Bokeh-backed plots (including HoloViews/hvPlot output) — `default_tools`, `active_tools`, `toolbar=None`, gridlines, shared/hidden axes — see [Decluttering Plots](../holoviews/decluttering-plots.md). One Panel-specific note: for cumulative/monotonic curves, `hover_mode="vline"` gives a better tooltip experience.
