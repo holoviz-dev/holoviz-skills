@@ -45,7 +45,12 @@ holoviz_skills/_version.py
 .ipynb_checkpoints/
 
 # Evals
-eval_results/
+eval_results/*
+!eval_results/runs.json
+!eval_results/history_summary.json
 
 .github/instructions/
 .*/skills/*
+
+# Outerbounds
+.ob_apps/
