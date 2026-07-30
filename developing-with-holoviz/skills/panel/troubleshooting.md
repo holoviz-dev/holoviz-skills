@@ -8,11 +8,11 @@ Symptom-indexed fixes for Panel/pmui apps that serve but misbehave *silently*. L
 - [AttributeError during init (on_init ordering)](#attributeerror-during-init-on_init-ordering)
 - [First radio option can't be selected](#first-radio-option-cant-be-selected)
 - [Select renders blank after setting .objects](#select-renders-blank-after-setting-objects)
-- [Date filter returns nothing / type error](#date-filter-returns-nothing--type-error)
+- [Date filter returns nothing / type error](#date-filter-returns-nothing-type-error)
 - [Markdown header flickers on hover](#markdown-header-flickers-on-hover)
-- [Component rebuilds / flickers on every change](#component-rebuilds--flickers-on-every-change)
+- [Component rebuilds / flickers on every change](#component-rebuilds-flickers-on-every-change)
 - [pmui.Page renders blank (no header/sidebar)](#pmuipage-renders-blank-no-headersidebar)
-- ["responsive mode could not be enabled" / won't resize](#responsive-mode-could-not-be-enabled--wont-resize)
+- ["responsive mode could not be enabled" / won't resize](#responsive-mode-could-not-be-enabled-wont-resize)
 - [Screenshot shows a loading spinner](#screenshot-shows-a-loading-spinner)
 - [Behavior or deprecation differs across versions](#behavior-or-deprecation-differs-across-versions)
 
@@ -59,7 +59,9 @@ A `@param.depends` method (no `watch=True`) returns a *new* layout/widget each c
 
 ## pmui.Page renders blank (no header/sidebar)
 
-`__panel__` returns the `Page` only under `if pn.state.served:`, and that guard is `False` when `__panel__` runs — so you fall through to the bare layout. Fix: for an always-served app, build the `Page` once in `__init__` and return it unconditionally ([Page rules](using-material-ui.md#page)).
+Gating `__panel__`'s `Page` return on `if pn.state.served:` is a bug: the guard is **always** `False` there, even under `panel serve`, so you always fall through to the bare fallback layout. `pn.state.served` inspects its *immediate caller's* module (`inspect.stack()[1]`) and asks whether that module is the served script — Bokeh names it `bokeh_app_<uuid>`. Panel itself calls `__panel__` (from `panel.viewable` / `panel.pane.base`), so the check sees Panel's module, never yours. Fix: build the `Page` once in `__init__` (e.g. `self._page = pmui.Page(...)`) and return it unconditionally from `__panel__` (`return self._page`) ([Page rules](using-material-ui.md#page)).
+
+`pn.state.served` is still the right check at **module level** of the served script, where your module *is* the caller — e.g. `if pn.state.served: App().servable()`. The rule is about where you call it, not the property being unreliable.
 
 ## "responsive mode could not be enabled" / won't resize
 

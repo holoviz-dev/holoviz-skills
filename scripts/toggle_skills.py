@@ -39,6 +39,10 @@ def find_skill_files(root_dir: Path, enabled: bool = True) -> list[Path]:
         ".venv",
         "venv",
         ".pixi",
+        ".claude",
+        ".agents",
+        ".github",
+        "_build_plugin_tmp",
     }
 
     skill_files = []

@@ -13,7 +13,7 @@ Usage:
   python eval.py --skip-execution --skip-aggregation
 
   # Specific queries, with-skills condition only
-  python eval.py --queries earthquake_plot --skills with
+  python eval.py --queries hvplot_earthquake_plot --skills with
 
   # Re-run execution and reporting without re-querying Copilot
   python eval.py --skip-generation
@@ -331,7 +331,7 @@ Examples:
   python eval.py
 
   # Specific queries only
-  python eval.py --queries earthquake_plot hvplot_basic_line
+  python eval.py --queries hvplot_earthquake_plot hvplot_interactive_scatter
 
   # With-skills condition only
   python eval.py --skills with

@@ -2,16 +2,17 @@
 name: param
 description: Define Python classes with typed, validated, reactive parameters using Param. Use when building classes with constrained attributes, reactive dependencies between values, or dynamic option cascading. Load alongside the Panel skill for any Panel app using Parameterized classes.
 metadata:
-  version: "1.0.2"
+  version: "0.1.0"
   author: holoviz
 ---
 
-# Using Param
+# Param
 
 Correct patterns and common pitfalls for Param — the reactive parameter library that underpins Panel, HoloViews, and the HoloViz ecosystem.
 
 ## Contents
 
+- [Lookup](#lookup) — site search
 - [Parameterized Classes](#parameterized-classes)
 - [Reactive Dependencies (@param.depends)](#reactive-dependencies-paramdepends)
 - [Dependent Parameters](#dependent-parameters)
@@ -21,11 +22,18 @@ Correct patterns and common pitfalls for Param — the reactive parameter librar
 - [allow_refs](#allow_refs)
 - [Custom Parameter Types](#custom-parameter-types)
 
+## Lookup
+
+Web-search `https://param.holoviz.org/search.html?q=<topic>` for anything not covered below;
+the [Reactive Expressions guide](https://param.holoviz.org/user_guide/Reactive_Expressions.html)
+is the deepest reference for `rx`.
+
 ## Parameterized Classes
 
 - Add `# pyright: reportAssignmentType=false` at the top — Param's descriptors conflict with static type checkers.
 - Add type annotations (`target: str = param.String(...)`) for IDE autocomplete — Param doesn't enforce them at runtime.
-- **Never use `name` as a parameter** — reserved by Param for the instance name.
+- **Never use `name` as a parameter.** Param won't stop you, but `name` is `constant` — it can only be set in the constructor, and `obj.name = "x"` afterwards raises `TypeError: Constant parameter 'name' cannot be modified`. You also lose the auto-generated unique instance name (`DataConfig00042`) that Param uses in reprs and error messages.
+- **Never name a param in UPPERCASE_SNAKE_CASE.** A param is reactive, settable, watchable instance state, so an all-caps name misreads as a frozen module constant — `self.MAX_ROWS = 50` looks illegal and isn't. It also leaks into UIs: Param's default label formatter only upper-cases the first character (`pname[:1].upper() + pname[1:]`) rather than title-casing, so `MAX_ROWS` becomes the shouty widget label "MAX ROWS" while `max_rows` becomes "Max rows". Use `lowercase_snake_case` for params and keep genuine constants at module level.
 - `self.param.param_key` is the Parameter object; `self.param_key` is the current value. Use `self.param.param_key` with `.from_param()` and pane constructors.
 
 ```python
@@ -89,24 +97,28 @@ class CountrySelector(param.Parameterized):
 
 ## Parameter Types
 
-- `param.update()` applies multiple changes atomically on one object — watchers fire once, not once per change. Also works as a context manager: `with self.param.update(): self.x = 1; self.y = 2`.
+- `obj.param.update(**kwargs)` applies multiple changes atomically on **one** Parameterized object — a Param class, or any Panel widget/pane, since those are Parameterized too. A watcher on both params fires **once with two events**, not twice, so write the callback as `def cb(*events)`.
+- `obj.param.update()` used as a **context manager sets values temporarily and restores the originals on exit** — `with slider.param.update(value=9): ...` leaves `value` back at its previous value afterwards, and the restore fires watchers a second time. It is a scoped override, *not* a way to batch assignments written inside the block; those still notify one at a time. Use the keyword form above to batch.
+- `pn.io.hold()` is the Panel-side complement and a *different layer*: it holds events on the Bokeh **Document** so the browser receives one combined update instead of several. It does not affect Param watcher dispatch — use it to stop UI flicker while mutating several components, and `.param.update()` to batch Param events. Works as a context manager or a decorator.
 - Use the most specific type (`param.Integer` not `Number`, `param.Selector` not `String`). Specificity drives widget selection in Panel's `.from_param()`.
 - `softbounds` suggests a range for UI sliders without hard enforcement. `step` hints the increment. `label` overrides the display name. `precedence` controls ordering (lower = first).
 - `param.List(item_type=str)` validates contents. `param.Dict` does not validate values.
 - `param.DataFrame()` accepts pandas only. For Polars, use `param.Parameter()`.
 - `param.Event()` resets to `False` after firing watchers. Use with `Button.from_param()` + `@param.depends(watch=True)` when you need a declarative trigger.
 - **Single source of truth**: For navigation buttons (back/next), have handlers modify one shared parameter (e.g., `active_step`), then watch that parameter once. All UI state derives from one place.
-- **Reassign, don't mutate**: In-place operations (`+=`, `list.append()`, `dict.update()`) don't trigger watchers. Always reassign: `self.x = self.x + 1`, `self.items = self.items + [new]`, `self.data = {**self.data, key: val}`.
-- `default_factory` for mutable/dynamic defaults — without it, all instances share the same object. Alternative: `instantiate=True`.
-- Param does **not** auto-coerce types (unlike Pydantic). `param.Integer(value="25")` raises `ValueError`.
+- **Reassign, don't mutate**: In-place operations (`+=`, `list.append()`, `dict.update()`) don't trigger watchers — mutating the object the parameter points at is never an *attribute assignment*, so Param's descriptor never runs and no event is emitted. (It is not that Param compares by identity; when you do assign, it compares by value.) Always reassign: `self.x = self.x + 1`, `self.items = self.items + [new]`, `self.data = {**self.data, key: val}`.
+- `default_factory` for dynamic per-instance defaults (a fresh UUID, a timestamp). It overrides `default` if both are given. Note that `param.List` and `param.Dict` already default to `instantiate=True`, so `param.List(default=[])` is *not* shared between instances — the sharing hazard is real only for `param.Parameter(default=[])` and other types with `instantiate=False`, where `instantiate=True` is the fix.
+- Param does **not** auto-coerce types (unlike Pydantic). Assigning `obj.limit = "25"` to a `param.Integer` attribute raises `ValueError`.
 
 ```python
 import uuid
 import param
+import panel as pn
 
 class TrackedItem(param.Parameterized):
     id: str = param.String(default_factory=lambda: str(uuid.uuid4()))
-    tags: list = param.List(default=[], instantiate=True)
+    tags: list = param.List(default=[])  # List already instantiates per instance
+    scratch = param.Parameter(default=[], instantiate=True)  # needed here, not above
     temperature: float = param.Number(
         default=0.7, bounds=(0, 2), softbounds=(0, 1),
         step=0.1, label="LLM Temperature", precedence=1,
@@ -114,12 +126,24 @@ class TrackedItem(param.Parameterized):
     submit: bool = param.Event(doc="Trigger processing")
 
 config = DataConfig()
-config.param.update(source="Parquet", limit=500)  # one notification, not two
 
-# Context manager form — useful when updating conditionally
-with config.param.update():
-    config.source = "SQL"
-    config.limit = 200
+# ✅ Batch Param events — one watcher call receiving two events
+config.param.update(source="Parquet", limit=500)
+
+# Same method on a Panel widget, because widgets are Parameterized
+slider = pn.widgets.IntSlider(value=1, start=0, end=10)
+slider.param.update(value=5, end=20)
+
+# ⚠️ The context-manager form is a scoped override that RESTORES on exit
+with slider.param.update(value=9):
+    ...              # slider.value == 9 in here
+# slider.value is back to 5, and the restore fires watchers again
+
+# Panel-side: one combined update to the browser, no flicker.
+# Orthogonal to the above — this does not batch Param watcher calls.
+with pn.io.hold():
+    slider.value = 7
+    slider.end = 30
 ```
 
 For the `param.Event` + `Button.from_param()` + `@param.depends(watch=True)` button pattern, see the declarative example under [.watch() vs @param.depends vs .link()](#watch-vs-paramdepends-vs-link).
@@ -130,6 +154,8 @@ For the `param.Event` + `Button.from_param()` + `@param.depends(watch=True)` but
 
 ```python
 import panel as pn
+
+select = pn.widgets.Select(options=["a", "b", "c"])
 
 # ✅ Concise rx — replaces verbose pn.bind callback
 button = pn.widgets.Button(name="Add " + select.param.value.rx())
@@ -142,8 +168,7 @@ button = pn.widgets.Button(name=pn.bind(lambda x: f"Add {x}", select))
 
 ```python
 # Chain operations — indexing, slicing, methods all work
-menu = MenuList(active=(0,))
-step = menu.param.active.rx()[0]  # extract first element reactively
+step = select.param.value.rx()  # reactive ref to the selected value
 
 # Conditional with rx.where (replaces if/else lambdas)
 bar_color = toggle.param.value.rx.where("success", "warning")
@@ -168,13 +193,14 @@ class Wizard(pn.viewable.Viewer):
     active_step = param.Integer(default=0)
 
     def __init__(self, **params):
-        self._menu = MenuList(items=[...], active=(0,))
-        pn.bind(self._on_menu_select, self._menu.param.active, watch=True)
         super().__init__(**params)
+        self._menu = pn.widgets.RadioButtonGroup(options=["Step 1", "Step 2", "Step 3"])
+        pn.bind(self._on_menu_select, self._menu.param.value, watch=True)
 
-    def _on_menu_select(self, active):
-        if active and active[0] != self.active_step:
-            self.active_step = active[0]
+    def _on_menu_select(self, value):
+        new_step = self._menu.options.index(value)
+        if new_step != self.active_step:
+            self.active_step = new_step
 ```
 
 Avoid `allow_refs=True` with rx binding (`self.x = widget.param.value.rx()`) when you also need to directly assign to that parameter — the binding breaks on direct assignment.
@@ -208,9 +234,9 @@ class Wizard(param.Parameterized):
     active_step = param.Integer(default=0, allow_refs=True)
 
     def __init__(self, **params):
-        self._menu = MenuList(items=[...], active=(0,))
         super().__init__(**params)
-        self.active_step = self._menu.param.active.rx()[0]  # menu -> step sync
+        self._menu = pn.widgets.RadioButtonGroup(options=["Step 1", "Step 2", "Step 3"])
+        self.active_step = self._menu.param.value.rx.pipe(self._menu.options.index)  # menu -> step sync
 ```
 
 For inline reactive string formatting, prefer `.rx()` over a `pn.bind`/lambda callback — see [Reactive Expressions (rx)](#reactive-expressions-rx).

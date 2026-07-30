@@ -87,10 +87,10 @@ pmui.Page(
 ## Widgets
 
 - Most common widgets have a pmui equivalent: swap `pn.widgets.X` → `pmui.X`. But not all — `CodeEditor`, `Terminal`, `JSONEditor`, `FileSelector`/`FileDropper`, `Player`/`DiscretePlayer`, `StaticText`, `ToggleGroup`, `ArrayInput`, and the `DataFrame` widget have **no** pmui class and stay `pn.widgets.*` (see [What Not to Migrate](#what-not-to-migrate)). Don't assume the swap exists — confirm with `hasattr(pmui, "X")`.
-- `pn.widgets.ButtonIcon` migrates 1:1 to `pmui.ButtonIcon`, but `pmui.IconButton` is the idiomatic Material name if you're touching it anyway.
+- `pn.widgets.ButtonIcon` maps to `pmui.IconButton` (there is no separate `pmui.ButtonIcon` widget).
 - Replace an auto-generated `pn.Param(obj.param)` panel with explicit `pmui.*.from_param(...)` so you control each widget's label, color, and visibility.
 - `.from_param()` syncs value, bounds, and objects.
-- **Caveat:** `.from_param()` widgets (button groups included) must be created *after* `super().__init__()`, or their `@param.depends`/watchers won't fire (see [Using Material UI](using-material-ui.md) and the [review checklist](reviewing-panel-apps.md#from_param-widgets-created-before-super)).
+- **Caveat:** `.from_param()` widgets must be created *after* `super().__init__()` — see [panel/SKILL.md](SKILL.md#viewer-class-pattern) for the ordering rule.
 - For which pmui widget matches each Param type, see [Using Material UI](using-material-ui.md#key-differences-from-panel).
 
 ```python

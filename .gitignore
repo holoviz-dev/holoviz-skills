@@ -29,12 +29,12 @@ pixi.lock
 # Plugin + skill zips — built on release by build_plugin.py, attached to the
 # GitHub release rather than committed.
 /artifacts/
-docs/skills/
 docs/developing-with-holoviz/
 docs/contributing-to-holoviz/
 docs/creating-custom-holoviz-skills.md
 
-# Staged skills (generated at build time by scripts/build_stage_skills.py)
+# Staged skills — copied in at build time by hatch's force-include
+# (see [tool.hatch.build.targets.*.force-include] in pyproject.toml).
 holoviz_skills/skills/
 
 # Version file (generated at build time by hatch-vcs)

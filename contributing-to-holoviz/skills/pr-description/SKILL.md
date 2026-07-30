@@ -2,7 +2,7 @@
 name: pr-description
 description: Writing a clear pull request description for HoloViz packages. Use when drafting or reviewing the description, summary, or write-up of a PR in any HoloViz repository.
 metadata:
-  version: "0.1.2"
+  version: "0.1.0"
   author: holoviz
 ---
 
@@ -13,6 +13,11 @@ Write HoloViz PR descriptions in the first person, as work you did, and keep the
 Follow the repo's PR template rather than inventing sections. Every HoloViz repo inherits it from the org-wide `holoviz/.github` repo, so fetch the current, authoritative sections from the raw template and fill each one in:
 
 https://raw.githubusercontent.com/holoviz/.github/refs/heads/main/.github/pull_request_template.md
+
+## Contents
+
+- [Writing each part well](#writing-each-part-well)
+- [Voice and style](#voice-and-style)
 
 ## Writing each part well
 

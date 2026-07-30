@@ -236,12 +236,6 @@ class DeductionsStep(WizardStep):
     title = param.String(default="Deductions")
 
     def __init__(self, **params):
-        self._itemized_input = pmui.FloatInput.from_param(
-            self.param.itemized_amount,
-            label="Itemized Amount ($)",
-            sizing_mode="stretch_width",
-            disabled=self.param.disabled,
-        )
         self._standard_info = pmui.Paper(
             pmui.Typography(
                 "Standard deduction: $14,600 (Single) / $29,200 (Married)",
@@ -251,8 +245,19 @@ class DeductionsStep(WizardStep):
         )
         self._deduction_details = pn.pane.Placeholder(sizing_mode="stretch_width")
         super().__init__(**params)
+        # from_param widgets go AFTER super() — built before it, the widget's value still syncs
+        # but @param.depends/watchers on itemized_amount would never fire. Because this widget
+        # is also what _update_deduction_details swaps in, that watcher can't use on_init=True
+        # (it would run before the widget exists); we call it explicitly instead.
+        self._itemized_input = pmui.FloatInput.from_param(
+            self.param.itemized_amount,
+            label="Itemized Amount ($)",
+            sizing_mode="stretch_width",
+            disabled=self.param.disabled,
+        )
+        self._update_deduction_details()
 
-    @param.depends("deduction_type", watch=True, on_init=True)
+    @param.depends("deduction_type", watch=True)
     def _update_deduction_details(self):
         if self.deduction_type == "Itemized":
             self._deduction_details.update(self._itemized_input)
@@ -429,6 +434,12 @@ class TaxWizard(pn.viewable.Viewer):
 
         super().__init__(**params)
 
+        # Build the Page once here so __panel__ can return it unconditionally
+        # (building it lazily in __panel__ under an `if pn.state.served:`
+        # guard is a bug — that guard can be False when __panel__ runs,
+        # silently producing a blank Page).
+        self._page = self._build_page()
+
     # -- Stepper items reflect live completion / error state --
 
     def _build_items(self):
@@ -523,53 +534,54 @@ class TaxWizard(pn.viewable.Viewer):
             self._content.update(self._steps[self.active_step])
             self._update_controls()
 
-    def __panel__(self):
-        if pn.state.served:
-            return pmui.Page(
-                title="Tax Wizard",
-                header=[self._step_text],
-                sidebar=[
-                    pmui.Typography("Need Help?", variant="h6", sx={"mb": 1}),
-                    pmui.Typography(
-                        "Have questions about filing? Visit our FAQ or contact support.",
-                        sx={"color": "text.secondary", "fontSize": 13},
+    def _build_page(self):
+        return pmui.Page(
+            title="Tax Wizard",
+            header=[self._step_text],
+            sidebar=[
+                pmui.Typography("Need Help?", variant="h6", sx={"mb": 1}),
+                pmui.Typography(
+                    "Have questions about filing? Visit our FAQ or contact support.",
+                    sx={"color": "text.secondary", "fontSize": 13},
+                ),
+                pmui.Tooltip(
+                    pmui.Button(
+                        label="View FAQ",
+                        icon="help_outline",
+                        variant="outlined",
+                        sizing_mode="stretch_width",
+                        margin=(15, 10, 0, 10),
                     ),
-                    pmui.Tooltip(
-                        pmui.Button(
-                            label="View FAQ",
-                            icon="help_outline",
-                            variant="outlined",
-                            sizing_mode="stretch_width",
-                            margin=(15, 10, 0, 10),
-                        ),
-                        title="Browse frequently asked questions about filing",
-                    ),
-                ],
-                sidebar_width=280,
-                theme_config=THEME_CONFIG,
-                main=[
-                    pmui.Container(
-                        pmui.Column(
-                            self._stepper,
-                            pmui.Paper(
-                                pmui.Column(
-                                    self._alert,
-                                    self._content,
-                                    self._nav_row,
-                                    sizing_mode="stretch_width",
-                                    margin=(0, 0, 30, 0),
-                                ),
-                                sx={"p": 5, "mt": 2},
+                    title="Browse frequently asked questions about filing",
+                ),
+            ],
+            sidebar_width=280,
+            theme_config=THEME_CONFIG,
+            main=[
+                pmui.Container(
+                    pmui.Column(
+                        self._stepper,
+                        pmui.Paper(
+                            pmui.Column(
+                                self._alert,
+                                self._content,
+                                self._nav_row,
                                 sizing_mode="stretch_width",
+                                margin=(0, 0, 30, 0),
                             ),
+                            sx={"p": 5, "mt": 2},
                             sizing_mode="stretch_width",
-                            margin=(40, 0, 0, 0),
                         ),
-                        width_option="md",
-                    )
-                ],
-            )
-        return pmui.Column(self._stepper, self._alert, self._content, self._nav_row)
+                        sizing_mode="stretch_width",
+                        margin=(40, 0, 0, 0),
+                    ),
+                    width_option="md",
+                )
+            ],
+        )
+
+    def __panel__(self):
+        return self._page
 
 
 TaxWizard().servable()

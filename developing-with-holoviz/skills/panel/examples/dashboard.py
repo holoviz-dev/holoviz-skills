@@ -261,6 +261,12 @@ class SalesDashboard(pn.viewable.Viewer):
         # Build the layout sections now that the content panes exist.
         self._build_sections()
 
+        # Build the Page once here so __panel__ can return it unconditionally
+        # (building it lazily in __panel__ under an `if pn.state.served:`
+        # guard is a bug — that guard can be False when __panel__ runs,
+        # silently producing a blank Page).
+        self._page = self._build_page()
+
     # -- Layout sections --
 
     def _build_sections(self):
@@ -551,7 +557,7 @@ class SalesDashboard(pn.viewable.Viewer):
 
     # -- Layout --
 
-    def __panel__(self):
+    def _build_page(self):
         kpi_row = pmui.Grid(
             *(pmui.Grid(card, size={"xs": 12, "sm": 6, "md": 3}) for card in self._kpi_cards),
             container=True,
@@ -569,27 +575,28 @@ class SalesDashboard(pn.viewable.Viewer):
             margin=(10, 0),
         )
 
-        if pn.state.served:
-            return pmui.Page(
-                title="Sales Dashboard",
-                sidebar=[
-                    pmui.Typography("Filters", variant="h6", sx={"mb": 1}),
-                    self._date_picker,
-                    pn.layout.Divider(margin=(16, 0)),
-                    self._region_filter,
-                    pn.layout.Divider(margin=(16, 0)),
-                    self._product_filter,
-                ],
-                sidebar_width=260,
-                theme_config=THEME_CONFIG,
-                main=[
-                    pmui.Container(
-                        main_content,
-                        width_option="xl",
-                    )
-                ],
-            )
-        return main_content
+        return pmui.Page(
+            title="Sales Dashboard",
+            sidebar=[
+                pmui.Typography("Filters", variant="h6", sx={"mb": 1}),
+                self._date_picker,
+                pn.layout.Divider(margin=(16, 0)),
+                self._region_filter,
+                pn.layout.Divider(margin=(16, 0)),
+                self._product_filter,
+            ],
+            sidebar_width=260,
+            theme_config=THEME_CONFIG,
+            main=[
+                pmui.Container(
+                    main_content,
+                    width_option="xl",
+                )
+            ],
+        )
+
+    def __panel__(self):
+        return self._page
 
 
 SalesDashboard().servable()

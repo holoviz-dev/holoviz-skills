@@ -2,7 +2,7 @@
 name: minimal-example
 description: Write a minimal, self-contained, reproducible example for a HoloViz behavior or bug. Use when drafting a bug report, an issue reproducer, a PR "How to test" snippet, or any code sample a maintainer must be able to paste and run unchanged.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   author: holoviz
 ---
 
@@ -10,6 +10,12 @@ metadata:
 
 A reproducer a tester pastes and runs unchanged to check a fix, so keep it short
 enough to skim, not study. These are the traps specific to HoloViz reproducers.
+
+## Contents
+
+- [Reproducer Traps](#reproducer-traps)
+
+## Reproducer Traps
 
 - Render explicitly with `pn.serve(obj)`; don't end on the bare object. In a
   script the notebook `_repr_html_` never fires, so `obj` alone does nothing and

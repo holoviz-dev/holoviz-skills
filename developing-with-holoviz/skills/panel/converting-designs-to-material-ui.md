@@ -32,9 +32,8 @@ comparison target for the whole build:
 - Conditional states: an expanded accordion, an empty list, an error/alert variant, a hover/active
   row. These are the states you will otherwise forget to build.
 
-See [Iterating on Panel Apps](iterating-on-panel-apps.md) for the Playwright capture how-to (run the
-source app, screenshot at a fixed viewport, wait for load). Save the images somewhere stable
-(`reference_screenshots/`) and refer back to them at every step below.
+Capture them with the [Playwright screenshot loop](iterating-on-panel-apps.md#screenshotting-with-playwright).
+Save the images somewhere stable (`reference_screenshots/`) and refer back at every step below.
 
 ## 2. Map the Design to Components
 
@@ -76,9 +75,8 @@ MOCK_PLAIN = {...}   # minimal: no alert, empty optional lists
 ```
 
 One record should exercise every conditional branch (the alert path, a non-empty optional list, all
-status colors); the other should be minimal (no alert, empty lists) so you confirm both render. This
-is the same idea as the mock-source decoupling in
-[Iterating on Panel Apps](iterating-on-panel-apps.md), scoped to a single component.
+status colors); the other should be minimal (no alert, empty lists) so you confirm both render —
+[mock-source decoupling](iterating-on-panel-apps.md#decouple-from-the-backend) scoped to one component.
 
 A preview harness is just a themed `Page` (or bare `Container`) wrapping the one component:
 

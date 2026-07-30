@@ -1,6 +1,6 @@
 # Reviewing Panel Apps
 
-Checklist for reviewing Panel applications. Focus on anti-patterns that cause flickering, wasted redraws, or subtle bugs. For general code style (imports, naming, param ordering), see the [cleanup](../../../contributing-to-holoviz/skills/cleanup/SKILL.md) skill. For a complete example that applies all these patterns, see `examples/wizard.py`.
+Checklist for reviewing Panel applications. Focus on anti-patterns that cause flickering, wasted redraws, or subtle bugs. For general code style (imports, naming, param ordering), see also the [cleanup](../../../contributing-to-holoviz/skills/cleanup/SKILL.md) skill — note this reference is only available if the `contributing-to-holoviz` skill category is also installed alongside `developing-with-holoviz`, since the two ship as separate plugin artifacts. For a complete example that applies all these patterns, see `examples/wizard.py`.
 
 This checklist operationalizes Panel's official best-practices guides for review; consult them for upstream rationale and additional patterns (graceful exception handling, `obj.param.update`, `FlexBox` layouts): [Developer Experience](https://panel.holoviz.org/how_to/best_practices/dev_experience.html) and [User Experience](https://panel.holoviz.org/how_to/best_practices/user_experience.html).
 
@@ -63,30 +63,7 @@ def _update_details(self):
 
 ## Missing Hold on Multi-Property Updates
 
-When a watcher updates multiple widget properties, each assignment triggers a separate redraw. Wrap in `pn.io.hold()` to batch them into one.
-
-```python
-# WRONG — 6 separate redraws
-@param.depends("active_step", watch=True, on_init=True)
-def _update_view(self):
-    self._breadcrumbs.active = self.active_step
-    self._back_btn.visible = self.active_step > 0
-    self._next_btn.label = "Submit" if is_last else "Continue"
-    self._next_btn.disabled = not current_step.complete
-    self._content.update(current_step)
-    self._progress_bar.value = progress
-
-# CORRECT — one redraw
-@param.depends("active_step", watch=True, on_init=True)
-def _update_view(self):
-    with pn.io.hold():
-        self._breadcrumbs.active = self.active_step
-        self._back_btn.visible = self.active_step > 0
-        self._next_btn.label = "Submit" if is_last else "Continue"
-        self._next_btn.disabled = not current_step.complete
-        self._content.update(current_step)
-        self._progress_bar.value = progress
-```
+A watcher that assigns to 3+ widget properties without batching triggers a separate redraw per assignment. Wrap in `pn.io.hold()` — see [panel/SKILL.md](SKILL.md#performance) for the pattern.
 
 **What to look for**: any watcher that assigns to 3+ widget properties without `pn.io.hold()`. Two assignments are borderline; three or more should always be held.
 
@@ -123,25 +100,13 @@ pn.bind(self._on_menu_select, self._nav_menu.param.active, watch=True)
 
 ## from_param Widgets Created Before super()
 
-`.from_param()` works for every widget type (button groups included) *if* the widget is created after `super().__init__(**params)`; built before it, watchers silently never fire. It's the [Viewer ordering rule](SKILL.md#viewer-class-pattern), not a widget bug — a direct widget + manual watcher only masks it.
+`.from_param()` widgets created before `super().__init__(**params)` have watchers that silently never fire — see [panel/SKILL.md](SKILL.md#viewer-class-pattern) for the full ordering rule.
 
 **What to look for**: a `.from_param()` widget assigned *before* `super().__init__()` whose `@param.depends(..., watch=True)` "isn't firing" — move it below `super()`. Symptom, cause, and the WRONG/CORRECT fix: [Troubleshooting Panel Apps](troubleshooting.md#widgets-change-but-nothing-updates-init-ordering).
 
 ## Unintended Stretch and Collapsed Labels
 
-Under the default `sizing_mode="stretch_width"`, fixed-size widgets stretch to fill their container. Icon widgets like `Rating` render enormous, and inline `Markdown`/`HTML` labels placed in a `Row` alongside `HSpacer`s collapse to near-zero width and wrap one character per line.
-
-```python
-# WRONG — Rating fills the row (giant stars); label wraps vertically
-pmui.Row(pn.pane.Markdown("**Rating:**"), pmui.Rating(end=5), pn.layout.HSpacer())
-
-# CORRECT — pin inline widgets/labels to a fixed width
-pmui.Row(
-    pn.pane.HTML("<b>Rating:</b>", width=64, sizing_mode="fixed"),
-    pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed"),
-    pn.layout.HSpacer(),
-)
-```
+Under the default `sizing_mode="stretch_width"`, fixed-size widgets stretch to fill their container. Icon widgets like `Rating` render enormous, and inline `Markdown`/`HTML` labels placed in a `Row` alongside `HSpacer`s collapse to near-zero width and wrap one character per line. The fix — pinning `width` plus `sizing_mode="fixed"` — is in [Using Material UI](using-material-ui.md#components).
 
 **What to look for**: `Rating`, small buttons, or text labels inside a stretched `Row`/`Column` without an explicit `width`/`sizing_mode="fixed"`.
 
@@ -169,17 +134,9 @@ pmui.Column(
 
 ## Mutating Instead of Reassigning
 
-In-place operations on param values (`list.append()`, `dict.update()`, `+=` on lists) don't trigger watchers because Param checks identity, not contents. Always reassign.
+In-place operations on param values (`list.append()`, `dict.update()`, `+=` on lists) don't trigger watchers, so dependents go stale with no error. Mechanism and the reassignment idioms: [param skill](../param/SKILL.md#parameter-types).
 
-```python
-# WRONG — watcher never fires
-self.items.append(new_item)
-self.data["key"] = value
-
-# CORRECT — new object triggers watcher
-self.items = self.items + [new_item]
-self.data = {**self.data, "key": value}
-```
+**What to look for**: any `self.<param>.append(...)`, `self.<param>[key] = ...`, or `self.<param> +=` where the param has a watcher or a `@param.depends` reader. Rewrite as a whole-object assignment.
 
 ## Watch vs Depends Misuse
 
@@ -211,12 +168,12 @@ def results_view(self):
 
 ## Component Gotchas
 
-Per-component traps that produce silent bugs rather than errors — flag these in review; see [Troubleshooting Panel Apps](troubleshooting.md) for each cause and fix:
+Per-component traps that produce silent bugs rather than errors. Grep for the pattern in review; each cause and fix lives in [Troubleshooting Panel Apps](troubleshooting.md):
 
-- **Radio with `default=None`** — the first option can't be selected and callbacks never fire on load; set a real default (or use `Select` for an empty state).
-- **`Selector.objects` as a dict** — can leave a `Select` rendering blank; keep `objects` a plain list of values and drive `options` (a `{label: value}` dict) directly.
-- **Date widgets** — convert to `pd.Timestamp` before comparing to DataFrame columns.
-- **`Markdown` header flicker** — set `disable_anchors=True`.
+- `RadioBoxGroup`/`RadioButtonGroup` constructed with `default=None` → [first radio option can't be selected](troubleshooting.md#first-radio-option-cant-be-selected)
+- A **dict** assigned to a `Selector`'s `.objects` → [Select renders blank](troubleshooting.md#select-renders-blank-after-setting-objects)
+- A date-widget value compared directly against a DataFrame column → [date filter returns nothing](troubleshooting.md#date-filter-returns-nothing-type-error)
+- `pn.pane.Markdown` containing headers → [header flickers on hover](troubleshooting.md#markdown-header-flickers-on-hover)
 
 ## UX Heuristics
 

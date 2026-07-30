@@ -2,11 +2,11 @@
 name: holoviews
 description: Build interactive visualizations with HoloViews elements, opts, streams, and operations. Use when composing plots from element primitives (Curve, Points, Bars, NdOverlay), customizing Bokeh tools/tooltips/formatters, using DynamicMap, streams, or link_selections. Do not use for simple DataFrame plotting (use hvPlot) or Panel app structure (use Panel).
 metadata:
-  version: "0.0.3"
+  version: "0.1.0"
   author: holoviz
 ---
 
-# Using HoloViews
+# HoloViews
 
 HoloViews lets you build interactive visualizations by composing declarative elements. Use it when you need fine-grained control over plot composition, custom tooltips, Bokeh tool configuration, streaming data, or cross-filtering — things that go beyond hvPlot's `.plot()`-style API.
 
@@ -14,12 +14,26 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 
 ## Contents
 
+- [References](#references) — decluttering plots
+- [Lookup](#lookup) — site search
 - [Opts System](#opts-system)
+- [Session Defaults](#session-defaults)
 - [Hover Tooltips](#hover-tooltips)
 - [Formatters](#formatters)
 - [Bokeh Tools](#bokeh-tools)
 - [DynamicMap](#dynamicmap)
 - [Streams](#streams)
+- [Cross-Filtering with link_selections](#cross-filtering-with-link_selections)
+
+## References
+
+Read these for specialized topics. Each is a standalone document you can load with the `view` tool.
+
+- [Decluttering Plots](decluttering-plots.md) — stripping Bokeh chart junk with `.opts()`: hide the toolbar, disable wheel-zoom (`default_tools`/`active_tools`), one-axis gridlines (`gridstyle`), hide/share axes across stacked plots, legend placement, nested categorical axes, and why these opts belong on the top-level overlay/layout rather than per element
+
+## Lookup
+
+Web-search `https://holoviews.org/search.html?q=<topic>` for anything not covered below.
 
 ## Opts System
 
@@ -40,9 +54,46 @@ hv.NdOverlay(curves, kdims=["Region"]).opts(
 ```
 
 - Options go on the element type they belong to: `legend_position` and `title` on `NdOverlay`, `tools` and `color` on `Curve`.
-- Misplaced options raise `ValueError: unexpected option 'X' for Y type`.
+- Misplaced options raise `ValueError: Unexpected option 'X' for Y type across all extensions.` The message then either lists near-misses ("Similar options for current extension ('bokeh') are: [...]") or says "No similar options found." — read that tail, it usually names the option you meant.
 - A legend with a single entry distinguishes nothing and just adds clutter — suppress it: `.opts(show_legend=len(groups) > 1)` (computed from the same dict/groupby driving the `NdOverlay`, e.g. after a filter narrows a `by=`/`kdims=` grouping down to one category).
 - `.opts()` on pure HoloViews elements is fine. For hvPlot, pass options as hvplot kwargs instead — see the [hvPlot skill](../hvplot/SKILL.md).
+
+## Session Defaults
+
+`hv.opts.defaults(...)` sets options once for the session instead of on every element. Use it for
+cosmetics repeated across a family of charts:
+
+```python
+hv.opts.defaults(*[
+    opt(toolbar=None, active_tools=[], show_grid=True,
+        gridstyle={"xgrid_line_alpha": 0, "ygrid_line_alpha": 0.35})
+    for opt in (hv.opts.Overlay, hv.opts.Curve, hv.opts.Scatter, hv.opts.BoxWhisker)
+])
+```
+
+- **Per-object options beat session defaults.** Anything written onto an element wins — including
+  every option hvPlot writes on your behalf. So `opts.defaults` is the right home for options
+  nothing else sets, and the wrong home for anything a call already supplies.
+- **hvPlot's `responsive`/`height` cannot be defaulted this way** — hvPlot injects its own
+  `width=700` that outranks any session default. See [Plotting in Panel](../panel/plotting-in-panel.md#responsive-sizing)
+  for the full explanation. Pure HoloViews elements have no injected width, so for them sizing
+  *can* live in `opts.defaults`. That asymmetry is a real reason to build a repeated family of
+  charts from `hv.Dataset(...).to(...)` rather than `.hvplot`: every option, sizing included, then
+  lives in one place instead of being repeated per call.
+- **No catch-all type.** The option store is keyed by concrete registered types, so there is no
+  "every element" spelling — list the types you actually build. Include container types (`Overlay`,
+  `NdOverlay`, `Layout`) when the option belongs on the outer plot; sizing and `toolbar` do.
+- **Check the current default before overriding it.** `active_tools` defaults to `None`, not `[]`,
+  so `active_tools=[]` is meaningful — it suppresses the pan/wheel-zoom Bokeh would otherwise
+  activate. Conversely hvPlot's `tools` already defaults to `[]`, so passing it does nothing.
+- Requires a loaded backend: `hv.extension("bokeh")`, or `import hvplot.pandas`, which is the only
+  reason to add `import holoviews as hv` to otherwise hvPlot-only code.
+
+Porting a family of hvPlot calls to elements so their options can be defaulted needs a few
+renames: `rot` → `xrotation`, `legend="top_right"` → `legend_position` plus `show_legend`, `by=`
+→ `.overlay(dim)`, and `groupby=` → a leftover kdim plus `.layout(dim)`. Building both layers of
+an overlay from one `hv.Dataset` also removes the kdim-mismatch failure mode that tempts people
+into wrapping the overlay in a `try`/`except`.
 
 ## Hover Tooltips
 
@@ -95,6 +146,10 @@ hv.Curve(df, "date", "revenue").opts(
 - `default_tools=[]` strips all default Bokeh tools (pan, wheel_zoom, save, reset). Add back selectively: `default_tools=["reset"]`.
 - `tools=` adds on top of defaults. Common: `"hover"`, `"xwheel_zoom"`, `"ywheel_zoom"`, `"box_select"`, `"tap"`, `"lasso_select"`.
 - `active_tools=` sets which tools are active on load.
+
+To strip chart junk wholesale — hide the toolbar, disable accidental wheel-zoom, put gridlines
+on one axis, share/hide axes across stacked plots — and for the gotcha that these opts must go
+on the top-level plot (overlay/layout), see [Decluttering Plots](decluttering-plots.md).
 
 ## DynamicMap
 
@@ -164,12 +219,12 @@ layout = (source + target).opts(merge_tools=False).cols(1)
 
 `hv.link_selections` provides automatic cross-filtering across static elements.
 
-- **Does NOT work with DynamicMap** — use Tabulator selection + `pn.bind(watch=True)` instead (see `examples/dashboard.py` in the Panel skill).
+- **DynamicMap support is conditional, and fails quietly.** `link_selections` has an explicit `DynamicMap` branch: it links fine when the DynamicMap's element type is introspectable (`dmap.type` is an `Element` subclass — i.e. the *same-element-type* rule from [DynamicMap](#dynamicmap) above), and also handles `dynamic_mul` overlays and `dynamic_operation` chains. Anything else it cannot recurse into is returned **unlinked** with only a `param.warning`: `linked selection: Encountered DynamicMap that we don't know how to recurse into`. So there is no exception to catch — if cross-filtering silently does nothing, check the logs for that warning, then fall back to Tabulator selection + `pn.bind(watch=True)` (see `examples/dashboard.py` in the Panel skill).
 - Use `.instance()` to create a reusable linker.
 - `hv.operation.histogram(element, dimension='x')` for numeric histograms — preserves data lineage.
 - For categorical bars, subclass `hv.Operation` (see below).
-- Don't add selection tools manually — `link_selections` adds them.
-- Requires `pyarrow` at runtime. Lasso also requires `shapely`.
+- Don't add selection tools manually — `link_selections` adds `box_select` and `lasso_select` itself.
+- Lasso selection on tabular data needs **`spatialpandas` *or* `shapely`** (spatialpandas is preferred when both are present); with neither you get `ImportError: Lasso selection on tabular data requires either spatialpandas or shapely to be available.` Note the lasso *tool* still appears in the toolbar either way — the error only surfaces when a lasso is actually drawn.
 
 ```python
 from holoviews.operation import histogram
@@ -184,6 +239,7 @@ layout = ls(scatter) + ls(hist)
 
 ```python
 import numpy as np
+import param
 
 class categorical_agg(hv.Operation):
     dimension = param.String(doc="Categorical dimension to group by")
@@ -208,7 +264,3 @@ class categorical_agg(hv.Operation):
 bars = categorical_agg(scatter, dimension="species")
 layout = ls(scatter) + ls(bars)
 ```
-
-## Lookup
-
-Search the web at `https://holoviews.org/search.html?q=<topic>` for additional information.

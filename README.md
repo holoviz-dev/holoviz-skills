@@ -24,7 +24,7 @@ Or target a specific tool:
 ```bash
 holoviz-skills install --claude-code   # .claude/skills/
 holoviz-skills install --agent         # .agents/skills/          (cross-tool standard, commit to git)
-holoviz-skills install --codex         # .codex/skills/            (OpenAI Codex)
+holoviz-skills install --codex         # .agents/skills/           (OpenAI Codex)
 holoviz-skills install --copilot       # .github/skills/           (GitHub Copilot)
 holoviz-skills install --cursor        # .cursor/skills/
 holoviz-skills install --windsurf      # .windsurf/skills/

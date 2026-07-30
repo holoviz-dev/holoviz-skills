@@ -2,7 +2,7 @@
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
 metadata:
-  version: "0.1.1"
+  version: "0.1.0"
   author: holoviz
 ---
 
@@ -19,6 +19,9 @@ testing, iterating, description optimization), see the [`skill-creator` skill](h
 - [Adding a sub-skill](#adding-a-sub-skill)
 - [SKILL.md structure](#skillmd-structure)
 - [Resource files](#resource-files)
+  - [Splitting references](#splitting-references)
+  - [Naming references](#naming-references)
+  - [Nesting in docs](#nesting-in-docs)
 - [Routing skills](#routing-skills)
 - [Docs pipeline](#docs-pipeline)
 - [Evaluation](#evaluation)
@@ -207,9 +210,9 @@ sidebar navigation, so keep them concise.
 ```
 # ✅ Good — action-oriented, no redundant prefix
 Building Custom Components
-Applying Material UI
-Interacting with HoloViews
-Mapping Widgets
+Using Material UI
+Designing Panel Architecture
+Plotting in Panel
 
 # ❌ Bad — repeats "Panel" from the parent skill
 Panel Custom Components
@@ -270,11 +273,16 @@ To add test queries for your skill, edit `scripts/eval_queries.yaml`:
 - id: my_new_query
   prompt: |
     Your prompt here...
-  expected_output: static_plot   # or panel_app
+  expected_output: static_plot
   category: hvplot_basics
 ```
 
 Run `pixi run evals` to execute the full pipeline.
+
+Note: coverage is currently thin — only the `hvplot` skill has any eval
+queries today, and the `expected_output`/`category` fields are documentation
+only (not read or enforced by `eval.py`). Adding queries for your skill is a
+useful, but not blocking, contribution.
 
 ## Resources
 

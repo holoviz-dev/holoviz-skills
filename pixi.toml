@@ -49,7 +49,7 @@ playwright = "*"
 
 [feature.docs.tasks]
 _docs-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }
-build-stubs = { cmd = "python scripts/build_stubs.py", depends-on = ["_docs-setup"], description = "Generate docs/skills/*.md from SKILL.md files" }
+build-stubs = { cmd = "python scripts/build_stubs.py", depends-on = ["_docs-setup"], description = "Generate docs/<category>/*.md pages from SKILL.md files" }
 docs = { cmd = "zensical serve", depends-on = [
     "docs-build",
 ], description = "Serve documentation locally" }
