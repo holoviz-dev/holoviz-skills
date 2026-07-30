@@ -10,7 +10,7 @@ the top for each release; keep `## Unreleased` (no "Version" prefix) for
 in-progress notes so it is skipped by the extraction.
 -->
 
-## Unreleased
+## v0.1.0
 
 ### Added
 
