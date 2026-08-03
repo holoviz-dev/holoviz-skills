@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "0.1.1"
+  version: "0.2.0"
   author: holoviz
 ---
 
@@ -27,8 +27,8 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 
 Read these for specialized topics. Each is a standalone document you can load on demand.
 
-- [Iterating on Panel Apps](iterating-on-panel-apps.md) — serve with logging, screenshot with Playwright, review and debug agentic loop
-- [Designing Panel Architecture](designing-panel-architecture.md) — composing larger apps (State/DataStore/View/App, `param.ClassSelector`, cross-object `@param.depends`, `from_data`, `pn.rx`) and runtime/scale (per-session model, `pn.state` scheduling, generator streaming, caching tiers, `nthreads`, profiling)
+- [Iterating on Panel Apps](iterating-on-panel-apps.md) — pre-flight lint, serve with logging, screenshot with Playwright, review and debug agentic loop
+- [Designing Panel Architecture](designing-panel-architecture.md) — composing larger apps (State/DataStore/View/App, `param.ClassSelector`, cross-object `@param.depends`, `from_data`, `pn.rx`) and runtime/scale (per-session model, `pn.state` scheduling, URL state sync, generator streaming, caching tiers, `nthreads`, profiling)
 - [Building Custom Components](building-custom-components.md) — Python-vs-JS decision ladder; pure-Python `Viewer`/`PyComponent`; JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent; CDN selection, event handling, state sync lifecycle
 - [Using Material UI](using-material-ui.md) — building pmui apps (`pmui.Page`, `Container`/`Grid` layouts, centering, component gotchas) and theming (`theme_config` palette, typography, icons, brand assets, chart theming)
 - [Migrating to Material UI](migrating-to-material-ui.md) — converting an existing plain-Panel app to pmui: template→Page, widget swaps, pane/interaction upgrades, what to leave alone

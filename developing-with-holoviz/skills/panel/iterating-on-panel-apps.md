@@ -1,6 +1,6 @@
 # Iterating on Panel Apps
 
-Agentic workflow for developing and debugging Panel apps. For agents with shell access: serve with logging, iterate by reading logs after each edit, and screenshot with Playwright only when you need to verify something visual — all without requiring user intervention.
+Agentic workflow for developing and debugging Panel apps. For agents with shell access: run a static preflight check before first serve, serve with logging, iterate by reading logs after each edit, and screenshot with Playwright only when you need to verify something visual — all without requiring user intervention.
 
 ## Contents
 
@@ -13,13 +13,14 @@ Agentic workflow for developing and debugging Panel apps. For agents with shell 
 
 ## Development Loop
 
+0. **Preflight** the code before the first serve: `python scripts/preflight.py app.py`. This is a static, dependency-free check for the mechanical anti-patterns already documented in [Reviewing Panel Apps](reviewing-panel-apps.md) and [Troubleshooting](troubleshooting.md) — flicker-causing `@param.depends` returns, `from_param` before `super()`, missing `pn.io.hold()`, mutated params, `Radio*Group` defaults, missing `throttled`. It costs nothing and catches most bugs before a server is even running, so run it before spending a log-tail cycle or a screenshot on something greppable.
 1. **Serve** the app once with logs captured to a file — the `--dev` flag auto-reloads on file changes, so you don't restart per edit
 2. **Edit** the code to fix issues
 3. **Check logs** for Python errors after each edit (tracebacks show invalid params and valid options) — this is fast and cheap, so do it every iteration
 4. **Repeat** edit + log check until the logs are clean
 5. **Screenshot** with Playwright only when you need to confirm something visual (see [when to screenshot](#when-to-screenshot)), then **review** the image for layout/styling issues
 
-Drive iteration from the logs, not from screenshots. Reach for a screenshot at milestones — once the logs are clean, when debugging a specifically visual problem, or for a final check — not on every edit.
+Drive iteration from preflight and the logs, not from screenshots. Reach for a screenshot at milestones — once preflight is clean and the logs are clean, when debugging a specifically visual problem, or for a final check — not on every edit.
 
 ## Decouple from the Backend
 
@@ -30,11 +31,35 @@ class BaseSource:
     def list_items(self): ...
     def load(self, key): ...
 
-class MockSource(BaseSource):   # synthetic rows + tiny inline assets
-    ...
+class MockSource(BaseSource):
+    """Synthetic rows + tiny inline assets, with knobs to rehearse slow/broken states."""
 
-SOURCE = MockSource() if os.environ.get("APP_MOCK") == "1" else LiveSource()
+    def __init__(self, latency: float = 0.0, fail: bool = False):
+        self.latency = latency  # seconds to sleep before returning — rehearses loading states
+        self.fail = fail        # raise instead of returning — rehearses error states
+
+    def list_items(self):
+        if self.latency:
+            time.sleep(self.latency)
+        if self.fail:
+            raise RuntimeError("mock backend failure")
+        return [...]  # synthetic rows
+
+SOURCE = (
+    MockSource(latency=float(os.environ.get("APP_LATENCY", 0)),
+               fail=os.environ.get("APP_FAIL") == "1")
+    if os.environ.get("APP_MOCK") == "1" else LiveSource()
+)
 ```
+
+Exercise the loading spinner or the error/Alert state from the command line, without touching app code:
+
+```bash
+APP_MOCK=1 APP_LATENCY=2 panel serve app.py --dev --show   # loading state
+APP_MOCK=1 APP_FAIL=1 panel serve app.py --dev --show      # error state
+```
+
+Catch the raised error in the calling watcher and surface it as a `pmui.Alert` or a notification (see [Notifications](using-material-ui.md#notifications)) instead of letting it crash the callback silently — an app with no exercised error path is untested, not robust. `time.sleep` is fine for a headless smoke test, but for the spinner to actually show *during* a live-served request the slow call needs to run `async` (see the loading-spinner caveat in [Designing Panel Architecture](designing-panel-architecture.md#batching-loading-and-memory)).
 
 Then drive a headless smoke test by setting widget/param values and asserting the panes updated — no browser needed:
 

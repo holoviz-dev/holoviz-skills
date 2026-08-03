@@ -20,6 +20,7 @@ Runtime and scale:
 
 - [The Session Model](#the-session-model)
 - [Server-Side State and Scheduling](#server-side-state-and-scheduling)
+- [URL State Sync](#url-state-sync)
 - [Streaming with Generators](#streaming-with-generators)
 - [Caching](#caching)
 - [Automatic Threading](#automatic-threading)
@@ -247,6 +248,27 @@ Periodic callbacks, deferred execution (`pn.state.execute`), and session lifecyc
 
 - `pn.state.add_periodic_callback(fn, period=...)` — `period` is in **milliseconds**, and the returned handle must be `.stop()`-ed. Tie it to the session so it stops on disconnect.
 - Use `pn.state.execute(fn)` to defer heavy work off a callback so the UI stays responsive instead of blocking until the handler returns.
+
+## URL State Sync
+
+Share or bookmark the app's exact state by syncing param values to the URL query string with `pn.state.location.sync(obj, [...])` — pass a list to sync names as-is, or a dict mapping param name → query param name for shorter URLs:
+
+```python
+class Filters(param.Parameterized):
+    year = param.Integer(default=2020)
+    region = param.Selector(default="North", objects=["North", "South"])
+
+filters = Filters()
+if pn.state.location:
+    pn.state.location.sync(filters, {"year": "y", "region": "r"})
+```
+
+Gotchas:
+
+- **Guard with `if pn.state.location:`.** It's `None` outside a served app (a notebook cell, `python app.py` without a server context, some embeddings) — calling `.sync()` unconditionally raises at import time in those contexts.
+- **Only *changed* parameters appear in the URL.** A freshly loaded page at its default state shows a bare URL with no query string, so "copy this link" reproduces a state the user actually altered, not the literal defaults. If every visit needs the full state in the URL, set the query params explicitly (e.g. in an `onload` hook) rather than relying on defaults to show up on their own.
+- **Values are JSON-encoded going out.** A synced param holding something without a JSON representation (a custom class, a DataFrame) raises when it changes. Sync only JSON-safe types — numbers, strings, bools, and lists/dicts of those — and keep richer state (like a `param.DataFrame`) derived from the synced params rather than synced directly.
+- **`Selector` options that look like integers can misresolve on load** — restoring `?region=01` coerces to the int `1` before matching against string options and fails. Prefer non-numeric option strings for anything synced to the URL.
 
 ## Streaming with Generators
 
