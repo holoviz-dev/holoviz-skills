@@ -1,15 +1,16 @@
 ---
 name: developing-with-holoviz
-description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param), including Panel apps that embed Bokeh, Matplotlib, or Plotly figures. A named plotting library (e.g. bokeh) is not a reason to skip this skill.
-user-invocable: false
+description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param) — including tasks that name Bokeh, Matplotlib, or Plotly, since HoloViz embeds those figures and this skill covers how.
+user-invocable: true
+argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component]"
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: holoviz
 ---
 
 # Developing with HoloViz
 
-This is a **routing skill**. You MUST use the `view` tool to read every sub-skill file listed in the table below that matches the task BEFORE writing any code or giving any answer. Do not skip this step!
+This is a **routing skill**. You MUST read every sub-skill file listed in the table below that matches the task BEFORE writing any code or giving any answer. Do not skip this step!
 
 ## Contents
 
@@ -20,7 +21,7 @@ This is a **routing skill**. You MUST use the `view` tool to read every sub-skil
 ## Instructions
 
 1. Identify which sub-skill(s) apply from the Loading Table below.
-2. Use the `view` tool to read each matching sub-skill file in full.
+2. Read each matching sub-skill file in full.
 3. Only after reading the sub-skill file(s), proceed with the task.
 
 For new apps, prefer `panel-material-ui` over standard Panel templates — it provides modern Material Design components out of the box.
@@ -29,7 +30,7 @@ For new apps, prefer `panel-material-ui` over standard Panel templates — it pr
 
 A single request often spans multiple skills. Read ALL that apply. Paths below are relative to this file's directory (`developing-with-holoviz/`).
 
-| User Need | File(s) to read with `view` |
+| User Need | File(s) to read |
 |---|---|
 | Typed, validated, reactive parameters | `skills/param/SKILL.md` |
 | Quick exploratory plots from DataFrames / xarray | `skills/hvplot/SKILL.md` |

@@ -2,7 +2,7 @@
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   author: holoviz
 ---
 
@@ -18,6 +18,7 @@ testing, iterating, description optimization), see the [`skill-creator` skill](h
 - [Repo layout](#repo-layout)
 - [Adding a sub-skill](#adding-a-sub-skill)
 - [SKILL.md structure](#skillmd-structure)
+  - [Versioning](#versioning)
 - [Resource files](#resource-files)
   - [Splitting references](#splitting-references)
   - [Naming references](#naming-references)
@@ -97,15 +98,40 @@ description: >-              # ≤1024 chars, third person, WHAT + WHEN
 # Optional fields:
 license: BSD-3-Clause
 compatibility: Requires panel>=1.5
-user-invocable: true         # false hides from /slash-command menu (use for routing skills)
+user-invocable: true         # false hides from the /slash-command menu; see Routing skills
 disable-model-invocation: false  # true = manual invocation only (use for skills with side effects)
 argument-hint: "[component] [description]"  # shown in slash-command input
 allowed-tools: Read Grep Glob Bash(python:*)  # experimental: pre-approve tools
 metadata:
-  version: "1.0.0"
+  version: "0.1.0"           # see Versioning below
   author: holoviz
 ---
 ```
+
+### Versioning
+
+`metadata.version` is per-skill and independent of the package version and of
+the other skills — `build_stubs.py` renders it into each docs page as *Skill
+version X.Y.Z*, so it describes that skill's content, not the release it shipped
+in. New skills start at `0.1.0`.
+
+**Patch bumps are automatic.** The `bump skill version on edit` pre-commit hook
+(`scripts/bump_skill_version.py`) maps each staged file to its owning skill —
+the nearest ancestor directory with a SKILL.md, so editing a reference file
+bumps its sub-skill — and patch-bumps that skill once per branch, comparing
+against the merge-base with `main` rather than the previous commit. The hook
+exits non-zero after writing, so the commit needs re-running; that's expected,
+not a failure. Don't hand-bump a patch to save it the trouble.
+
+**Bump the minor component yourself** when the change is more than a fix —
+a new section or reference file, or changed guidance an agent would act on
+differently (a new recommended API, a reversed recommendation, a new gotcha).
+The hook respects any version you set: it only acts when the staged value still
+matches the merge-base, so a manual bump makes it a no-op for that skill.
+
+Leave the *other* skills' versions alone. They diverged once before and were
+reset to a uniform baseline, which only stays meaningful if each bump tracks a
+real change to that skill.
 
 After the frontmatter, write Markdown. Key principles:
 
@@ -246,6 +272,23 @@ so a per-reference index there costs context even for unrelated work, and it
 duplicates the sub-skill's own References section. Instead, give each reference a
 Loading Table user-need row paired with its sub-skill, and let the sub-skill's
 References section be the single full index.
+
+### Only routing skills are real skills
+
+The host registers one skill per *top-level* directory — the routing SKILL.md.
+Sub-skills under `skills/` are not registered: to the host they're ordinary
+`.md` files that the routing table tells the agent to read. So there is no
+`/panel` or `/testing` slash command, and adding `user-invocable` to a
+sub-skill's frontmatter does nothing. Only a top-level skill can carry
+`user-invocable`, `argument-hint`, or `allowed-tools` and have them take effect.
+
+Keep routing skills `user-invocable: true` and give them an `argument-hint`
+listing the main entry points from the Loading Table. Typing
+`/developing-with-holoviz dashboard` is the closest thing to invoking a
+sub-skill directly: the routing table resolves the argument to the right
+sub-skill files. `user-invocable: false` on a routing skill makes the whole
+category unreachable by slash command, since the sub-skills can't be reached
+that way either.
 
 ## Docs pipeline
 
