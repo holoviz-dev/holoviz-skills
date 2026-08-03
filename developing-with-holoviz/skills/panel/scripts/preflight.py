@@ -45,6 +45,7 @@ LAYOUT_CONSTRUCTOR_SUFFIXES = (
 RADIO_GROUP_NAMES = ("RadioBoxGroup", "RadioButtonGroup")
 SLIDER_SUFFIX = "Slider"
 SCOPE_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+FuncDef = ast.FunctionDef | ast.AsyncFunctionDef
 
 
 @dataclass
@@ -114,7 +115,7 @@ def _kwarg_is(call: ast.Call, kwarg: str, value) -> bool:
     return False
 
 
-def _returns_layout_constructor(func: ast.FunctionDef) -> ast.Return | None:
+def _returns_layout_constructor(func: FuncDef) -> ast.Return | None:
     """Find a `return <LayoutConstructor(...)>` in *func*'s own scope (not a
     nested helper/closure)."""
     for node in iter_own_scope(func):
@@ -124,7 +125,7 @@ def _returns_layout_constructor(func: ast.FunctionDef) -> ast.Return | None:
     return None
 
 
-def _returns_nonnull_value(func: ast.FunctionDef) -> ast.Return | None:
+def _returns_nonnull_value(func: FuncDef) -> ast.Return | None:
     for node in iter_own_scope(func):
         if isinstance(node, ast.Return) and node.value is not None:
             if not (isinstance(node.value, ast.Constant) and node.value.value is None):
@@ -132,7 +133,7 @@ def _returns_nonnull_value(func: ast.FunctionDef) -> ast.Return | None:
     return None
 
 
-def _find_super_init_line(func: ast.FunctionDef) -> int | None:
+def _find_super_init_line(func: FuncDef) -> int | None:
     for node in iter_own_scope(func):
         if (
             isinstance(node, ast.Call)
@@ -146,7 +147,7 @@ def _find_super_init_line(func: ast.FunctionDef) -> int | None:
     return None
 
 
-def _find_from_param_calls_before(func: ast.FunctionDef, boundary_line: int) -> list[int]:
+def _find_from_param_calls_before(func: FuncDef, boundary_line: int) -> list[int]:
     lines: list[int] = []
     for node in iter_own_scope(func):
         if (
@@ -180,7 +181,7 @@ def _is_redraw_write(stmt: ast.stmt) -> bool:
     return False
 
 
-def _count_top_level_assigns_outside_hold(func: ast.FunctionDef) -> list[ast.stmt]:
+def _count_top_level_assigns_outside_hold(func: FuncDef) -> list[ast.stmt]:
     """Property writes (assignments or `.update()` calls, see `_is_redraw_write`)
     directly in the function body (not inside a `with pn.io.hold():` block),
     used to flag 3+ ungrouped writes."""
@@ -219,7 +220,7 @@ def check_function_level(tree: ast.Module) -> list[Violation]:
     violations: list[Violation] = []
 
     for node in ast.walk(tree):
-        if not isinstance(node, ast.FunctionDef):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
 
         depends_call = next(
@@ -328,12 +329,20 @@ def check_radio_default_none(tree: ast.Module) -> list[Violation]:
 
 
 def check_mutating_params(tree: ast.Module) -> list[Violation]:
-    """`.append()` / subscript-assignment on `self.<name>` where `<name>` has
-    no leading underscore — the naming heuristic this codebase already uses
-    for "this is a param, not a private widget/pane" (see panel/SKILL.md's
+    """`.append()` / subscript-assignment / `+=` on `self.<name>` where `<name>`
+    has no leading underscore — the naming heuristic this codebase already
+    uses for "this is a param, not a private widget/pane" (see panel/SKILL.md's
     method/attribute naming conventions). A leading-underscore attribute is
     assumed to be private instance state, not a watched param, so it's
-    excluded to keep this check's noise down."""
+    excluded to keep this check's noise down.
+
+    `dict.update()` (the third in-place form reviewing-panel-apps.md names)
+    is deliberately NOT checked here: `.update()` on `self.<attr>` is also the
+    idiom for pushing new content into a `pn.pane.Placeholder` (see
+    `_is_redraw_write` above) and is extremely common in correct code, so a
+    bare "any `.update()` call on `self.<attr>`" rule would be dominated by
+    false positives from that idiom rather than actual dict mutation.
+    """
     violations = []
     for node in ast.walk(tree):
         if (
@@ -371,6 +380,30 @@ def check_mutating_params(tree: ast.Module) -> list[Violation]:
                             "reviewing-panel-apps.md#mutating-instead-of-reassigning",
                         )
                     )
+        # `self.items += [x]` — list.__iadd__ mutates in place *and* rebinds
+        # the same object, so the param may see old-is-new and skip watchers.
+        # Scoped to a container-literal RHS (list/tuple/set/comprehension) so
+        # ordinary numeric accumulators (`self.counter += 1`) aren't flagged —
+        # this tool has no type info, so RHS shape is the only signal available.
+        if (
+            isinstance(node, ast.AugAssign)
+            and isinstance(node.op, ast.Add)
+            and isinstance(node.target, ast.Attribute)
+            and _is_self_attr(node.target)
+            and not node.target.attr.startswith("_")
+            and isinstance(node.value, (ast.List, ast.Tuple, ast.Set, ast.ListComp, ast.SetComp))
+        ):
+            violations.append(
+                Violation(
+                    node.lineno,
+                    "MUTATING_PARAM_AUGASSIGN",
+                    f"`self.{node.target.attr} += ...` against a list/tuple/set literal — "
+                    "list.__iadd__ mutates in place and rebinds the same object, so the "
+                    "param may not detect a change and skip watchers. Reassign instead: "
+                    f"`self.{node.target.attr} = self.{node.target.attr} + [...]`.",
+                    "reviewing-panel-apps.md#mutating-instead-of-reassigning",
+                )
+            )
     return violations
 
 

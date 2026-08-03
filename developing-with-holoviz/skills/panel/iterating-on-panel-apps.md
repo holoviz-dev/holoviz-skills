@@ -1,26 +1,28 @@
 # Iterating on Panel Apps
 
-Agentic workflow for developing and debugging Panel apps. For agents with shell access: run a static preflight check before first serve, serve with logging, iterate by reading logs after each edit, and screenshot with Playwright only when you need to verify something visual — all without requiring user intervention.
+Agentic workflow for developing and debugging Panel apps. For agents with shell access: run a static preflight check before first serve, serve with logging, iterate by reading logs after each edit, run a live-browser layout lint before reaching for a screenshot, and screenshot with Playwright only when you need to verify something a number can't capture — all without requiring user intervention.
 
 ## Contents
 
 - [Development Loop](#development-loop)
 - [Decouple from the Backend](#decouple-from-the-backend)
 - [Serving with Logs](#serving-with-logs)
+- [Layout Linting](#layout-linting)
 - [Screenshotting with Playwright](#screenshotting-with-playwright)
   - [When to Screenshot](#when-to-screenshot)
 - [Common Errors](#common-errors)
 
 ## Development Loop
 
-0. **Preflight** the code before the first serve: run the `preflight.py` script that ships in this skill's `scripts/` directory, resolved relative to wherever you read this file from (skills are installed at different paths per tool, e.g. `.claude/skills/developing-with-holoviz/skills/panel/scripts/preflight.py` — don't assume it's reachable via a bare relative path from the app's own working directory). This is a static, dependency-free check for the mechanical anti-patterns already documented in [Reviewing Panel Apps](reviewing-panel-apps.md) and [Troubleshooting](troubleshooting.md) — flicker-causing `@param.depends` returns, `from_param` before `super()`, missing `pn.io.hold()`, mutated params, `Radio*Group` defaults, missing `throttled`. It costs nothing and catches most bugs before a server is even running, so run it before spending a log-tail cycle or a screenshot on something greppable. `scripts/test_preflight.py` (`python test_preflight.py`, no pytest required) is the check suite for the linter itself, built from this doc's own WRONG/CORRECT pairs — run it after editing any check in `preflight.py`.
+0. **Preflight** the code before the first serve: run the `preflight.py` script that ships in this skill's `scripts/` directory, resolved relative to wherever you read this file from (skills are installed at different paths per tool, e.g. `.claude/skills/developing-with-holoviz/skills/panel/scripts/preflight.py` — don't assume it's reachable via a bare relative path from the app's own working directory). This is a static, dependency-free check for the mechanical anti-patterns already documented in [Reviewing Panel Apps](reviewing-panel-apps.md) and [Troubleshooting](troubleshooting.md) — flicker-causing `@param.depends` returns, `from_param` before `super()`, missing `pn.io.hold()`, mutated params, `Radio*Group` defaults, missing `throttled`. It costs nothing and catches most bugs before a server is even running, so run it before spending a log-tail cycle or a screenshot on something greppable. `scripts/test_preflight.py` is the check suite for the linter itself, built from this doc's own WRONG/CORRECT pairs — `cd` into `scripts/` and run `python test_preflight.py` (no pytest required) after editing any check in `preflight.py`.
 1. **Serve** the app once with logs captured to a file — the `--dev` flag auto-reloads on file changes, so you don't restart per edit
 2. **Edit** the code to fix issues
 3. **Check logs** for Python errors after each edit (tracebacks show invalid params and valid options) — this is fast and cheap, so do it every iteration
 4. **Repeat** edit + log check until the logs are clean
-5. **Screenshot** with Playwright only when you need to confirm something visual (see [when to screenshot](#when-to-screenshot)), then **review** the image for layout/styling issues
+5. **Layout lint** once the logs are clean: run `scripts/layout_lint.py` against the served URL (see [Layout Linting](#layout-linting)) — it catches geometry and contrast issues as text, before they'd otherwise cost a screenshot
+6. **Screenshot** with Playwright only when you need to confirm something visual that isn't geometry or contrast (see [when to screenshot](#when-to-screenshot)), then **review** the image for hierarchy/styling judgment calls
 
-Drive iteration from preflight and the logs, not from screenshots. Reach for a screenshot at milestones — once preflight is clean and the logs are clean, when debugging a specifically visual problem, or for a final check — not on every edit.
+Drive iteration from preflight, the logs, and layout lint — not from screenshots. Reach for a screenshot at milestones — once preflight, the logs, and layout lint are all clean, when debugging a specifically visual problem those can't reveal, or for a final check — not on every edit.
 
 ## Decouple from the Backend
 
@@ -95,6 +97,18 @@ pkill -f "panel serve.*app.py" 2>/dev/null; sleep 1
 panel serve app.py --dev --port 5007 2>&1 | tee /tmp/panel.log &
 ```
 
+## Layout Linting
+
+Before reaching for a screenshot, run `scripts/layout_lint.py` against the served URL — it loads the page in a real headless browser at three widths (1400/768/390 by default) and inspects the rendered DOM/CSSOM as text, the same way `preflight.py` inspects source as text:
+
+```bash
+python scripts/layout_lint.py http://localhost:5007/app_name
+```
+
+It checks viewport overflow, touch targets under 44px, WCAG text contrast under 4.5:1, unintentional element overlap, siblings that should share a left edge but don't, and font-size sprawl (informational). Exits 0 with no output if clean; otherwise prints one line per violation, e.g. `[768px] [TOUCH_TARGET_TOO_SMALL] ...`. Resolve the script path the same way as `preflight.py` — relative to wherever this file was read from, not the app's own working directory. `scripts/test_layout_lint.py` is its check suite, built the same way as `test_preflight.py` (hand-built WRONG/CORRECT fixtures) — run from inside `scripts/`.
+
+This is the DOM-as-text replacement for the majority of what a screenshot is otherwise needed for: geometry and contrast are numbers, not judgment calls, so read them directly instead of looking at a picture. What it does **not** replace: hierarchy, whitespace rhythm, whether the page reads as an untouched template — anything requiring taste rather than a threshold. Reach for a screenshot ([below](#screenshotting-with-playwright)) for those.
+
 ## Screenshotting with Playwright
 
 Screenshots are the expensive step — each one launches a headless browser and adds an image to review. Use them deliberately, not as the default per-edit feedback.
@@ -158,6 +172,7 @@ Skip the screenshot when:
 
 - You just made an edit and haven't checked the logs yet — read the logs first
 - The change is non-visual (data wrangling, param names, callbacks) — a headless smoke test (see [Decouple from the Backend](#decouple-from-the-backend)) confirms behavior without a browser
+- The issue is geometry or contrast (overflow, touch targets, misalignment, WCAG contrast) — [layout lint](#layout-linting) catches these as text, faster and cheaper than a screenshot
 - A traceback is already in the logs — fix that first; the screenshot will only show an error page
 
 When you do capture multiple states, batch them into a single Playwright session (as above) rather than launching a browser per shot.

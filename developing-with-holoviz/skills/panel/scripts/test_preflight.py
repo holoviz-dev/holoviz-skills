@@ -2,13 +2,16 @@
 
 Fixtures for the six structural checks are the exact WRONG/CORRECT code pairs
 already published in reviewing-panel-apps.md — so this suite doubles as
-"does the lint tool agree with the docs it's supposed to enforce" and as the
-pruning mechanism creating-custom-holoviz-skills.md calls for (a lint rule
-that doesn't fire on its own documented WRONG example, or that fires on its
-own CORRECT example, is a bug in the rule, not the example).
+"does the lint tool agree with the docs it's supposed to enforce", and is
+the shape a future amortization rule (see the open W7 workstream in the
+holoviz-skills roadmap) would want to build on: a lint rule that doesn't fire
+on its own documented WRONG example, or that fires on its own CORRECT
+example, is a bug in the rule, not the example.
 
-Run: python -m pytest test_preflight.py -v
-     (or: python test_preflight.py, for a plain pass/fail run with no pytest)
+Run from this directory: `python test_preflight.py` (imports the sibling
+`preflight` module by plain name, so it must be run from inside `scripts/`,
+not from an arbitrary cwd). No pytest required, though `pytest test_preflight.py`
+also works.
 """
 
 from __future__ import annotations
@@ -246,6 +249,53 @@ class C:
         self._cache[1] = 2
         self._private_list = []
         self._private_list.append(1)
+""",
+        "expect_checks": set(),
+    },
+    "async_watch_returns_value_caught": {
+        # check_function_level used to filter on ast.FunctionDef only, so an
+        # `async def` watcher returning a value sailed through entirely.
+        "src": """
+import param
+
+class C:
+    @param.depends("x", watch=True)
+    async def bad(self):
+        return 5
+""",
+        "expect_checks": {"WATCH_RETURNS_VALUE"},
+    },
+    "async_missing_hold_caught": {
+        # Same gap, for the ungrouped-writes check.
+        "src": """
+class C:
+    async def _update(self):
+        self._a.value = 1
+        self._b.value = 2
+        self._c.update("x")
+""",
+        "expect_checks": {"MISSING_HOLD"},
+    },
+    "augassign_list_caught": {
+        # self.items += [item] — list.__iadd__ mutates in place and rebinds
+        # the same object, so the param may see old-is-new and skip watchers.
+        # This used to pass silently: the AugAssign branch only checked
+        # Subscript targets, not a plain Attribute target.
+        "src": """
+class C:
+    def add(self, item):
+        self.items += [item]
+""",
+        "expect_checks": {"MUTATING_PARAM_AUGASSIGN"},
+    },
+    "augassign_numeric_not_flagged": {
+        # += on a plain number is normal (int has no __iadd__, so this is an
+        # ordinary rebind that watchers see fine) — must not be flagged just
+        # because the target shape matches the list case.
+        "src": """
+class C:
+    def bump(self):
+        self.counter += 1
 """,
         "expect_checks": set(),
     },
