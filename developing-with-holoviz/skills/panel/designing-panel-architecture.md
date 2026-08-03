@@ -270,6 +270,8 @@ Gotchas:
 - **Values are JSON-encoded going out.** A synced param holding something without a JSON representation (a custom class, a DataFrame) raises when it changes. Sync only JSON-safe types — numbers, strings, bools, and lists/dicts of those — and keep richer state (like a `param.DataFrame`) derived from the synced params rather than synced directly.
 - **`Selector` options that look like integers can misresolve on load** — restoring `?region=01` coerces to the int `1` before matching against string options and fails. Prefer non-numeric option strings for anything synced to the URL.
 
+Call `pn.state.location.unsync(obj)` to stop syncing (e.g. when a component holding synced state is torn down) — pass the same object given to `.sync()`.
+
 ## Streaming with Generators
 
 For incremental feedback during long work, bind `pn.bind` to a **generator** (sync or async) — each `yield` replaces the rendered output, so you avoid manual callbacks and state flags. Full guide: [Binding generators](https://panel.holoviz.org/how_to/interactivity/bind_generators.html).
