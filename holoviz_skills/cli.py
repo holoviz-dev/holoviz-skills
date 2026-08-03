@@ -12,7 +12,6 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import re
 import shutil
 import sys
 from pathlib import Path
@@ -22,16 +21,35 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 
+def _is_repo_checkout(path: Path) -> bool:
+    """True if ``path`` is a holoviz-skills source checkout (not just any repo)."""
+    return (path / "developing-with-holoviz" / "SKILL.md").exists() and (
+        path / "pyproject.toml"
+    ).exists()
+
+
 def _skills_root() -> Path:
-    """Locate the skill directories, whether installed or running from source."""
+    """Locate the skill directories, whether installed or running from source.
+
+    A source checkout wins over skills bundled in an installed package. Without
+    this, running from a checkout while the package is also pip-installed
+    silently installs the *released* skills instead of the working tree: the
+    console script does not put the cwd on ``sys.path``, so it imports the
+    site-packages copy, whose bundled ``skills/`` would otherwise be preferred.
+    """
+    # Source checkout containing this module (editable install or repo run).
+    repo_root = Path(__file__).parent.parent
+    if _is_repo_checkout(repo_root):
+        return repo_root
+    # Source checkout we were invoked from, even if we imported an installed copy.
+    cwd = Path.cwd()
+    for candidate in (cwd, *cwd.parents):
+        if _is_repo_checkout(candidate):
+            return candidate
     # Installed package: skills bundled inside the package as data.
     pkg_skills = Path(__file__).parent / "skills"
     if pkg_skills.is_dir():
         return pkg_skills
-    # Development / editable install: skills live at the repo root.
-    repo_root = Path(__file__).parent.parent
-    if (repo_root / "developing-with-holoviz" / "SKILL.md").exists():
-        return repo_root
     raise RuntimeError(
         "Cannot locate HoloViz skill files. "
         "Re-install the package or run from the repository root."
@@ -51,63 +69,6 @@ def _find_skill_dirs(root: Path) -> list[Path]:
 
 
 # ---------------------------------------------------------------------------
-# Markdown helpers
-# ---------------------------------------------------------------------------
-
-_FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
-
-
-def _strip_frontmatter(text: str) -> str:
-    return _FRONTMATTER_RE.sub("", text, count=1).lstrip()
-
-
-def _read_skill(skill_md: Path) -> str:
-    return _strip_frontmatter(skill_md.read_text(encoding="utf-8"))
-
-
-def _iter_flat_units(skill_dir: Path) -> list[tuple[str, str]]:
-    """Yield (output-stem, content) for every installable unit in a top-level skill.
-
-    Rules:
-    - If the skill has sub-skills (a ``skills/`` subdirectory), recurse into
-      each sub-skill; skip the top-level routing SKILL.md entirely (it only
-      instructs agents to read sub-files on demand, which is meaningless for
-      flat-file tools).
-    - Each leaf skill produces one unit: its SKILL.md body only (no references
-      concatenated in, so the main file stays small).
-    - Each reference ``.md`` file inside a leaf skill directory (at any depth,
-      but not inside a nested ``skills/`` dir) produces its own unit named
-      ``{category}-{sub-skill}-{stem}`` so agents can selectively apply them.
-    """
-    results: list[tuple[str, str]] = []
-
-    def _walk(prefix: str, directory: Path) -> None:
-        skill_md = directory / "SKILL.md"
-        if not skill_md.exists():
-            return
-        # Emit the leaf SKILL.md as the primary unit.
-        results.append((prefix, _read_skill(skill_md)))
-        # Emit each direct-child reference .md file as its own unit.
-        # We intentionally use glob("*.md") — not rglob — so that subdirectories
-        # like references/ (which mirror top-level files for Claude Code routing)
-        # are excluded and don't produce duplicates.
-        for ref in sorted(directory.glob("*.md")):
-            if ref.name == "SKILL.md":
-                continue
-            results.append((f"{prefix}-{ref.stem}", _read_skill(ref)))
-
-    sub_root = skill_dir / "skills"
-    if sub_root.is_dir():
-        for sub in sorted(sub_root.iterdir()):
-            if sub.is_dir() and (sub / "SKILL.md").exists():
-                _walk(f"{skill_dir.name}-{sub.name}", sub)
-    else:
-        _walk(skill_dir.name, skill_dir)
-
-    return results
-
-
-# ---------------------------------------------------------------------------
 # Tool definitions
 # ---------------------------------------------------------------------------
 
@@ -115,11 +76,14 @@ def _iter_flat_units(skill_dir: Path) -> list[tuple[str, str]]:
 def _skill_entries(path: Path, skill_names: list[str]) -> list[Path]:
     """Entries under ``path`` that belong to the given HoloViz skills.
 
-    Matches both install layouts: directory copies (``developing-with-holoviz/``)
-    and flat files (``developing-with-holoviz-panel.md``,
-    ``creating-custom-holoviz-skills.md``). Used to detect and remove only our
-    own skills, leaving unrelated content in a shared standard dir (e.g.
-    ``~/.agents/skills``, shared by the Agent and Codex tools) untouched.
+    Used to detect and remove only our own skills, leaving unrelated content in
+    a shared standard dir (e.g. ``~/.agents/skills``, shared by the Agent and
+    Codex tools) untouched.
+
+    Every tool now installs directory copies (``developing-with-holoviz/``), but
+    the name matching also covers the flat-file layout that older versions wrote
+    (``developing-with-holoviz-panel.md``, ``creating-custom-holoviz-skills.md``)
+    so ``uninstall`` still cleans up after them.
     """
     if not path.exists():
         return []
@@ -216,35 +180,6 @@ def _install_dirs(skill_dirs: list[Path], dest: Path, verbose: bool) -> int:
             print(f"    + {skill_dir.name}/")
         count += 1
     return count
-
-
-def _install_flat_files(ext: str, frontmatter: str = ""):
-    """Factory: write one focused flat file per leaf skill unit.
-
-    Top-level routing skills are expanded into one file per sub-skill;
-    reference ``.md`` files inside a sub-skill each get their own output file.
-    The top-level routing SKILL.md is skipped (it only tells agents to read
-    sub-files on demand, which is meaningless for flat-file tools).
-
-    ``frontmatter`` is optional YAML front-matter (including ``---`` delimiters)
-    prepended to every output file, e.g. an ``applyTo`` field for Copilot.
-    """
-
-    def _install(skill_dirs: list[Path], dest: Path, verbose: bool) -> int:
-        dest.mkdir(parents=True, exist_ok=True)
-        count = 0
-        for skill_dir in skill_dirs:
-            for stem, content in _iter_flat_units(skill_dir):
-                if frontmatter:
-                    content = frontmatter + "\n\n" + content
-                out = dest / f"{stem}.{ext}"
-                out.write_text(content, encoding="utf-8")
-                if verbose:
-                    print(f"    + {out.name}")
-                count += 1
-        return count
-
-    return _install
 
 
 def _check(*conditions: tuple[bool, str]) -> str:
@@ -461,7 +396,9 @@ def _key_attr(key: str) -> str:
 
 def cmd_install(args: argparse.Namespace) -> int:
     tools = _make_tools(use_global=args.use_global)
-    skill_dirs = _find_skill_dirs(_skills_root())
+    skills_root = _skills_root()
+    skill_dirs = _find_skill_dirs(skills_root)
+    print(f"Source: {skills_root}\n")
 
     # Which tools to install for.
     requested = [key for key in tools if getattr(args, _key_attr(key), False)]

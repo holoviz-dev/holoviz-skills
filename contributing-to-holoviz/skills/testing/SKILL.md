@@ -2,7 +2,7 @@
 name: testing
 description: Testing guidelines for HoloViz packages. Use when writing tests, reviewing test coverage in PRs, or identifying missing edge cases in any HoloViz repository.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   author: holoviz
 ---
 
@@ -58,7 +58,6 @@ def test_filter_by_range():
         "none_values",
     ],
 )
-
 def test_filter_by_range(data, low, high, expected_len):
     df = pd.DataFrame({'x': data})
     result = filter_by_range(df, 'x', low=low, high=high)

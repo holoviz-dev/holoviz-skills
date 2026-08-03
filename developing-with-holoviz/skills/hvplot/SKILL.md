@@ -2,7 +2,7 @@
 name: hvplot
 description: Plot DataFrames and datasets using a Pandas .plot()-like API for Pandas, Polars, Xarray, DuckDB, Dask, and GeoPandas. Use when the user asks to visualize, plot, or chart tabular or multidimensional data. Do not use for element composition, streams, or custom Bokeh tools/tooltips (use HoloViews).
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   author: holoviz
 ---
 
@@ -31,7 +31,7 @@ Before plotting, consider: what story does the data tell? What comparison matter
 
 ## References
 
-Read these for specialized topics. Each is a standalone document you can load with the `view` tool.
+Read these for specialized topics. Each is a standalone document you can load on demand.
 
 - [Composing Exploratory Plots](composing-exploratory-plots.md) — layered marks (violin/box/scatter), shared-axis layout for comparison, overlay discipline, faceting around the nested-categorical-axis limit, ordered categoricals, cross-filtering with linked selections
 - [Distilling Explanatory Plots](distilling-explanatory-plots.md) — one-message charts for an audience: takeaway title, gray context + one highlight, direct inline labels, in-place annotation, killing chart junk, assuming no interaction

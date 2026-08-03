@@ -1,15 +1,16 @@
 ---
 name: contributing-to-holoviz
 description: Maintain and contribute to HoloViz packages. Use when reviewing PRs, refactoring code, writing tests, or updating docs in HoloViz repositories (Panel, hvPlot, HoloViews, Param, etc.).
-user-invocable: false
+user-invocable: true
+argument-hint: "[review PR | write tests | write docs | PR description | minimal example]"
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   author: holoviz
 ---
 
 # Contributing to HoloViz
 
-This is a **routing skill**. You MUST use the `view` tool to read every sub-skill file listed in the table below that matches the task BEFORE writing any code or giving any answer. Do not skip this step.
+This is a **routing skill**. You MUST read every sub-skill file listed in the table below that matches the task BEFORE writing any code or giving any answer. Do not skip this step.
 
 ## Contents
 
@@ -20,14 +21,14 @@ This is a **routing skill**. You MUST use the `view` tool to read every sub-skil
 ## Instructions
 
 1. Identify which sub-skill(s) apply from the Loading Table below.
-2. Use the `view` tool to read each matching sub-skill file in full.
+2. Read each matching sub-skill file in full.
 3. Only after reading the sub-skill file(s), proceed with the task.
 
 ## Loading Table
 
 A single request often spans multiple skills. Read ALL that apply. Paths below are relative to this file's directory (`contributing-to-holoviz/`).
 
-| User Need | Sub-skill file(s) to read with `view` |
+| User Need | Sub-skill file(s) to read |
 |---|---|
 | Review a PR or refactor code | `skills/cleanup/SKILL.md` |
 | Write or review tests | `skills/testing/SKILL.md` |

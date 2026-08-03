@@ -2,7 +2,7 @@
 name: holoviews
 description: Build interactive visualizations with HoloViews elements, opts, streams, and operations. Use when composing plots from element primitives (Curve, Points, Bars, NdOverlay), customizing Bokeh tools/tooltips/formatters, using DynamicMap, streams, or link_selections. Do not use for simple DataFrame plotting (use hvPlot) or Panel app structure (use Panel).
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   author: holoviz
 ---
 
@@ -27,7 +27,7 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 
 ## References
 
-Read these for specialized topics. Each is a standalone document you can load with the `view` tool.
+Read these for specialized topics. Each is a standalone document you can load on demand.
 
 - [Decluttering Plots](decluttering-plots.md) — stripping Bokeh chart junk with `.opts()`: hide the toolbar, disable wheel-zoom (`default_tools`/`active_tools`), one-axis gridlines (`gridstyle`), hide/share axes across stacked plots, legend placement, nested categorical axes, and why these opts belong on the top-level overlay/layout rather than per element
 
@@ -219,7 +219,7 @@ layout = (source + target).opts(merge_tools=False).cols(1)
 
 `hv.link_selections` provides automatic cross-filtering across static elements.
 
-- **DynamicMap support is conditional, and fails quietly.** `link_selections` has an explicit `DynamicMap` branch: it links fine when the DynamicMap's element type is introspectable (`dmap.type` is an `Element` subclass — i.e. the *same-element-type* rule from [DynamicMap](#dynamicmap) above), and also handles `dynamic_mul` overlays and `dynamic_operation` chains. Anything else it cannot recurse into is returned **unlinked** with only a `param.warning`: `linked selection: Encountered DynamicMap that we don't know how to recurse into`. So there is no exception to catch — if cross-filtering silently does nothing, check the logs for that warning, then fall back to Tabulator selection + `pn.bind(watch=True)` (see `examples/dashboard.py` in the Panel skill).
+- **DynamicMap support is conditional, and fails quietly.** `link_selections` has an explicit `DynamicMap` branch: it links fine when the DynamicMap's element type is introspectable (`dmap.type` is an `Element` subclass — i.e. the *same-element-type* rule from [DynamicMap](#dynamicmap) above), and also handles `dynamic_mul` overlays and `dynamic_operation` chains. Anything else it cannot recurse into is returned **unlinked** with only a `param.warning`: `linked selection: Encountered DynamicMap that we don't know how to recurse into`. So there is no exception to catch — if cross-filtering silently does nothing, check the logs for that warning, then fall back to Tabulator selection + `pn.bind(watch=True)` (see `../panel/examples/dashboard.py`).
 - Use `.instance()` to create a reusable linker.
 - `hv.operation.histogram(element, dimension='x')` for numeric histograms — preserves data lineage.
 - For categorical bars, subclass `hv.Operation` (see below).
