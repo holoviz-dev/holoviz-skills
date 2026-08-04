@@ -48,7 +48,7 @@ See your tool's documentation for manual setup instructions:
 
 [Claude Code / Cowork](https://code.claude.com/docs/en/skills) · [GitHub Copilot](https://code.visualstudio.com/docs/copilot/customization/agent-skills) · [OpenAI Codex](https://developers.openai.com/codex/skills) · [Cursor](https://cursor.com/docs/skills) · [Windsurf](https://docs.windsurf.com/windsurf/cascade/skills) · [Cline](https://docs.cline.bot/customization/skills) · [JetBrains AI](https://www.jetbrains.com/help/ai-assistant/settings-reference-skills.html) · [Gemini CLI](https://geminicli.com/docs/cli/skills/) · [Antigravity](https://antigravity.google/docs/skills) · [Kiro](https://kiro.dev/docs/skills) · [Kilo Code](https://kilo.ai/docs/customize/skills) · [Mistral Vibe](https://docs.mistral.ai/mistral-vibe/agents-skills)
 
-You can also click the **Copy Markdown** icon at the top of each skill page to paste a skill directly into any AI chat. Claude Desktop / Cowork users can install a category as a pre-built plugin from the [latest release](https://github.com/holoviz-dev/holoviz-skills/releases/latest) — one `.plugin` per category, e.g. `developing-with-holoviz.plugin`, `contributing-to-holoviz.plugin`, and `creating-custom-holoviz-skills.plugin`.
+You can also click the **Copy Markdown** icon at the top of each skill page to paste a skill directly into any AI chat. Claude Desktop / Cowork users can install pre-built plugins from the [latest release](https://github.com/holoviz-dev/holoviz-skills/releases/latest) — either `holoviz-skills.plugin` for the whole collection, or one category at a time (`developing-with-holoviz.plugin`, `contributing-to-holoviz.plugin`, `creating-custom-holoviz-skills.plugin`).
 
 ## Contributing
 

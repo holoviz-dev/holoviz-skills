@@ -212,6 +212,23 @@ pmui.Page(
   # open from a button: self._details.open = True
   ```
 
+### Notifications
+
+Toast-style alerts that float over the page rather than living in a fixed layout slot — the right choice for transient feedback ("saved", "request failed") where an inline `Alert` would shift layout. Enable once with `pn.extension(notifications=True)` (or `pn.config.notifications = True`), then call from any callback:
+
+```python
+pn.state.notifications.success("Saved", duration=3000)
+pn.state.notifications.error("Request failed", duration=0)   # duration=0 stays until dismissed
+pn.state.notifications.info("...")
+pn.state.notifications.warning("...")
+pn.state.notifications.send("Custom", background="#ff0000", icon="local_fire_department")
+pn.state.notifications.clear()
+```
+
+The API is identical in plain Panel and panel-material-ui — no separate pmui import needed, and `pn.state.notifications.position = "top-right"` controls placement.
+
+**Gotcha — threading:** under `pn.extension(nthreads=...)`, calling a `pn.state.notifications.*` method from code running on a worker thread can silently stop executing the rest of that callback with no error surfaced (server and other callbacks keep running; only that one callback goes dark). If a callback that fires a notification stops having its later side effects apply once threading is enabled, this is the first thing to suspect — move the notification call off the threaded path, or verify the specific call actually completes.
+
 ## Styling Layers
 
 | Layer | Scope | Use |

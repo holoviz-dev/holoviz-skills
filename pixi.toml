@@ -20,7 +20,7 @@ pip = "*"
 setup-dev = { depends-on = [
     "lint-install",
 ], description = "Set up development environment" }
-build-plugin = { cmd = "python scripts/build_plugin.py", description = "Build the Claude Cowork plugin and per-skill zips (artifacts/) — run on release" }
+build-plugin = { cmd = "python scripts/build_plugin.py", description = "Build the Claude Cowork plugins (per-category plus a combined holoviz-skills.plugin) and per-skill zips (artifacts/) — run on release" }
 
 # =================== BUILD ===================
 

@@ -1,25 +1,32 @@
 # Iterating on Panel Apps
 
-Agentic workflow for developing and debugging Panel apps. For agents with shell access: serve with logging, iterate by reading logs after each edit, and screenshot with Playwright only when you need to verify something visual — all without requiring user intervention.
+Agentic workflow for developing and debugging Panel apps. For agents with shell access: run a static preflight check before first serve, serve with logging, iterate by reading logs after each edit, run a live-browser layout lint before reaching for a screenshot, benchmark time to first paint, and screenshot with Playwright only when you need to verify something a number can't capture — all without requiring user intervention.
 
 ## Contents
 
 - [Development Loop](#development-loop)
 - [Decouple from the Backend](#decouple-from-the-backend)
 - [Serving with Logs](#serving-with-logs)
+- [Benchmarking Startup](#benchmarking-startup)
+- [Layout Linting](#layout-linting)
+- [Inspecting the Plot Model](#inspecting-the-plot-model)
 - [Screenshotting with Playwright](#screenshotting-with-playwright)
   - [When to Screenshot](#when-to-screenshot)
 - [Common Errors](#common-errors)
 
 ## Development Loop
 
+0. **Preflight** the code before the first serve: run the `preflight.py` script that ships in this skill's `scripts/` directory, resolved relative to wherever you read this file from (skills are installed at different paths per tool, e.g. `.claude/skills/developing-with-holoviz/skills/panel/scripts/preflight.py` — don't assume it's reachable via a bare relative path from the app's own working directory). This is a static, dependency-free check for the mechanical anti-patterns already documented in [Reviewing Panel Apps](reviewing-panel-apps.md) and [Troubleshooting](troubleshooting.md) — flicker-causing `@param.depends` returns, `from_param` before `super()`, missing `pn.io.hold()`, mutated params, `Radio*Group` defaults, missing `throttled`. It costs nothing and catches most bugs before a server is even running, so run it before spending a log-tail cycle or a screenshot on something greppable. `scripts/test_preflight.py` is the check suite for the linter itself, built from this doc's own WRONG/CORRECT pairs — `cd` into `scripts/` and run `python test_preflight.py` (no pytest required) after editing any check in `preflight.py`.
 1. **Serve** the app once with logs captured to a file — the `--dev` flag auto-reloads on file changes, so you don't restart per edit
 2. **Edit** the code to fix issues
 3. **Check logs** for Python errors after each edit (tracebacks show invalid params and valid options) — this is fast and cheap, so do it every iteration
 4. **Repeat** edit + log check until the logs are clean
-5. **Screenshot** with Playwright only when you need to confirm something visual (see [when to screenshot](#when-to-screenshot)), then **review** the image for layout/styling issues
+5. **Layout lint** once the logs are clean: run `scripts/layout_lint.py` against the served URL (see [Layout Linting](#layout-linting)) — it catches geometry and contrast issues as text, before they'd otherwise cost a screenshot
+6. **Inspect the plot model** if a chart looks wrong — axis ranges, layer count, and applied options are readable as numbers from the Bokeh model, no browser needed (see [Inspecting the Plot Model](#inspecting-the-plot-model))
+7. **Benchmark startup** — time to first paint is invisible in clean logs and in a screenshot, so measure it explicitly (see [Benchmarking Startup](#benchmarking-startup))
+8. **Screenshot** with Playwright only when you need to confirm something visual that isn't geometry or contrast (see [when to screenshot](#when-to-screenshot)), then **review** the image for hierarchy/styling judgment calls
 
-Drive iteration from the logs, not from screenshots. Reach for a screenshot at milestones — once the logs are clean, when debugging a specifically visual problem, or for a final check — not on every edit.
+Drive iteration from preflight, the logs, and layout lint — not from screenshots. Reach for a screenshot at milestones — once preflight, the logs, and layout lint are all clean, when debugging a specifically visual problem those can't reveal, or for a final check — not on every edit.
 
 ## Decouple from the Backend
 
@@ -30,11 +37,35 @@ class BaseSource:
     def list_items(self): ...
     def load(self, key): ...
 
-class MockSource(BaseSource):   # synthetic rows + tiny inline assets
-    ...
+class MockSource(BaseSource):
+    """Synthetic rows + tiny inline assets, with knobs to rehearse slow/broken states."""
 
-SOURCE = MockSource() if os.environ.get("APP_MOCK") == "1" else LiveSource()
+    def __init__(self, latency: float = 0.0, fail: bool = False):
+        self.latency = latency  # seconds to sleep before returning — rehearses loading states
+        self.fail = fail        # raise instead of returning — rehearses error states
+
+    def list_items(self):
+        if self.latency:
+            time.sleep(self.latency)
+        if self.fail:
+            raise RuntimeError("mock backend failure")
+        return [...]  # synthetic rows
+
+SOURCE = (
+    MockSource(latency=float(os.environ.get("APP_LATENCY", 0)),
+               fail=os.environ.get("APP_FAIL") == "1")
+    if os.environ.get("APP_MOCK") == "1" else LiveSource()
+)
 ```
+
+Exercise the loading spinner or the error/Alert state from the command line, without touching app code:
+
+```bash
+APP_MOCK=1 APP_LATENCY=2 panel serve app.py --dev --show   # loading state
+APP_MOCK=1 APP_FAIL=1 panel serve app.py --dev --show      # error state
+```
+
+Catch the raised error in the calling watcher and surface it as a `pmui.Alert` or a notification (see [Notifications](using-material-ui.md#notifications)) instead of letting it crash the callback silently — an app with no exercised error path is untested, not robust. `time.sleep` is fine for a headless smoke test, but for the spinner to actually show *during* a live-served request the slow call needs to run `async` (see the loading-spinner caveat in [Designing Panel Architecture](designing-panel-architecture.md#batching-loading-and-memory)).
 
 Then drive a headless smoke test by setting widget/param values and asserting the panes updated — no browser needed:
 
@@ -69,6 +100,116 @@ To restart cleanly:
 pkill -f "panel serve.*app.py" 2>/dev/null; sleep 1
 panel serve app.py --dev --port 5007 2>&1 | tee /tmp/panel.log &
 ```
+
+## Benchmarking Startup
+
+Time to first paint is the one quality this loop otherwise never surfaces: the logs stay
+clean and the screenshot looks right while the app takes fifteen seconds to appear. Measure
+it deliberately, because the usual cause is invisible by construction — work done eagerly
+for something that isn't on screen yet. A tab whose data is computed in `__init__` instead
+of on first activation, or a baseline averaged over a wide window, can easily cost an order
+of magnitude more than everything the first screen actually shows.
+
+Measure it with no browser and no server, by timing the phases separately:
+
+```python
+import time
+
+t0 = time.perf_counter()
+import app                            # module scope: imports + any module-level data load
+t1 = time.perf_counter()
+dashboard = app.MyDashboard()         # construction: widgets, watchers, initial reloads
+t2 = time.perf_counter()
+print(f"import {t1 - t0:.2f}s  construct {t2 - t1:.2f}s")
+```
+
+Then time the individual data calls the constructor makes, and weigh each against how much
+of the first screen it feeds. Anything expensive that the first screen does not show is the
+thing to move. Defer it to first use, keyed so it runs once and only when its inputs change:
+
+```python
+def _on_tab(self, active):            # wired via self._tabs.param.watch(..., "active")
+    if active == EXPENSIVE_TAB:
+        self._ensure_expensive(force=True)
+
+def _ensure_expensive(self, force):
+    key = (self.source, self.window)
+    if key == self._expensive_key:
+        return                        # already computed for these inputs
+    if not (force or self._tabs.active == EXPENSIVE_TAB):
+        return                        # still unseen — leave it stale, opening the tab computes it
+    self._pane.loading = True         # the wait is now visible, and off the startup path
+    try:
+        self._data = expensive_aggregate(*key)
+    finally:
+        self._pane.loading = False
+    self._expensive_key = key
+```
+
+Re-measure after each change, and keep the number the way you keep the logs clean. Two
+things distort the reading:
+
+- **`--dev` reloads are warm.** A reload re-executes the module, so `@pn.cache` entries and
+  module-level data are rebuilt — but the OS file cache and any live HTTP session are not
+  cold. Measure a true cold start with the script above, or a plain `panel serve`.
+- **Network-bound loads vary run to run.** Time them apart from computation so one unlucky
+  fetch doesn't get misread as slow code.
+
+## Layout Linting
+
+Before reaching for a screenshot, run `scripts/layout_lint.py` against the served URL — it loads the page in a real headless browser at three widths (1400/768/390 by default) and inspects the rendered DOM/CSSOM as text, the same way `preflight.py` inspects source as text:
+
+```bash
+python scripts/layout_lint.py http://localhost:5007/app_name
+```
+
+It checks viewport overflow, touch targets under 44px, WCAG text contrast under 4.5:1, unintentional element overlap, siblings that should share a left edge but don't, and font-size sprawl (informational). Exits 0 with no output if clean; otherwise prints one line per violation, e.g. `[768px] [TOUCH_TARGET_TOO_SMALL] ...`. Resolve the script path the same way as `preflight.py` — relative to wherever this file was read from, not the app's own working directory. `scripts/test_layout_lint.py` is its check suite, built the same way as `test_preflight.py` (hand-built WRONG/CORRECT fixtures) — run from inside `scripts/`.
+
+This is the DOM-as-text replacement for the majority of what a screenshot is otherwise needed for: geometry and contrast are numbers, not judgment calls, so read them directly instead of looking at a picture. What it does **not** replace: hierarchy, whitespace rhythm, whether the page reads as an untouched template — anything requiring taste rather than a threshold. Reach for a screenshot ([below](#screenshotting-with-playwright)) for those.
+
+## Inspecting the Plot Model
+
+Layout lint reads the DOM as text; the same move works one level in, on the chart itself. For
+HoloViews/hvPlot output, most "is this plot right?" questions have numeric answers you can read
+server-side, with no browser and no served app. `hv.render` returns the Bokeh figure:
+
+```python
+import holoviews as hv
+
+state = hv.render(overlay, backend="bokeh")     # bokeh.plotting figure
+state.x_range.start, state.x_range.end          # the actual axis range
+len(state.renderers)                            # one per layer — did every element survive?
+[t.__class__.__name__ for t in state.toolbar.tools]
+state.toolbar.autohide, state.toolbar_location
+```
+
+Reach for it to answer, deterministically:
+
+- **Is the range what I think it is?** A degenerate range is the usual cause of a plot that
+  draws its chrome — title, legend, toolbar — and no data. An element with no rows yields
+  exactly `(0, 1)`, which on a Web Mercator tile map is a one-metre extent; Bokeh then logs
+  `tile extent is not fully defined`, fails to set initial ranges, and the figure never
+  recovers. Seeing `(0, 1)` in Python names that instantly.
+- **Did every layer survive composition?** Compare `len(state.renderers)` with the number of
+  elements you overlaid. A tile source counts as one. This catches a layer dropped by an
+  `.opts()` mistake, which a picture shows only as "something missing".
+- **Did an option actually apply?** Options set on the wrong level of a composite frequently
+  don't stick (see [Decluttering Plots](../holoviews/decluttering-plots.md#apply-at-the-top-level)).
+  Read it off the model instead of inferring it from pixels.
+
+Note that HoloViews computes ranges eagerly and hands Bokeh a `Range1d` even when you set no
+`xlim`, so the range *type* tells you little — it's the start/end values that carry the signal.
+Assert on them in a headless test (see [Decouple from the Backend](#decouple-from-the-backend))
+so a fix stays fixed.
+
+**What this does not tell you.** It verifies the *model*, not the render. A plot can be provably
+well formed server-side and still draw nothing in the browser: a `responsive=True` figure laid
+out at zero width inside tabs yields correct bounds and a correct renderer count while showing
+an empty frame. So when the model checks out and the chart is still wrong, the remaining
+information is client-side — read the browser JS console, where Bokeh logs layout and tile
+failures, before spending another screenshot. A screenshot of a blank plot looks the same
+whatever the cause, which makes it the weakest evidence available at exactly the moment it's
+most tempting.
 
 ## Screenshotting with Playwright
 
@@ -133,6 +274,8 @@ Skip the screenshot when:
 
 - You just made an edit and haven't checked the logs yet — read the logs first
 - The change is non-visual (data wrangling, param names, callbacks) — a headless smoke test (see [Decouple from the Backend](#decouple-from-the-backend)) confirms behavior without a browser
+- The issue is geometry or contrast (overflow, touch targets, misalignment, WCAG contrast) — [layout lint](#layout-linting) catches these as text, faster and cheaper than a screenshot
+- The question is whether a chart is well formed — axis ranges, missing layers, options that didn't apply — [inspect the plot model](#inspecting-the-plot-model) instead; and if a plot renders blank, check the browser console before screenshotting it again, since every cause looks identical in the image
 - A traceback is already in the logs — fix that first; the screenshot will only show an error page
 
 When you do capture multiple states, batch them into a single Playwright session (as above) rather than launching a browser per shot.
