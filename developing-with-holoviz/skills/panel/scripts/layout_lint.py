@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Live-browser layout lint: DOM-as-text findings instead of a screenshot.
 
-Loads a running app's URL in a real (headless) browser at each of several
-viewport widths and inspects the rendered DOM/CSSOM for geometry and contrast
-issues that don't require a human eye — viewport overflow, touch targets
-under 44px, WCAG text contrast under 4.5:1, overlapping elements, siblings
-that should share a left edge but don't, and font-size sprawl. Output is a
-short violation list, not an image.
+Loads a running app's URL in a headless browser at each of several viewport
+widths and inspects the rendered DOM/CSSOM for geometry and contrast issues
+that don't require a human eye — viewport overflow, touch targets under 44px,
+WCAG text contrast under 4.5:1, overlapping elements, siblings that should
+share a left edge but don't, and font-size sprawl.
 
 Usage:
     python layout_lint.py http://localhost:5007/app_name
@@ -15,13 +14,13 @@ Usage:
 Exits 0 with no output if clean. Exits 1 and prints one line per violation:
     [WIDTHpx] [CHECK_ID] message
 
-Requires: playwright (`pip install playwright && playwright install chromium`) —
-already a dependency for the screenshot loop in iterating-on-panel-apps.md.
-Point it at an already-running `panel serve` process; it doesn't start one.
+Requires playwright (`pip install playwright && playwright install chromium`),
+already a dependency of the screenshot loop in iterating-on-panel-apps.md.
+Point it at an already-running `panel serve`; it doesn't start one.
 
-What this does NOT do (by design, see designing-visual-quality.md for that):
-hierarchy, whitespace rhythm, whether the design looks "templated" — anything
-requiring taste rather than a number. This tool is the numbers-only half.
+Deliberately excluded: hierarchy, whitespace rhythm, whether the design looks
+"templated" — anything needing taste rather than a threshold. This tool is the
+numbers-only half; see designing-visual-quality.md for the rest.
 """
 
 from __future__ import annotations
@@ -33,15 +32,22 @@ from dataclasses import dataclass
 
 DEFAULT_WIDTHS = (1400, 768, 390)
 VIEWPORT_HEIGHT = 900
+DEFAULT_TIMEOUT_MS = 30000
+SETTLE_MS = 150  # post-load pause so transitions finish before geometry is read
 MIN_TOUCH_TARGET = 44
 MIN_CONTRAST_RATIO = 4.5
 MAX_DISTINCT_FONT_SIZES = 6
 ALIGNMENT_EPSILON = 2.0  # px
+OVERFLOW_EPSILON = 1  # px, absorbs sub-pixel scrollWidth rounding
 OVERLAP_MIN_FRACTION = 0.3  # of the smaller element's area
+MIN_ALIGNED_SIBLINGS = 3  # below this, a left-edge difference isn't a pattern
+MAX_REPORTED_CULPRITS = 3  # one overflow usually implicates many elements
 
-# Extracts one flat list of visible elements with the geometry/style data every
-# check below needs. Kept to a single evaluate() call per width so the
-# Python/JS round trip happens once, not once per check.
+RGB_RE = re.compile(r"rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\)")
+
+# One flat list of visible elements carrying the geometry/style data every check
+# needs. Kept to a single evaluate() call per width so the Python/JS round trip
+# happens once, not once per check.
 DOM_EXTRACT_JS = """
 () => {
   function selectorFor(el) {
@@ -135,16 +141,14 @@ class Violation:
 # Color math (WCAG 2.1 contrast)
 # ---------------------------------------------------------------------------
 
-_RGB_RE = re.compile(r"rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\)")
-
 
 def _parse_rgb(css_color: str | None) -> tuple[float, float, float] | None:
     if not css_color:
         return None
-    m = _RGB_RE.match(css_color)
-    if not m:
+    match = RGB_RE.match(css_color)
+    if not match:
         return None
-    return float(m.group(1)), float(m.group(2)), float(m.group(3))
+    return float(match.group(1)), float(match.group(2)), float(match.group(3))
 
 
 def _relative_luminance(rgb: tuple[float, float, float]) -> float:
@@ -163,26 +167,51 @@ def _contrast_ratio(rgb1: tuple[float, float, float], rgb2: tuple[float, float, 
 
 
 # ---------------------------------------------------------------------------
+# Geometry helpers
+# ---------------------------------------------------------------------------
+
+
+def _rects_overlap(a: dict, b: dict) -> bool:
+    left, right = max(a["left"], b["left"]), min(a["right"], b["right"])
+    top, bottom = max(a["top"], b["top"]), min(a["bottom"], b["bottom"])
+    if right <= left or bottom <= top:
+        return False
+    overlap_area = (right - left) * (bottom - top)
+    smaller_area = min(a["width"] * a["height"], b["width"] * b["height"])
+    return smaller_area > 0 and (overlap_area / smaller_area) >= OVERLAP_MIN_FRACTION
+
+
+def _is_ancestor(ancestor_idx: int, node_idx: int, by_idx: dict[int, dict]) -> bool:
+    node = by_idx.get(node_idx)
+    while node is not None and node["parentIdx"] != -1:
+        if node["parentIdx"] == ancestor_idx:
+            return True
+        node = by_idx.get(node["parentIdx"])
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Checks — each takes the extracted DOM dict + the viewport width being tested
 # ---------------------------------------------------------------------------
 
 
 def check_overflow(dom: dict, width: int) -> list[Violation]:
-    """Horizontal overflow at this width — the DOM-as-text replacement for
-    'does the screenshot show a horizontal scrollbar'. Reports the root-cause
-    element(s) (overflowing while their own parent doesn't), not every
-    descendant caught in the same overflow, and caps the list at 3."""
-    if dom["scrollWidth"] <= dom["clientWidth"] + 1:
+    """Horizontal overflow at this width.
+
+    Reports only root-cause elements — those overflowing while their own parent
+    doesn't — so a single unconstrained child doesn't produce a line per
+    descendant caught in the same overflow.
+    """
+    if dom["scrollWidth"] <= dom["clientWidth"] + OVERFLOW_EPSILON:
         return []
-    elements = dom["elements"]
-    by_idx = {e["idx"]: e for e in elements}
-    culprits = []
-    for e in elements:
-        if e["right"] <= width + 1:
-            continue
-        parent = by_idx.get(e["parentIdx"])
-        if parent is None or parent["right"] <= width + 1:
-            culprits.append(e)
+    by_idx = dom["by_idx"]
+    limit = width + OVERFLOW_EPSILON
+    culprits = [
+        e
+        for e in dom["elements"]
+        if e["right"] > limit
+        and ((parent := by_idx.get(e["parentIdx"])) is None or parent["right"] <= limit)
+    ]
     culprits.sort(key=lambda e: -e["right"])
     return [
         Violation(
@@ -191,22 +220,20 @@ def check_overflow(dom: dict, width: int) -> list[Violation]:
             f"`{e['sel']}` extends to {e['right']:.0f}px, beyond the {width}px viewport — "
             "check for a missing width_option/Container clamp or an unconstrained-width child.",
         )
-        for e in culprits[:3]
+        for e in culprits[:MAX_REPORTED_CULPRITS]
     ]
 
 
 def check_touch_targets(dom: dict, width: int) -> list[Violation]:
-    """Interactive elements under the 44x44px minimum touch target. Groups
-    repeats by selector so N identical small icon buttons produce one line,
-    not N."""
-    small = [
-        e
-        for e in dom["elements"]
-        if e["isInteractive"] and min(e["width"], e["height"]) < MIN_TOUCH_TARGET
-    ]
+    """Interactive elements under the 44x44px minimum touch target.
+
+    Grouped by selector so N identical small icon buttons produce one line.
+    """
     groups: dict[str, list[dict]] = {}
-    for e in small:
-        groups.setdefault(e["sel"], []).append(e)
+    for e in dom["elements"]:
+        if e["isInteractive"] and min(e["width"], e["height"]) < MIN_TOUCH_TARGET:
+            groups.setdefault(e["sel"], []).append(e)
+
     violations = []
     for sel, members in groups.items():
         smallest = min(members, key=lambda e: min(e["width"], e["height"]))
@@ -223,9 +250,11 @@ def check_touch_targets(dom: dict, width: int) -> list[Violation]:
 
 
 def check_contrast(dom: dict, width: int) -> list[Violation]:
-    """WCAG text contrast under 4.5:1, using the nearest non-transparent
-    ancestor background as the effective background (computed in JS, since
-    that walk needs live computed styles)."""
+    """WCAG text contrast under 4.5:1.
+
+    The effective background is the nearest non-transparent ancestor, resolved
+    in JS because that walk needs live computed styles.
+    """
     violations = []
     seen: set[tuple[str, str, str]] = set()
     for e in dom["elements"]:
@@ -235,49 +264,33 @@ def check_contrast(dom: dict, width: int) -> list[Violation]:
         if fg is None or bg is None:
             continue
         ratio = _contrast_ratio(fg, bg)
-        if ratio < MIN_CONTRAST_RATIO:
-            key = (e["sel"], e["color"], e["bgColor"])
-            if key in seen:
-                continue
-            seen.add(key)
-            violations.append(
-                Violation(
-                    "LOW_CONTRAST",
-                    width,
-                    f"`{e['sel']}` text contrast is {ratio:.2f}:1 (needs \u2265 "
-                    f"{MIN_CONTRAST_RATIO}:1) — {e['color']} on {e['bgColor']}.",
-                )
+        if ratio >= MIN_CONTRAST_RATIO:
+            continue
+        key = (e["sel"], e["color"], e["bgColor"])
+        if key in seen:
+            continue
+        seen.add(key)
+        violations.append(
+            Violation(
+                "LOW_CONTRAST",
+                width,
+                f"`{e['sel']}` text contrast is {ratio:.2f}:1 (needs \u2265 "
+                f"{MIN_CONTRAST_RATIO}:1) — {e['color']} on {e['bgColor']}.",
             )
+        )
     return violations
 
 
-def _rects_overlap(a: dict, b: dict, min_fraction: float = OVERLAP_MIN_FRACTION) -> bool:
-    left, right = max(a["left"], b["left"]), min(a["right"], b["right"])
-    top, bottom = max(a["top"], b["top"]), min(a["bottom"], b["bottom"])
-    if right <= left or bottom <= top:
-        return False
-    overlap_area = (right - left) * (bottom - top)
-    smaller_area = min(a["width"] * a["height"], b["width"] * b["height"])
-    return smaller_area > 0 and (overlap_area / smaller_area) >= min_fraction
-
-
-def _is_ancestor(ancestor_idx: int, node_idx: int, by_idx: dict[int, dict]) -> bool:
-    node = by_idx.get(node_idx)
-    while node is not None and node["parentIdx"] != -1:
-        if node["parentIdx"] == ancestor_idx:
-            return True
-        node = by_idx.get(node["parentIdx"])
-    return False
-
-
 def check_overlap(dom: dict, width: int) -> list[Violation]:
-    """Unintentional overlap between two content-bearing elements — restricted
-    to elements in normal flow (position: static/relative), since fixed/
-    absolute is how Dialogs, SpeedDials, and Tooltips *intentionally* float
-    over content, and restricted to 'meaningful' elements (has its own
-    background, has direct text, or is interactive) rather than every
-    structural wrapper div, to keep this from being O(n^2) noise."""
-    by_idx = {e["idx"]: e for e in dom["elements"]}
+    """Unintentional overlap between two content-bearing elements.
+
+    Restricted to normal flow (`position: static/relative`), since absolute and
+    fixed positioning is how Dialogs, SpeedDials, and Tooltips *intentionally*
+    float over content; and to elements that carry meaning (own background,
+    direct text, or interactive) rather than every structural wrapper div, which
+    would make this O(n^2) over noise.
+    """
+    by_idx = dom["by_idx"]
     candidates = [
         e
         for e in dom["elements"]
@@ -292,38 +305,40 @@ def check_overlap(dom: dict, width: int) -> list[Violation]:
                 continue
             if _is_ancestor(a["idx"], b["idx"], by_idx) or _is_ancestor(b["idx"], a["idx"], by_idx):
                 continue
-            if _rects_overlap(a, b):
-                key = tuple(sorted((a["sel"], b["sel"])))
-                if key in seen_pairs:
-                    continue
-                seen_pairs.add(key)
-                violations.append(
-                    Violation(
-                        "ELEMENT_OVERLAP",
-                        width,
-                        f"`{a['sel']}` and `{b['sel']}` visually overlap.",
-                    )
+            if not _rects_overlap(a, b):
+                continue
+            key = (min(a["sel"], b["sel"]), max(a["sel"], b["sel"]))
+            if key in seen_pairs:
+                continue
+            seen_pairs.add(key)
+            violations.append(
+                Violation(
+                    "ELEMENT_OVERLAP",
+                    width,
+                    f"`{a['sel']}` and `{b['sel']}` visually overlap.",
                 )
+            )
     return violations
 
 
 def check_misaligned_left_edges(dom: dict, width: int) -> list[Violation]:
-    """Siblings sharing a parent and a tag+class signature (a strong signal
-    they're meant to read as identical rows/cards) whose left edges don't
-    match, when they're stacked vertically (a side-by-side row/Grid of the
-    same width is a different, intentional layout and is excluded)."""
+    """Stacked siblings that should share a left edge but don't.
+
+    Grouped on parent + tag + class signature — a strong signal they're meant to
+    read as identical rows/cards. Vertically stacked only: a side-by-side row or
+    Grid of same-signature elements is a different, intentional layout.
+    """
     groups: dict[tuple, list[dict]] = {}
     for e in dom["elements"]:
-        key = (e["parentIdx"], e["tag"], tuple(e["classes"]))
-        groups.setdefault(key, []).append(e)
+        groups.setdefault((e["parentIdx"], e["tag"], tuple(e["classes"])), []).append(e)
 
     violations = []
     for (_parent_idx, tag, classes), members in groups.items():
-        if len(members) < 3:
+        if len(members) < MIN_ALIGNED_SIBLINGS:
             continue
         tops = [e["top"] for e in members]
         if max(tops) - min(tops) < ALIGNMENT_EPSILON:
-            continue  # side-by-side row, not a stacked column
+            continue
         lefts = [e["left"] for e in members]
         if max(lefts) - min(lefts) <= ALIGNMENT_EPSILON:
             continue
@@ -343,25 +358,25 @@ def check_misaligned_left_edges(dom: dict, width: int) -> list[Violation]:
 
 
 def check_font_scale(dom: dict, width: int) -> list[Violation]:
-    """Informational: how many distinct font-sizes are in use. Not a hard
-    pass/fail — there's no way to know an app's intended type scale from the
-    DOM alone — but a page with a dozen distinct sizes almost never has a
-    deliberate one, so this is worth a look even though it isn't a violation
-    of a specific rule the way the others are."""
+    """Informational: how many distinct font-sizes are in use.
+
+    Not a hard pass/fail — the intended type scale isn't knowable from the DOM —
+    but a page with a dozen distinct sizes almost never has a deliberate one.
+    """
     sizes = sorted(
         {round(e["fontSize"], 1) for e in dom["elements"] if e["hasDirectText"] and e["fontSize"]}
     )
-    if len(sizes) > MAX_DISTINCT_FONT_SIZES:
-        return [
-            Violation(
-                "FONT_SCALE_SPRAWL",
-                width,
-                f"{len(sizes)} distinct font-sizes in use "
-                f"({', '.join(f'{s:g}px' for s in sizes)}) — consider consolidating to a "
-                "smaller type scale (informational, not a hard rule).",
-            )
-        ]
-    return []
+    if len(sizes) <= MAX_DISTINCT_FONT_SIZES:
+        return []
+    return [
+        Violation(
+            "FONT_SCALE_SPRAWL",
+            width,
+            f"{len(sizes)} distinct font-sizes in use "
+            f"({', '.join(f'{s:g}px' for s in sizes)}) — consider consolidating to a "
+            "smaller type scale (informational, not a hard rule).",
+        )
+    ]
 
 
 CHECKS = (
@@ -375,13 +390,12 @@ CHECKS = (
 
 
 def run_checks(dom: dict, width: int) -> list[Violation]:
-    violations: list[Violation] = []
-    for check in CHECKS:
-        violations += check(dom, width)
-    return violations
+    # Parent lookups are needed by more than one check, so index once here.
+    dom["by_idx"] = {e["idx"]: e for e in dom["elements"]}
+    return [v for check in CHECKS for v in check(dom, width)]
 
 
-def lint_url(url: str, widths=DEFAULT_WIDTHS, timeout: int = 30000) -> list[Violation]:
+def lint_url(url: str, widths=DEFAULT_WIDTHS, timeout: int = DEFAULT_TIMEOUT_MS) -> list[Violation]:
     from playwright.sync_api import Error as PlaywrightError
     from playwright.sync_api import sync_playwright
 
@@ -397,12 +411,10 @@ def lint_url(url: str, widths=DEFAULT_WIDTHS, timeout: int = 30000) -> list[Viol
         for width in widths:
             page.set_viewport_size({"width": width, "height": VIEWPORT_HEIGHT})
             # Same loading-overlay wait as the screenshot loop in
-            # iterating-on-panel-apps.md — a page with no .pn-loading element
-            # (e.g. this check running against a non-Panel page) passes
-            # immediately, since the selector then matches nothing. A timeout
-            # here means the app never finished loading at this width — worth
-            # a violation in its own right, not a crash that discards every
-            # width already checked.
+            # iterating-on-panel-apps.md; a page with no .pn-loading element
+            # passes immediately, since the selector then matches nothing. A
+            # timeout is a finding in its own right, not a crash that discards
+            # every width already checked.
             try:
                 page.wait_for_function(
                     "() => !document.querySelector('.pn-loading')", timeout=timeout
@@ -418,9 +430,8 @@ def lint_url(url: str, widths=DEFAULT_WIDTHS, timeout: int = 30000) -> list[Viol
                     )
                 )
                 continue
-            page.wait_for_timeout(150)
-            dom = page.evaluate(DOM_EXTRACT_JS)
-            all_violations += run_checks(dom, width)
+            page.wait_for_timeout(SETTLE_MS)
+            all_violations += run_checks(page.evaluate(DOM_EXTRACT_JS), width)
         browser.close()
     return all_violations
 

@@ -1,12 +1,9 @@
 """Tests for preflight.py.
 
-Fixtures for the six structural checks are the exact WRONG/CORRECT code pairs
-already published in reviewing-panel-apps.md — so this suite doubles as
-"does the lint tool agree with the docs it's supposed to enforce", and is
-the shape a future amortization rule (see the open W7 workstream in the
-holoviz-skills roadmap) would want to build on: a lint rule that doesn't fire
-on its own documented WRONG example, or that fires on its own CORRECT
-example, is a bug in the rule, not the example.
+Fixtures are the exact WRONG/CORRECT code pairs already published in
+reviewing-panel-apps.md and troubleshooting.md, so this suite doubles as "does
+the lint tool agree with the docs it enforces": a rule that doesn't fire on its
+own documented WRONG example, or fires on its CORRECT one, is a bug in the rule.
 
 Run from this directory: `python test_preflight.py` (imports the sibling
 `preflight` module by plain name, so it must be run from inside `scripts/`,

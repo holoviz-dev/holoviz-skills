@@ -54,10 +54,12 @@ CASES: dict[str, dict] = {
     "contrast": {
         "check": "LOW_CONTRAST",
         "width": 1400,
-        "wrong": """<!doctype html><html><body style="margin:0; padding:40px; background:#ffffff;">
+        "wrong": """<!doctype html><html>
+            <body style="margin:0; padding:40px; background:#ffffff;">
             <p style="color:#cccccc; font-size:16px;">Hard to read text</p>
             </body></html>""",
-        "correct": """<!doctype html><html><body style="margin:0; padding:40px; background:#ffffff;">
+        "correct": """<!doctype html><html>
+            <body style="margin:0; padding:40px; background:#ffffff;">
             <p style="color:#222222; font-size:16px;">Easy to read text</p>
             </body></html>""",
     },
@@ -120,7 +122,8 @@ CASES: dict[str, dict] = {
 CLEAN_REALISTIC_HTML = """<!doctype html>
 <html><head><style>
   body { margin:0; font-family: sans-serif; background:#fafafa; color:#1a1a1a; }
-  .header { height:56px; background:#1565c0; color:#fff; display:flex; align-items:center; padding:0 16px; font-size:18px; }
+  .header { height:56px; background:#1565c0; color:#fff; display:flex;
+            align-items:center; padding:0 16px; font-size:18px; }
   .layout { display:flex; }
   .sidebar { width:220px; padding:16px; box-sizing:border-box; }
   .main { flex:1; padding:16px; box-sizing:border-box; max-width:100%; min-width:0; }
@@ -210,7 +213,8 @@ def run() -> int:
             wrong_hits = {v.check for v in _lint_html(browser, case["wrong"], width)}
             if check not in wrong_hits:
                 failures.append(
-                    f"[{name}] WRONG fixture did not trigger {check} (got {wrong_hits or 'nothing'})"
+                    f"[{name}] WRONG fixture did not trigger {check} "
+                    f"(got {wrong_hits or 'nothing'})"
                 )
 
             correct_hits = {v.check for v in _lint_html(browser, case["correct"], width)}
@@ -264,7 +268,9 @@ def run() -> int:
         # ConnectionError as intended.
         failures.append(f"[unreachable_url] expected ConnectionError, got {type(e).__name__}: {e}")
 
-    total = len(CASES) * 2 + 3
+    # Each case contributes a WRONG and a CORRECT assertion; the extras are
+    # clean_realistic, absolute_overlay, load_timeout, and unreachable_url.
+    total = len(CASES) * 2 + 4
     passed = total - len(failures)
     print(f"{passed}/{total} passed")
     for f in failures:
