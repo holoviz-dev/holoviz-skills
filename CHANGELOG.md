@@ -10,6 +10,42 @@ the top for each release; keep `## Unreleased` (no "Version" prefix) for
 in-progress notes so it is skipped by the extraction.
 -->
 
+## Unreleased
+
+### Added
+
+- `holoviz-skills.plugin` — an all-categories Claude Desktop / Cowork plugin, built alongside
+  the per-category ones by `pixi run build-plugin`. Its version comes from the latest git tag,
+  since it spans every skill and so has no single `SKILL.md` to read `metadata.version` from.
+- **Preflight lint** (`panel/scripts/preflight.py`) — stdlib-only AST checks for the mechanical
+  anti-patterns already documented in `reviewing-panel-apps.md` and `troubleshooting.md`:
+  flicker-causing `@param.depends` returns, `watch=True` methods that return a value,
+  `from_param` before `super().__init__()`, ungrouped writes that want `pn.io.hold()`, in-place
+  param mutation, `Radio*Group` `None` defaults, and sliders without `throttled`. Runs before
+  the first `panel serve`, so most bugs are caught without a server or a screenshot.
+- **Layout lint** (`panel/scripts/layout_lint.py`) — headless-browser DOM/CSSOM checks at three
+  viewport widths for horizontal overflow, sub-44px touch targets, WCAG text contrast, element
+  overlap, misaligned sibling left edges, and font-size sprawl. Geometry and contrast are
+  numbers rather than judgment calls, so this replaces most of what a screenshot was needed for.
+- Check suites for both linters (`test_preflight.py`, `test_layout_lint.py`), built from the
+  docs' own WRONG/CORRECT pairs — a rule that doesn't fire on its documented WRONG example, or
+  fires on its CORRECT one, is a bug in the rule.
+- **URL State Sync** section in `designing-panel-architecture.md` — `pn.state.location.sync()`,
+  with the `if pn.state.location:` guard, the changed-parameters-only URL behavior, the
+  JSON-encoding limit on synced values, and numeric-looking `Selector` options misresolving
+  on load.
+- **Notifications** section in `using-material-ui.md` — `pn.state.notifications.*`, plus the
+  threading gotcha where calling it from a worker thread under `nthreads` can silently abandon
+  the rest of that callback with no error surfaced.
+- `MockSource` latency/failure knobs in `iterating-on-panel-apps.md`, so the loading spinner and
+  the error/`Alert` path can be rehearsed from the command line without touching app code.
+
+### Changed
+
+- The Panel development loop now runs preflight before the first serve and layout lint once the
+  logs are clean, with screenshots reserved for what neither can reveal — hierarchy, whitespace
+  rhythm, and whether the page reads as an untouched template.
+
 ## v0.1.0
 
 ### Added
