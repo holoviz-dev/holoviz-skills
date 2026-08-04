@@ -453,15 +453,6 @@ def check_throttled(tree: ast.Module) -> list[Violation]:
     ]
 
 
-CHECKS = (
-    check_function_level,
-    check_dict_selector_objects,
-    check_radio_default_none,
-    check_mutating_params,
-    check_throttled,
-)
-
-
 def lint_file(path: str) -> list[Violation]:
     with open(path, encoding="utf-8") as f:
         source = f.read()
@@ -469,7 +460,13 @@ def lint_file(path: str) -> list[Violation]:
         tree = ast.parse(source, filename=path)
     except SyntaxError as e:
         return [Violation(e.lineno or 1, "SYNTAX_ERROR", str(e), "-")]
-    violations = [v for check in CHECKS for v in check(tree)]
+    violations = [
+        *check_function_level(tree),
+        *check_dict_selector_objects(tree),
+        *check_radio_default_none(tree),
+        *check_mutating_params(tree),
+        *check_throttled(tree),
+    ]
     violations.sort(key=lambda v: v.line)
     return violations
 

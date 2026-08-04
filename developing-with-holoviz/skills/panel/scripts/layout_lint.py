@@ -379,20 +379,17 @@ def check_font_scale(dom: dict, width: int) -> list[Violation]:
     ]
 
 
-CHECKS = (
-    check_overflow,
-    check_touch_targets,
-    check_contrast,
-    check_overlap,
-    check_misaligned_left_edges,
-    check_font_scale,
-)
-
-
 def run_checks(dom: dict, width: int) -> list[Violation]:
     # Parent lookups are needed by more than one check, so index once here.
     dom["by_idx"] = {e["idx"]: e for e in dom["elements"]}
-    return [v for check in CHECKS for v in check(dom, width)]
+    return [
+        *check_overflow(dom, width),
+        *check_touch_targets(dom, width),
+        *check_contrast(dom, width),
+        *check_overlap(dom, width),
+        *check_misaligned_left_edges(dom, width),
+        *check_font_scale(dom, width),
+    ]
 
 
 def lint_url(url: str, widths=DEFAULT_WIDTHS, timeout: int = DEFAULT_TIMEOUT_MS) -> list[Violation]:
