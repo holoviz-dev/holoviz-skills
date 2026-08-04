@@ -83,6 +83,11 @@ overlay = (curve * scatter).opts(
 ## Toolbar and tools (disable wheel-zoom)
 
 - `toolbar=None` removes the toolbar entirely (the Bokeh logo + pan/zoom/save icons).
+- `autohide_toolbar=True` keeps the toolbar but hides it until the pointer enters the plot.
+  Reach for this instead of `toolbar=None` when the chart is still meant to be explored and
+  you only want the icons out of the way while it's being read — you keep reset/save/hover
+  without the permanent furniture. It sets Bokeh's `toolbar.autohide`, and has **no effect
+  under `toolbar=None`**, since that leaves no toolbar to reveal.
 - `default_tools=[]` strips Bokeh's default tools — pan, **wheel_zoom**, box_zoom, save,
   reset, help. This is what actually stops the chart zooming when the user scrolls the page.
   Hiding the toolbar alone is not enough if wheel-zoom is still an active scroll tool.
@@ -92,10 +97,19 @@ overlay = (curve * scatter).opts(
   `tools=[]` if you want hover — it removes hover too.
 
 ```python
+# Static/presentation chart — no toolbar at all, nothing zooms on scroll
 plot.opts(toolbar=None, default_tools=[], active_tools=[], tools=["hover"])
+
+# Still interactive, but the toolbar only appears on hover
+plot.opts(autohide_toolbar=True, default_tools=["reset"], active_tools=[], tools=["hover"])
 ```
 
 `default_tools=["reset"]` keeps just the reset button; `default_tools=[]` keeps none.
+
+`autohide_toolbar` is spelled the same in both APIs — it is valid as an hvPlot call kwarg
+(`df.hvplot.line(..., autohide_toolbar=True)`) as well as via `.opts()`, and it takes in
+`hv.opts.defaults(...)`, so a whole dashboard can adopt hover-only toolbars in one line (see
+[Session Defaults](SKILL.md#session-defaults)).
 
 ## Gridlines on one axis
 

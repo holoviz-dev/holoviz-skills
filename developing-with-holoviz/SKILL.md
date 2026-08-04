@@ -4,7 +4,7 @@ description: Route to HoloViz sub-skills. Use for ANY task involving interactive
 user-invocable: true
 argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component]"
 metadata:
-  version: "0.2.0"
+  version: "0.2.1"
   author: holoviz
 ---
 
@@ -40,14 +40,15 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` |
 | Convert a design / screenshot / React app into a Material UI (pmui) app | `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/converting-designs-to-material-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
 | HoloViews elements, opts, tooltips, formatters, tools | `skills/holoviews/SKILL.md` |
-| Remove chart junk / clean a plot — hide toolbar, disable wheel-zoom, one-axis gridlines, share axes, place legend | `skills/holoviews/SKILL.md` + `skills/holoviews/decluttering-plots.md` |
+| Remove chart junk / clean a plot — hide or autohide toolbar, disable wheel-zoom, one-axis gridlines, share axes, place legend | `skills/holoviews/SKILL.md` + `skills/holoviews/decluttering-plots.md` |
 | Embedding plots in Panel (HoloViews/hvPlot, Matplotlib, Plotly, ECharts; DynamicMap, responsive sizing) | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/plotting-in-panel.md` + `skills/holoviews/SKILL.md` |
 | Stop repeating the same option on every component or chart — session defaults, `pn.config`, `hv.opts.defaults`, class param defaults | `skills/panel/SKILL.md` + `skills/holoviews/SKILL.md` |
 | Display, filter, sort, or select rows in a data table | `skills/panel/SKILL.md` + `skills/panel/using-tabulator.md` |
+| Plot points or tracks on a map basemap (tiles, Web Mercator, no geo stack) | `skills/holoviews/SKILL.md` + `skills/hvplot/SKILL.md` |
 | Custom components — pure-Python (Viewer/PyComponent) or JS/React/AnyWidget | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/building-custom-components.md` |
 | Playwright UI testing for Panel components | `skills/panel/building-custom-components.md` + `skills/panel/using-pytest-playwright.md` |
 | Review or audit a Panel app | `skills/panel/SKILL.md` + `skills/panel/reviewing-panel-apps.md` |
-| Serve, screenshot, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
+| Serve, screenshot, benchmark startup, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
 | Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
 | Migrate an existing plain-Panel app to Material UI / pmui | `skills/panel/SKILL.md` + `skills/panel/migrating-to-material-ui.md` |
 | Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting.md` |

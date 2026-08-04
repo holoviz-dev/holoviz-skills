@@ -51,6 +51,25 @@ Filter behavior depends on the widget value type: a **list** matches any item in
 
 Use `table.current_view` to inspect the currently visible (filtered + sorted) DataFrame.
 
+**Don't index it with `selection`.** `selection` holds row indices into the table's own `value`,
+not positions in `current_view`, so `current_view.iloc[table.selection[0]]` silently reads the
+wrong row once filtering, sorting, or `pagination="remote"` makes the two disagree — and it
+happens to look correct on the unsorted first page, which is exactly where it gets tested. Use
+`selected_dataframe`, which resolves the selection against `value` for you:
+
+```python
+# ❌ WRONG — positional index into a reordered/paginated view
+row = table.current_view.iloc[table.selection[0]]
+
+# ✅ CORRECT — resolved against the table's own value
+selected = table.selected_dataframe
+if selected is not None and not selected.empty:
+    row = selected.iloc[0]
+```
+
+Reach for `current_view` to ask *what is on screen* (how many rows survived a filter, what the
+visible totals are), and for `selected_dataframe` to ask *what the user picked*.
+
 ### Function-Based Filtering
 
 For complex filtering, pass a bound function:

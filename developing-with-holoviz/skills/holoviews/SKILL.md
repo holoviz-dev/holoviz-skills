@@ -2,7 +2,7 @@
 name: holoviews
 description: Build interactive visualizations with HoloViews elements, opts, streams, and operations. Use when composing plots from element primitives (Curve, Points, Bars, NdOverlay), customizing Bokeh tools/tooltips/formatters, using DynamicMap, streams, or link_selections. Do not use for simple DataFrame plotting (use hvPlot) or Panel app structure (use Panel).
 metadata:
-  version: "0.1.1"
+  version: "0.2.0"
   author: holoviz
 ---
 
@@ -20,6 +20,7 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 - [Session Defaults](#session-defaults)
 - [Hover Tooltips](#hover-tooltips)
 - [Formatters](#formatters)
+- [Tile Basemaps](#tile-basemaps)
 - [Bokeh Tools](#bokeh-tools)
 - [DynamicMap](#dynamicmap)
 - [Streams](#streams)
@@ -29,7 +30,7 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 
 Read these for specialized topics. Each is a standalone document you can load on demand.
 
-- [Decluttering Plots](decluttering-plots.md) — stripping Bokeh chart junk with `.opts()`: hide the toolbar, disable wheel-zoom (`default_tools`/`active_tools`), one-axis gridlines (`gridstyle`), hide/share axes across stacked plots, legend placement, nested categorical axes, and why these opts belong on the top-level overlay/layout rather than per element
+- [Decluttering Plots](decluttering-plots.md) — stripping Bokeh chart junk with `.opts()`: hide the toolbar or reveal it on hover (`autohide_toolbar`), disable wheel-zoom (`default_tools`/`active_tools`), one-axis gridlines (`gridstyle`), hide/share axes across stacked plots, legend placement, nested categorical axes, and why these opts belong on the top-level overlay/layout rather than per element
 
 ## Lookup
 
@@ -130,6 +131,43 @@ hv.Curve(df, "date", "revenue").opts(
 ```
 
 Common `NumeralTickFormatter` formats: `"$0,0"` (currency), `"0,0"` (thousands), `"0a"` (abbreviated: 1k, 1M), `"0.0%"` (percentage).
+
+## Tile Basemaps
+
+A map background needs no geo stack. `hv.element.tiles` ships with HoloViews, so a basemap costs
+nothing beyond Bokeh — it is `geo=True` that pulls in GeoViews (and thus cartopy), not tiles.
+Enumerate the sources with `hv.element.tiles.tile_sources`.
+
+**From a DataFrame, let hvPlot project.** Passing `tiles=` converts lon/lat to Web Mercator for
+you, so don't do it by hand:
+
+```python
+df.hvplot.points(x="lon", y="lat", tiles="CartoLight", responsive=True, height=400)
+```
+
+**Composing elements yourself, you must convert.** Reach for this when hvPlot's shape doesn't fit
+— a multi-segment `Path`, or an `NdOverlay` of `Points` grouped so each category gets a legend
+entry. Tile sources are indexed in Web Mercator metres, so project the coordinates first:
+
+```python
+from holoviews.util.transform import lon_lat_to_easting_northing
+
+easting, northing = lon_lat_to_easting_northing(df["lon"].values, df["lat"].values)
+df = df.assign(x=easting, y=northing)
+
+hv.element.tiles.CartoLight() * hv.Points(df, ["x", "y"], ["value"])
+```
+
+**Forgetting to convert raises nothing.** Overlaying degrees on tiles builds a perfectly valid
+object and renders — the axis range just comes out as `(-82.8, -25.2)` instead of
+`(-9.2e6, -2.8e6)`, which the tile layer reads as a ~60-metre box in the Gulf of Guinea. You get
+a blank basemap with your data drawn on it and no warning anywhere. Check the magnitude when a
+map looks empty: order 1e6–1e7 means projected, order ±180 means you skipped the conversion.
+
+Valid Mercator coordinates span ±2.0037508e7; clamp any padding you add to that. Note also that
+an *empty* element yields a `(0, 1)` range, which for tiles is a one-metre extent and makes Bokeh
+log `tile extent is not fully defined` — see
+[Inspecting the Plot Model](../panel/iterating-on-panel-apps.md#inspecting-the-plot-model).
 
 ## Bokeh Tools
 
