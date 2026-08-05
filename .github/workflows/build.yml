@@ -2,10 +2,15 @@ name: packages
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+a[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+b[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+      # These are globs, not regex: `[0-9]` matches exactly one digit and `+`
+      # would be a literal plus, so every digit is spelled out. CalVer:
+      # vYYYY.MM.DD, plus an optional serial for a second release the same day.
+      - "v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]"
+      - "v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].[0-9]*"
+      # Pre-releases: vYYYY.MM.DD{a,b,rc}N
+      - "v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]a[0-9]*"
+      - "v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]b[0-9]*"
+      - "v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9]rc[0-9]*"
   workflow_dispatch:
   schedule:
     - cron: "0 17 * * SUN"

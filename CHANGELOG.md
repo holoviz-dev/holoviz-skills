@@ -12,7 +12,29 @@ in-progress notes so it is skipped by the extraction.
 
 ## Unreleased
 
+### Changed
+
+- **Skill versions are now CalVer (`YYYY.MM.DD`), not semver.** `metadata.version` records the
+  date a skill last changed. `scripts/bump_skill_version.py` stamps today's date instead of
+  patch-bumping, so a second edit on the same day is a no-op, and the release tag format moves
+  to `vYYYY.MM.DD` (`.github/workflows/build.yml` tag globs updated to match). A date cannot
+  express severity, so the previous convention of a manual minor bump for a reversed
+  recommendation is gone — record the *why* here instead. `scripts/migrate_to_calver.py` is a
+  one-off that dates each existing skill from its last commit; delete it once it has run.
+- **Prefer native `pn.Column`/`pn.Row` over the `pmui` equivalents.** They add no Material
+  styling beyond `sx`, and the pmui ones are ESM/React components whose children can paint
+  before the layout has sized them — which corrupts tile/geo plots irrecoverably (see the new
+  `troubleshooting.md` entry). `using-material-ui.md`, `migrating-to-material-ui.md`, and the
+  example apps were updated to match; keep `pmui.Column`/`Row` where `sx` styling is needed,
+  and keep pmui for the layouts that carry real styling (`Grid`, `Container`, `Paper`, `Card`,
+  `Tabs`, `Accordion`, `Page`).
+
 ### Added
+
+- **Tile plot renders blank inside a pmui layout** — new `panel/troubleshooting.md` entry with a
+  yes/no reproducer. The first paint lands with a zero frame dimension, Bokeh's tile aspect
+  enforcement writes `±Infinity`/`NaN` into both ranges and their reset values, and no later
+  layout pass or resize repairs it.
 
 - `holoviz-skills.plugin` — an all-categories Claude Desktop / Cowork plugin, built alongside
   the per-category ones by `pixi run build-plugin`. Its version comes from the latest git tag,
