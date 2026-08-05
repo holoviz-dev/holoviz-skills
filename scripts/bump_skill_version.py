@@ -1,29 +1,36 @@
 #!/usr/bin/env python3
-"""Auto-bump the ``metadata.version`` of any skill that changed in a commit.
+"""Auto-stamp the ``metadata.version`` of any skill that changed in a commit.
 
 Used as a pre-commit hook (see ``.pre-commit-config.yaml``). pre-commit passes
 the staged filenames; this script maps each one to the *owning* skill (the
-nearest ancestor directory containing a ``SKILL.md``) and patch-bumps that
-skill's ``metadata.version`` in its frontmatter, then re-stages the SKILL.md.
+nearest ancestor directory containing a ``SKILL.md``) and sets that skill's
+``metadata.version`` to today's date in ``YYYY.MM.DD`` form, then re-stages the
+SKILL.md.
 
 Design notes
 ------------
+* Versions are **CalVer**: the value is the date the skill last changed, not a
+  semantic version. A date cannot express severity, so a typo fix and a
+  reversed recommendation stamp identically — record the *why* in
+  ``CHANGELOG.md``, not in the version.
 * Source of truth is the **tracked** top-level skill tree
   (``developing-with-holoviz/``, ``contributing-to-holoviz/``,
   ``creating-custom-holoviz-skills/``). The ``holoviz_skills/skills/``,
-  ``.claude/skills`` and ``.agents/skills`` copies are generated/gitignored,
-  so the hook never touches them.
-* One bump per branch: the version is compared against the merge-base with the
+  ``.claude/skills``, ``.agents/skills`` and ``.github/skills`` copies are
+  generated/gitignored (see the ``.*/skills/*`` rule in ``.gitignore``), so the
+  hook never touches them.
+* One stamp per branch: the version is compared against the merge-base with the
   base branch (``origin/main`` by default; override with the
-  ``SKILL_VERSION_BASE_REF`` env var), so a skill bumps at most once across a
-  whole PR no matter how many commits touch it. Falls back to ``HEAD`` (the
+  ``SKILL_VERSION_BASE_REF`` env var), so a skill is stamped at most once across
+  a whole PR no matter how many commits touch it. Falls back to ``HEAD`` (the
   original per-commit behavior) when no base branch can be resolved — detached
   HEAD, no ``main``, or a shallow clone that lacks it.
-* Idempotent / respects manual bumps: once the staged version differs from the
-  baseline (already bumped on this branch, hand-edited, or freshly seeded), a
-  re-run is a no-op.
+* Idempotent / respects manual edits: once the staged version differs from the
+  baseline (already stamped on this branch, hand-edited, or freshly seeded), a
+  re-run is a no-op. A second edit on the same day is therefore also a no-op —
+  the date is already correct.
 * Brand-new skills (SKILL.md not yet in HEAD) keep their authored version.
-* Skills with no ``metadata.version`` get one seeded at ``0.1.0`` on first edit.
+* Skills with no ``metadata.version`` get today's date seeded on first edit.
 * Stdlib-only, matching the convention of the other scripts in this folder.
 """
 
@@ -33,6 +40,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 # Tracked skill roots (the source of truth). Files outside these are ignored.
@@ -42,18 +50,24 @@ SKILL_ROOTS = (
     "creating-custom-holoviz-skills",
 )
 
-SEED_VERSION = "0.1.0"
+SEED_VERSION = None  # unused: new skills are seeded with today's date
 
 # Env var to override the base ref used for version comparison.
 BASE_REF_ENV = "SKILL_VERSION_BASE_REF"
 # Tried in order when no override is set; first that exists wins.
 DEFAULT_BASE_CANDIDATES = ("origin/main", "origin/master", "main", "master")
 
-# Matches an indented ``version: "x.y.z"`` line inside the metadata block.
-VERSION_RE = re.compile(
-    r'^(?P<indent>\s+)version:\s*(?P<q>["\']?)(?P<maj>\d+)\.(?P<min>\d+)\.(?P<pat>\d+)(?P=q)\s*$'
-)
+# Matches an indented ``version: "..."`` line inside the metadata block.
+# Permissive on the value so both the legacy ``x.y.z`` and CalVer ``YYYY.MM.DD``
+# parse — the migration lands over several commits and the hook must not choke
+# on whichever form it meets.
+VERSION_RE = re.compile(r'^(?P<indent>\s+)version:\s*(?P<q>["\']?)(?P<ver>[0-9][0-9.]*)(?P=q)\s*$')
 METADATA_RE = re.compile(r"^metadata:\s*$")
+
+
+def today() -> str:
+    """Today's date as ``YYYY.MM.DD``."""
+    return date.today().strftime("%Y.%m.%d")
 
 
 def repo_root() -> Path:
@@ -132,11 +146,11 @@ def version_string(text: str) -> str | None:
     if not found:
         return None
     _, m = found
-    return f"{m['maj']}.{m['min']}.{m['pat']}"
+    return m["ver"]
 
 
 def bump_text(text: str) -> str | None:
-    """Return ``text`` with the skill version patch-bumped (or seeded).
+    """Return ``text`` with the skill version stamped to today's date.
 
     Returns None if the file has no frontmatter at all (cannot version it).
     """
@@ -148,14 +162,13 @@ def bump_text(text: str) -> str | None:
     found = find_version(lines, start, end)
     if found:
         idx, m = found
-        newver = f'{m["maj"]}.{m["min"]}.{int(m["pat"]) + 1}'
         q = m["q"] or '"'
         nl = "\n" if lines[idx].endswith("\n") else ""
-        lines[idx] = f'{m["indent"]}version: {q}{newver}{q}{nl}'
+        lines[idx] = f'{m["indent"]}version: {q}{today()}{q}{nl}'
         return "".join(lines)
 
-    # No version yet -> seed one, under an existing metadata: block if present.
-    seed_line = f'  version: "{SEED_VERSION}"\n'
+    # No version yet -> seed today's date, under an existing metadata: block.
+    seed_line = f'  version: "{today()}"\n'
     for i in range(start + 1, end):
         if METADATA_RE.match(lines[i].rstrip("\n")):
             lines.insert(i + 1, seed_line)
@@ -232,7 +245,7 @@ def main(argv: list[str]) -> int:
         bumped.append(f"{rel}: {cur_ver or '(none)'} -> {version_string(new_text)}")
 
     if bumped:
-        print("Bumped skill version(s):")
+        print("Stamped skill version(s):")
         for line in bumped:
             print(f"  {line}")
         # Non-zero so pre-commit reports the modification; re-commit applies it.

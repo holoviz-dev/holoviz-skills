@@ -23,7 +23,7 @@ sells the article feel.
 
 ## Prose-then-chart rhythm
 
-Build one `pmui.Column` alternating a short paragraph and the chart it sets up, so the reader
+Build one `pn.Column` alternating a short paragraph and the chart it sets up, so the reader
 meets the point before the picture. Charts go in `pn.pane.HoloViews` (no pmui equivalent) and
 auto-theme under the Page.
 

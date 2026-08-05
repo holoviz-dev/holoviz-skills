@@ -73,7 +73,7 @@ def _read_version(skill_md: Path) -> str | None:
         return None
     fm = re.match(r"\A---\s*\n.*?\n---\s*\n", skill_md.read_text(encoding="utf-8"), re.DOTALL)
     block = fm.group(0) if fm else ""
-    m = re.search(r'^\s+version:\s*["\']?(\d+\.\d+\.\d+)["\']?\s*$', block, re.MULTILINE)
+    m = re.search(r'^\s+version:\s*["\']?([0-9][0-9.]*)["\']?\s*$', block, re.MULTILINE)
     return m.group(1) if m else None
 
 

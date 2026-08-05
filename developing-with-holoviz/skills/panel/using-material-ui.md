@@ -41,7 +41,8 @@ Base: `https://panel-material-ui.holoviz.org/markdown/` — append the endpoints
 ## Key Differences from Panel
 
 - Import `panel_material_ui as pmui`. Don't add `"panel_material_ui"` or `"bokeh"` to `pn.extension()`. Don't set `design='material'`.
-- Prefer `pmui.Column`/`Row`/`Grid`/`Container` over `pn.*` equivalents — they support `spacing`, breakpoints, and theme inheritance. Fall back to `pn.*` only when no pmui equivalent exists (e.g. `pn.pane.HoloViews`). If an existing app already uses `pn.*` layouts, keep them rather than migrating.
+- `pmui.Column`/`Row` are plain flex containers with no Material styling of their own, and native `pn.Column`/`pn.Row` are the more robust implementation — the pmui ones are ESM/React components, so children can paint before the layout has sized them (see [tile plot renders blank](troubleshooting.md#tilemap-plot-renders-blank-inside-a-pmui-layout)). Prefer `pn.Column`/`pn.Row`, especially as the immediate wrapper around a plot pane. Keep pmui for the layouts that *do* carry styling or layout features: `Grid`, `Container`, `Paper`, `Card`, `Tabs`, `Accordion`, `Page`. `FlexBox` and `Feed` are also mostly plain, though `Feed` has extra scroll machinery worth keeping.
+- Fall back to `pn.*` whenever no pmui equivalent exists (e.g. `pn.pane.HoloViews`). If an existing app already uses `pn.*` layouts, keep them rather than migrating.
 - Use `pmui.Page` instead of `pn.template.FastListTemplate`.
 - Use new param names (`label`, `color`, `variant`) not legacy aliases (`name`, `button_type`, `button_style`).
 - Quick preview with `python app.py` + `.show()` works the same as for standard Panel. For iterating, prefer `panel serve app.py --dev --show` (see [Serving Workflow](SKILL.md#serving-workflow)).
@@ -61,7 +62,7 @@ class MyApp(pn.viewable.Viewer):
         super().__init__(**params)
         with pn.config.set(sizing_mode="stretch_width"):
             self._slider = pmui.IntSlider.from_param(self.param.value, margin=(10, 20))
-            self._output = pmui.Column(self._display)
+            self._output = pn.Column(self._display)
         # Build the Page once here — __panel__ returns it unconditionally.
         self._page = pmui.Page(
             title="My App",
@@ -118,6 +119,7 @@ pmui.Page(
 ## Layouts
 
 Notes:
+- `pmui.Column`/`Row` add nothing over `pn.Column`/`pn.Row` and are less robust — use the native ones ([why](#key-differences-from-panel)).
 - `pmui.Container(width_option="lg")` clamps content max width — prevents wide-screen stretching.
 - `pmui.Grid` with `size=` breakpoints for responsive multi-column layouts. Nest items inside `Grid(container=True)`. KPI cards: `size={"xs": 6, "md": 3}`. Side-by-side charts: `size={"xs": 12, "md": 6}`.
 - `size="grow"` for auto-sized items.
@@ -146,7 +148,7 @@ The `pmui.Page` main area does not support CSS flexbox centering. Use margins in
 pmui.Page(
     main=[
         pmui.Container(
-            pmui.Column(
+            pn.Column(
                 pmui.Paper(content, sx={"p": 5}),
                 sizing_mode="stretch_width",
                 margin=(100, 0, 0, 0),  # Push down from top
@@ -179,8 +181,8 @@ pmui.Page(
 ### Layouts
 
 - `Grid`: use `spacing=2`+. `ncols` doesn't exist.
-- `Column`/`Row`: use `size`, not `xs`/`sm`/`md`. Set spacing via `sx`, not `spacing` param.
-- List layouts take positional args: `pmui.Row(a, b)`, not `pmui.Row([a, b])`.
+- `pmui.Column`/`Row`, if you use them at all (prefer native): use `size`, not `xs`/`sm`/`md`. Set spacing via `sx`, not a `spacing` param. Note `sx` is the one thing they add over `pn.Column`/`pn.Row`, which have no `sx` — so a layout that needs `sx` styling is a legitimate reason to keep the pmui one.
+- List layouts take positional args: `pmui.Paper(a, b)`, not `pmui.Paper([a, b])`.
 
 ### Components
 
@@ -195,10 +197,10 @@ pmui.Page(
 
   ```python
   # ❌ Rating fills the row (giant stars); the label wraps vertically
-  pmui.Row(pn.pane.Markdown("**Rating:**"), pmui.Rating(end=5), pn.layout.HSpacer())
+  pn.Row(pn.pane.Markdown("**Rating:**"), pmui.Rating(end=5), pn.layout.HSpacer())
 
   # ✅ pinned
-  pmui.Row(
+  pn.Row(
       pn.pane.HTML("<b>Rating:</b>", width=64, sizing_mode="fixed"),
       pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed"),
       pn.layout.HSpacer(),

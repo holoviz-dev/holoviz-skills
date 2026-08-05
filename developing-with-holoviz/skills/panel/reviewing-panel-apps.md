@@ -26,15 +26,15 @@ The most common Panel anti-pattern. A `@param.depends` method that returns a new
 # WRONG — recreates Row on every step change
 @param.depends("active_step")
 def _nav_buttons(self):
-    return pmui.Row(self._back_btn, pn.layout.HSpacer(), self._next_btn)
+    return pn.Row(self._back_btn, pn.layout.HSpacer(), self._next_btn)
 
 # CORRECT — create once in __init__, reference in layout
 def __init__(self, **params):
-    self._nav_row = pmui.Row(self._back_btn, pn.layout.HSpacer(), self._next_btn)
+    self._nav_row = pn.Row(self._back_btn, pn.layout.HSpacer(), self._next_btn)
     super().__init__(**params)
 ```
 
-**What to look for**: any `@param.depends` method (without `watch=True`) that returns `pn.Column`, `pn.Row`, `pmui.Row`, `pmui.Paper`, or any layout/widget constructor. The fix is always the same — create once, update properties.
+**What to look for**: any `@param.depends` method (without `watch=True`) that returns `pn.Column`, `pn.Row`, `pmui.Paper`, or any layout/widget constructor. The fix is always the same — create once, update properties.
 
 For content that genuinely varies in type (string one moment, plot the next), use `pn.pane.Placeholder`:
 
@@ -116,14 +116,14 @@ Under the default `sizing_mode="stretch_width"`, fixed-size widgets stretch to f
 
 ```python
 # WRONG — extra DOM element just for spacing
-pmui.Column(
+pn.Column(
     self._content,
     pn.Spacer(height=30),
     self._nav_row,
 )
 
 # CORRECT — margin on parent
-pmui.Column(
+pn.Column(
     self._content,
     self._nav_row,
     margin=(0, 0, 30, 0),

@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   author: holoviz
 ---
 
@@ -80,8 +80,8 @@ class Dashboard(pn.viewable.Viewer):
         # changes update the param silently but never fire watchers (dead app).
         self._species_widget = pmui.CheckBoxGroup.from_param(self.param.species)
         with pn.config.set(sizing_mode="stretch_width"):
-            self._sidebar = pmui.Column(self._species_widget)
-            self._main = pmui.Column(self._summary, self._chart_pane)
+            self._sidebar = pn.Column(self._species_widget)
+            self._main = pn.Column(self._summary, self._chart_pane)
         # Build the Page once — __panel__ returns it unconditionally.
         self._page = pmui.Page(
             title="Penguin Explorer",

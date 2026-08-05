@@ -121,7 +121,7 @@ class FilingStatusStep(WizardStep):
     title = param.String(default="Filing Status")
 
     def __panel__(self):
-        return pmui.Column(
+        return pn.Column(
             pmui.Typography(
                 "What is your filing status?", variant="h4", sx={"fontWeight": 700, "mb": 1}
             ),
@@ -170,7 +170,7 @@ class IncomeStep(WizardStep):
         self.complete = (self.wages + self.interest) > 0
 
     def __panel__(self):
-        return pmui.Column(
+        return pn.Column(
             pmui.Typography(
                 "What did you earn this year?", variant="h4", sx={"fontWeight": 600, "mb": 1}
             ),
@@ -179,7 +179,7 @@ class IncomeStep(WizardStep):
                 "We'll use this to calculate your tax bracket.",
                 sx={"color": "text.secondary", "mb": 4},
             ),
-            pmui.Column(
+            pn.Column(
                 pmui.Typography("W-2 Wages", sx={"fontWeight": 500, "mb": 1}),
                 pmui.FloatInput.from_param(
                     self.param.wages,
@@ -194,7 +194,7 @@ class IncomeStep(WizardStep):
                 sizing_mode="stretch_width",
                 margin=(0, 0, 24, 0),
             ),
-            pmui.Column(
+            pn.Column(
                 pmui.Typography("Interest & Dividends", sx={"fontWeight": 500, "mb": 1}),
                 pmui.FloatInput.from_param(
                     self.param.interest,
@@ -265,7 +265,7 @@ class DeductionsStep(WizardStep):
             self._deduction_details.update(self._standard_info)
 
     def __panel__(self):
-        return pmui.Column(
+        return pn.Column(
             pmui.Typography("Choose your deduction", variant="h4", sx={"fontWeight": 600, "mb": 1}),
             pmui.Typography(
                 "Most filers benefit from the standard deduction.",
@@ -303,15 +303,15 @@ class ReviewStep(WizardStep):
             deduction_amount = deductions.itemized_amount
         taxable = max(0, total_income - deduction_amount)
 
-        return pmui.Column(
+        return pn.Column(
             pmui.Typography("Review your return", variant="h4", sx={"fontWeight": 600, "mb": 1}),
             pmui.Typography(
                 "Please confirm your information before submitting.",
                 sx={"color": "text.secondary", "mb": 3},
             ),
             pmui.Paper(
-                pmui.Column(
-                    pmui.Row(
+                pn.Column(
+                    pn.Row(
                         pmui.Typography(
                             "Filing Status", sx={"color": "text.secondary", "minWidth": 140}
                         ),
@@ -319,19 +319,19 @@ class ReviewStep(WizardStep):
                             filing.filing_status or "Not selected", sx={"fontWeight": 500}
                         ),
                     ),
-                    pmui.Row(
+                    pn.Row(
                         pmui.Typography(
                             "W-2 Wages", sx={"color": "text.secondary", "minWidth": 140}
                         ),
                         pmui.Typography(f"${income.wages:,.2f}", sx={"fontWeight": 500}),
                     ),
-                    pmui.Row(
+                    pn.Row(
                         pmui.Typography(
                             "Interest Income", sx={"color": "text.secondary", "minWidth": 140}
                         ),
                         pmui.Typography(f"${income.interest:,.2f}", sx={"fontWeight": 500}),
                     ),
-                    pmui.Row(
+                    pn.Row(
                         pmui.Typography(
                             "Deduction", sx={"color": "text.secondary", "minWidth": 140}
                         ),
@@ -341,7 +341,7 @@ class ReviewStep(WizardStep):
                         ),
                     ),
                     pn.layout.Divider(margin=(16, 0)),
-                    pmui.Row(
+                    pn.Row(
                         pmui.Typography("Taxable Income", sx={"fontWeight": 600, "minWidth": 140}),
                         pmui.Typography(
                             f"${taxable:,.2f}", sx={"fontWeight": 600, "color": "primary.main"}
@@ -417,7 +417,7 @@ class TaxWizard(pn.viewable.Viewer):
         self._next_btn = pmui.Button(
             label="Continue", icon="arrow_forward", variant="contained", color="primary"
         )
-        self._nav_row = pmui.Row(
+        self._nav_row = pn.Row(
             self._back_btn, pn.layout.HSpacer(), self._next_btn, sizing_mode="stretch_width"
         )
         self._content = pn.pane.Placeholder(sizing_mode="stretch_width", min_height=420, margin=20)
@@ -489,7 +489,7 @@ class TaxWizard(pn.viewable.Viewer):
             self._back_btn.visible = False
             self._alert.visible = False
             self._content.update(
-                pmui.Column(
+                pn.Column(
                     pmui.Typography(
                         "Your return has been submitted!",
                         variant="h4",
@@ -559,10 +559,10 @@ class TaxWizard(pn.viewable.Viewer):
             theme_config=THEME_CONFIG,
             main=[
                 pmui.Container(
-                    pmui.Column(
+                    pn.Column(
                         self._stepper,
                         pmui.Paper(
-                            pmui.Column(
+                            pn.Column(
                                 self._alert,
                                 self._content,
                                 self._nav_row,

@@ -37,7 +37,7 @@ Walk these in order; each keeps the app runnable:
 3. **Widgets** — `pn.widgets.X` → `pmui.X`; `pn.Param(...)` → explicit `from_param`.
 4. **Parameter names** — `name`→`label`, `button_type`→`color`, `button_style`→`variant`.
 5. **Panes** — `pn.pane.Markdown` → `pmui.Typography`; `pn.pane.Alert` → `pmui.Alert` (the only pane swaps).
-6. **Layouts** (optional) — `pn.Row/Column/Card/FlexBox` → `pmui` equivalents.
+6. **Layouts** (optional) — `pn.Card/FlexBox` → `pmui` equivalents; leave `pn.Row`/`pn.Column` as they are.
 7. **Styling** — keep `styles`; rewrite any `stylesheets` as `sx`.
 8. **Interaction upgrades** (optional) — replace hand-rolled stateful controls with pmui widgets, and consider [new pmui components](#consider-new-components) that may serve better than the pattern you're carrying over.
 9. **Verify** — serve and screenshot.
@@ -100,7 +100,7 @@ controls = pn.Param(self.param)
 # AFTER — explicit pmui widgets
 self._radius = pmui.IntSlider.from_param(self.param.radius, label="Radius")
 self._mode   = pmui.Select.from_param(self.param.mode, label="Mode")
-controls = pmui.Column(self._radius, self._mode)
+controls = pn.Column(self._radius, self._mode)
 ```
 
 ## Parameter Names
@@ -134,20 +134,20 @@ pmui.Typography("## Overview\n\n- point a\n- point b")
 
 ## Layouts
 
-- Swap `pn.Row`/`pn.Column` → `pmui.Row`/`pmui.Column` for spacing and theme inheritance. (`pmui.Row`/`Column`/`Divider` exist even though the reference index has no page for them — see the index caveat in [What Not to Migrate](#what-not-to-migrate).)
+- **Keep** `pn.Row`/`pn.Column` — the pmui versions add no Material styling and are the less robust implementation (ESM/React components whose children can paint before being sized; see [tile plot renders blank](troubleshooting.md#tilemap-plot-renders-blank-inside-a-pmui-layout)). Don't migrate these, and prefer native ones for new code, especially around plot panes.
 - `pmui.Grid` is the Material 12-column **responsive** grid (breakpoint-based), **not** a drop-in for `pn.GridSpec`/`GridStack` coordinate placement (`gspec[0, 0] = ...`). Those have no direct pmui analog — keep them or rebuild against `pmui.Grid`'s breakpoint model.
 - `pn.Card` → `pmui.Card` (prefer `pmui.Paper` for plain grouping); `pn.FlexBox` → `pmui.FlexBox`.
 - `pn.Modal`/`pn.layout.Modal` → `pmui.Dialog` (there is no `pmui.Modal`); use `pmui.Drawer` for a side panel.
 - Optional: if the existing app nests `pn.*` layouts heavily and they work, leave them — migrating layouts is low-value churn.
-- pmui layouts take positional args: `pmui.Row(a, b)`, not `pmui.Row([a, b])`.
+- pmui layouts take positional args: `pmui.Paper(a, b)`, not `pmui.Paper([a, b])`.
 - **Sizing carries over unchanged:** `width`, `height`, `sizing_mode`, and `min_*`/`max_*` work identically on both APIs — copy them across, don't "translate".
 
 ```python
 # BEFORE
 pn.Column(pn.Card(chart, title="Chart"), sizing_mode="stretch_both")
 
-# AFTER — sizing params unchanged
-pmui.Column(pmui.Card(chart, title="Chart"), sizing_mode="stretch_both")
+# AFTER — Card becomes pmui, Column stays native; sizing params unchanged
+pn.Column(pmui.Card(chart, title="Chart"), sizing_mode="stretch_both")
 ```
 
 ## Styling
