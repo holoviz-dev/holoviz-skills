@@ -219,7 +219,7 @@ def extract_version(text: str) -> str | None:
     """
     fm = FRONT_MATTER_RE.match(text)
     block = fm.group(0) if fm else ""
-    m = re.search(r'^\s+version:\s*["\']?(\d+\.\d+\.\d+)["\']?\s*$', block, re.MULTILINE)
+    m = re.search(r'^\s+version:\s*["\']?([0-9][0-9.]*)["\']?\s*$', block, re.MULTILINE)
     return m.group(1) if m else None
 
 

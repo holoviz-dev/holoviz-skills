@@ -191,7 +191,7 @@ def source(text):
     )
 
 
-article = pmui.Column(
+article = pn.Column(
     pmui.Typography("The Great American Car Diet", variant="h3", sx={"fontWeight": 700, "mt": 2}),
     pmui.Typography(
         "How the oil shocks of the 1970s remade the automobile",

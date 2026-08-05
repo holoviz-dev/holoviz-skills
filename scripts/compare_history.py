@@ -59,7 +59,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         params.setdefault("selected_models", all_models)
         params.setdefault("selected_queries", all_queries)
 
-        self._plots_container = pmui.Column(sizing_mode="stretch_width")
+        self._plots_container = pn.Column(sizing_mode="stretch_width")
         self._status_legend = self._build_status_legend()
         self._table_pane = pn.widgets.Tabulator(
             pd.DataFrame(),

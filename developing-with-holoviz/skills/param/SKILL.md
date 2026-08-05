@@ -2,7 +2,7 @@
 name: param
 description: Define Python classes with typed, validated, reactive parameters using Param. Use when building classes with constrained attributes, reactive dependencies between values, or dynamic option cascading. Load alongside the Panel skill for any Panel app using Parameterized classes.
 metadata:
-  version: "0.1.0"
+  version: "2026.08.03"
   author: holoviz
 ---
 

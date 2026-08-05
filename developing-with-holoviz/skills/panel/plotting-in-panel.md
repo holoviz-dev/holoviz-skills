@@ -56,7 +56,7 @@ class SineExplorer(pn.viewable.Viewer):
 
     def __init__(self, **params):
         super().__init__(**params)  # from_param widgets go AFTER super() (see panel/SKILL.md)
-        self._controls = pmui.Column(
+        self._controls = pn.Column(
             pmui.FloatSlider.from_param(self.param.amplitude),
             pmui.FloatSlider.from_param(self.param.frequency),
         )
@@ -70,7 +70,7 @@ class SineExplorer(pn.viewable.Viewer):
         )
 
     def __panel__(self):
-        return pmui.Row(self._controls, self._plot)
+        return pn.Row(self._controls, self._plot)
 
 SineExplorer().servable()  # run with: panel serve app.py --dev --show
 ```

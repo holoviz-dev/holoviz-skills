@@ -13,6 +13,7 @@ Symptom-indexed fixes for Panel/pmui apps that serve but misbehave *silently*. L
 - [Component rebuilds / flickers on every change](#component-rebuilds-flickers-on-every-change)
 - [pmui.Page renders blank (no header/sidebar)](#pmuipage-renders-blank-no-headersidebar)
 - ["responsive mode could not be enabled" / won't resize](#responsive-mode-could-not-be-enabled-wont-resize)
+- [Tile/map plot renders blank inside a pmui layout](#tilemap-plot-renders-blank-inside-a-pmui-layout)
 - [Screenshot shows a loading spinner](#screenshot-shows-a-loading-spinner)
 - [Behavior or deprecation differs across versions](#behavior-or-deprecation-differs-across-versions)
 
@@ -66,6 +67,30 @@ Gating `__panel__`'s `Page` return on `if pn.state.served:` is a bug: the guard 
 ## "responsive mode could not be enabled" / won't resize
 
 hvPlot sets `width=700` internally; `.opts(responsive=True)` doesn't remove it, and mixing responsive + non-responsive elements in an overlay conflicts. Fix: pass `responsive=True, height=N` as **hvPlot call args** (not `.opts()`), on *every* overlay element, and never set both `width` and `responsive=True`. Pure-HoloViews `.opts(responsive=True, height=N)` is fine ([Responsive Sizing](plotting-in-panel.md#responsive-sizing)).
+
+## Tile/map plot renders blank inside a pmui layout
+
+A HoloViews tile overlay (`hv.element.tiles.*`, incl. GeoViews `tile_sources`) inside `pmui.Column`/`pmui.Row` paints the toolbar, legend, and attribution but no map and no axes, with `tile extent is not fully defined` and `could not set initial ranges` repeating in the console. pmui layouts are ESM/React components whose child paints before the layout has sized it; Bokeh's tile aspect enforcement then scales the ranges against a zero frame dimension and writes `±Infinity`/`NaN` into both ranges *and* their reset values, which no later layout pass or window resize repairs. Plots without a tile layer recover on the next layout pass, so only tile/geo plots are hit. Fix: put tile plots in native `pn.Column`/`pn.Row` — Bokeh layouts size children before their first paint. pmui layouts are fine everywhere else, including for the surrounding page.
+
+```python
+import holoviews as hv, numpy as np, panel as pn, panel_material_ui as pmui
+
+hv.extension("bokeh"); pn.extension()
+
+x, y = np.random.rand(2, 50) * 1e6
+overlay = (
+    hv.element.tiles.CartoLight()
+    * hv.NdOverlay({k: hv.Points((x, y)).opts(size=6) for k in "ABC"}, kdims=["Category"])
+).opts(legend_position="right", responsive=True)
+pane = pn.pane.HoloViews(overlay, sizing_mode="stretch_both")
+
+pmui.Column(pane, sizing_mode="stretch_width").servable()  # ❌ blank map, axes missing
+pn.Column(pane, sizing_mode="stretch_width").servable()    # ✅ renders
+```
+
+Only the layout *directly* containing the pane has to be native; `pmui.Page`, `Container`, `Tabs`, and `Paper` further out are fine. Prefer native `pn.Column`/`pn.Row` as the immediate wrapper for any plot pane — Bokeh layouts size children before their first paint, so plots are not exposed to this class of first-paint bug at all.
+
+Open bug as of bokeh 3.9; verify it still reproduces before working around it.
 
 ## Screenshot shows a loading spinner
 

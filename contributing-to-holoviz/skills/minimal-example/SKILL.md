@@ -2,7 +2,7 @@
 name: minimal-example
 description: Write a minimal, self-contained, reproducible example for a HoloViz behavior or bug. Use when drafting a bug report, an issue reproducer, a PR "How to test" snippet, or any code sample a maintainer must be able to paste and run unchanged.
 metadata:
-  version: "0.1.1"
+  version: "2026.07.28"
   author: holoviz
 ---
 

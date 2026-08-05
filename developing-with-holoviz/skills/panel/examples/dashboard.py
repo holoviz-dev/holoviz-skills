@@ -293,8 +293,8 @@ class SalesDashboard(pn.viewable.Viewer):
         )
 
         self._table_section = pmui.Paper(
-            pmui.Column(
-                pmui.Row(
+            pn.Column(
+                pn.Row(
                     pmui.Typography("Sales summary", variant="h6"),
                     pn.layout.HSpacer(),
                     self._selection_badge,
@@ -565,8 +565,8 @@ class SalesDashboard(pn.viewable.Viewer):
             sizing_mode="stretch_width",
         )
 
-        main_content = pmui.Column(
-            pmui.Row(pn.layout.HSpacer(), self._actions, sizing_mode="stretch_width"),
+        main_content = pn.Column(
+            pn.Row(pn.layout.HSpacer(), self._actions, sizing_mode="stretch_width"),
             self._empty_alert,
             kpi_row,
             self._charts_section,
