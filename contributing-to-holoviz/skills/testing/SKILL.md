@@ -2,7 +2,7 @@
 name: testing
 description: Testing guidelines for HoloViz packages. Use when writing tests, reviewing test coverage in PRs, or identifying missing edge cases in any HoloViz repository.
 metadata:
-  version: "0.1.1"
+  version: "2026.08.03"
   author: holoviz
 ---
 

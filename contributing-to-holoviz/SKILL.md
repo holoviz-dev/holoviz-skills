@@ -4,7 +4,7 @@ description: Maintain and contribute to HoloViz packages. Use when reviewing PRs
 user-invocable: true
 argument-hint: "[review PR | write tests | write docs | PR description | minimal example]"
 metadata:
-  version: "0.1.1"
+  version: "2026.08.03"
   author: holoviz
 ---
 

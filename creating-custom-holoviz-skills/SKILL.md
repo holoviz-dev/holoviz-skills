@@ -2,7 +2,7 @@
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
 metadata:
-  version: "0.2.0"
+  version: "2026.08.03"
   author: holoviz
 ---
 

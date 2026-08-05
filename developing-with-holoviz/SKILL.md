@@ -4,7 +4,7 @@ description: Route to HoloViz sub-skills. Use for ANY task involving interactive
 user-invocable: true
 argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component]"
 metadata:
-  version: "0.2.1"
+  version: "2026.08.05"
   author: holoviz
 ---
 

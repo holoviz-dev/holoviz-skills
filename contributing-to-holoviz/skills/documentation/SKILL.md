@@ -2,7 +2,7 @@
 name: documentation
 description: Documentation guidelines for HoloViz packages. Use when writing or reviewing docs, changelog entries, or API references in any HoloViz repository.
 metadata:
-  version: "0.1.0"
+  version: "2026.07.28"
   author: holoviz
 ---
 
