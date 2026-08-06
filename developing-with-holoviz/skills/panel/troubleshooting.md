@@ -6,7 +6,8 @@ Symptom-indexed fixes for Panel/pmui apps that serve but misbehave *silently*. L
 
 - [Widgets change but nothing updates (init ordering)](#widgets-change-but-nothing-updates-init-ordering)
 - [AttributeError during init (on_init ordering)](#attributeerror-during-init-on_init-ordering)
-- [First radio option can't be selected](#first-radio-option-cant-be-selected)
+- [TypeError: unexpected keyword argument (pmui params aren't universal)](#typeerror-unexpected-keyword-argument-pmui-params-arent-universal)
+- [First option can't be selected (selection widget with default=None)](#first-option-cant-be-selected-selection-widget-with-defaultnone)
 - [Select renders blank after setting .objects](#select-renders-blank-after-setting-objects)
 - [Date filter returns nothing / type error](#date-filter-returns-nothing-type-error)
 - [Markdown header flickers on hover](#markdown-header-flickers-on-hover)
@@ -33,9 +34,43 @@ Rule: bare panes before `super()`, `.from_param()` widgets after ([Viewer patter
 
 `AttributeError: '…' object has no attribute '_some_pane'` from inside `super().__init__()`: an `@param.depends(..., on_init=True)` watcher fires during `super()` and references a pane not yet created. Fix: create panes referenced by `on_init` watchers **before** `super()` (the flip side of the rule above).
 
-## First radio option can't be selected
+## TypeError: unexpected keyword argument (pmui params aren't universal)
 
-`RadioBoxGroup`/`RadioButtonGroup` with `default=None` highlights the first option anyway, so clicking it fires no change event and callbacks never trigger on load. Fix: set a real default (or use `Select` for an empty state).
+```
+TypeError: RadioButtonGroup.__init__() got an unexpected keyword argument 'variant'
+```
+
+Raised from `param`'s `_setup_params`, so every frame is `parameterized.py` and none is pmui — only the last line is informative. Cause: assuming a param generalizes because a sibling widget has it. Verify instead of inferring — `'variant' in pmui.X.param`, `pmui.X.param.variant.objects`, `sorted(pmui.X.param)`.
+
+| You wrote | Reality |
+|-----------|---------|
+| `RadioButtonGroup(variant=…)`, `CheckButtonGroup(variant=…)` | No `variant` — MUI `ToggleButtonGroup`s. Use `color`/`size`/`orientation`, `sx` for borders ([usage](using-material-ui.md#components)) |
+| `CheckBoxGroup(orientation=…)` / `(size=…)` | Neither exists — use `inline=True/False` |
+| `Container(variant=…)`, `Switch(variant=…)`, `FloatSlider(variant=…)` | No `variant` on layouts, toggles or sliders |
+| `Tabs(variant="scrollable")` | Not on `pmui.Tabs` (it *is* on `TabMenu`) |
+| `Paper(color=…)` | No `color` — use `sx={"backgroundColor": …}` |
+| `pmui.Column(spacing=2)` | No `spacing` — set gap via `sx` |
+| `Grid(ncols=…)` | Doesn't exist — use `size=` breakpoints |
+
+Values don't transfer either, where the param does exist: buttons `contained|outlined|text`, inputs `filled|outlined|standard`, `Paper`/`Card` `elevation|outlined`. A wrong *value* raises `ValueError` from the `Selector`, not this `TypeError`.
+
+**The silent variant of this bug:** `RadioButtonGroup`/`CheckButtonGroup` are the only pmui components carrying the legacy `button_style` alias with no real `variant` behind it, so `button_style="outlined"` is accepted and then dropped before it reaches the browser — no error, no effect.
+
+## First option can't be selected (selection widget with default=None)
+
+`RadioBoxGroup`/`RadioButtonGroup`/`Select` from a `Selector` with `default=None` coerce the value to the **first option** and display it as chosen. So the widget shows a selection the user never made, and clicking that option assigns a value Param considers unchanged — no event fires, no watcher runs, and the feature silently does nothing.
+
+Fix: set a real default, add an explicit sentinel option (`"— pick one —"`) as the default, or use `pmui.AutocompleteInput`, the one *single*-select widget that stays `None` ([recipe](using-material-ui.md#components)). Not a fix: swapping radio for `Select` — it coerces identically. Multi-selects (`CheckBoxGroup`, `CheckButtonGroup`, `MultiSelect`) are unaffected; they start `[]`.
+
+Whatever the widget, route every entry point through one method so re-picking the current value still works:
+
+```python
+def _open(self, city):
+    if self.selected == city:
+        self._dialog.open = True   # unchanged value fires no watcher; just reopen
+    else:
+        self.selected = city       # watcher builds content and opens
+```
 
 ## Select renders blank after setting .objects
 

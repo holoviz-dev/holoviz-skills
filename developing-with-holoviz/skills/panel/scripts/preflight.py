@@ -334,7 +334,7 @@ def check_radio_default_none(tree: ast.Module) -> list[Violation]:
             "RADIO_DEFAULT_NONE",
             f"{_call_name(node)} constructed with a None default — the first option can't be "
             "selected. Set an explicit non-None default.",
-            "troubleshooting.md#first-radio-option-cant-be-selected",
+            "troubleshooting.md#first-option-cant-be-selected-selection-widget-with-defaultnone",
         )
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)

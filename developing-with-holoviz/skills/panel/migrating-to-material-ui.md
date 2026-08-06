@@ -113,6 +113,12 @@ pmui prefers the new parameter names. Legacy aliases still work, but update them
 | `button_type=` | `color=`      |
 | `button_style=`| `variant=`    |
 
+**The rename is not mechanical**, and neither is assuming a param exists at all — on
+`RadioButtonGroup`/`CheckButtonGroup` there is no `variant` to rename *to*, so the sweep
+converts working code into a `TypeError`. Check with `'variant' in pmui.X.param` as you go;
+the params that trip this are tabled in
+[Troubleshooting](troubleshooting.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal).
+
 ## Panes
 
 - Panes are mostly **not** migrated — the opposite of widgets. pmui is not a plotting or data-display library, so it ships almost no pane equivalents.
