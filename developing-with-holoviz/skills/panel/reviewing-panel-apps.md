@@ -170,7 +170,7 @@ def results_view(self):
 
 Per-component traps that produce silent bugs rather than errors. Grep for the pattern in review; each cause and fix lives in [Troubleshooting Panel Apps](troubleshooting.md):
 
-- `RadioBoxGroup`/`RadioButtonGroup` constructed with `default=None` → [first radio option can't be selected](troubleshooting.md#first-radio-option-cant-be-selected)
+- `RadioBoxGroup`/`RadioButtonGroup` constructed with `default=None` → [first radio option can't be selected](troubleshooting.md#first-option-cant-be-selected-selection-widget-with-defaultnone)
 - A **dict** assigned to a `Selector`'s `.objects` → [Select renders blank](troubleshooting.md#select-renders-blank-after-setting-objects)
 - A date-widget value compared directly against a DataFrame column → [date filter returns nothing](troubleshooting.md#date-filter-returns-nothing-type-error)
 - `pn.pane.Markdown` containing headers → [header flickers on hover](troubleshooting.md#markdown-header-flickers-on-hover)

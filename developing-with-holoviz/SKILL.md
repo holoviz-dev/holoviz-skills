@@ -4,7 +4,7 @@ description: Route to HoloViz sub-skills. Use for ANY task involving interactive
 user-invocable: true
 argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component]"
 metadata:
-  version: "2026.08.05"
+  version: "2026.08.06"
   author: holoviz
 ---
 
@@ -48,7 +48,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Custom components — pure-Python (Viewer/PyComponent) or JS/React/AnyWidget | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/building-custom-components.md` |
 | Playwright UI testing for Panel components | `skills/panel/building-custom-components.md` + `skills/panel/using-pytest-playwright.md` |
 | Review or audit a Panel app | `skills/panel/SKILL.md` + `skills/panel/reviewing-panel-apps.md` |
-| Serve, screenshot, benchmark startup, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
+| Serve, screenshot, verify rendered output, benchmark startup, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
 | Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
 | Migrate an existing plain-Panel app to Material UI / pmui | `skills/panel/SKILL.md` + `skills/panel/migrating-to-material-ui.md` |
 | Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting.md` |

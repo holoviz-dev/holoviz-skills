@@ -10,32 +10,27 @@ the top for each release; keep `## Unreleased` (no "Version" prefix) for
 in-progress notes so it is skipped by the extraction.
 -->
 
-## Unreleased
-
-### Changed
-
-- **Skill versions are now CalVer (`YYYY.MM.DD`), not semver.** `metadata.version` records the
-  date a skill last changed. `scripts/bump_skill_version.py` stamps today's date instead of
-  patch-bumping, so a second edit on the same day is a no-op, and the release tag format moves
-  to `vYYYY.MM.DD` (`.github/workflows/build.yml` tag globs updated to match). A date cannot
-  express severity, so the previous convention of a manual minor bump for a reversed
-  recommendation is gone — record the *why* here instead. `scripts/migrate_to_calver.py` is a
-  one-off that dates each existing skill from its last commit; delete it once it has run.
-- **Prefer native `pn.Column`/`pn.Row` over the `pmui` equivalents.** They add no Material
-  styling beyond `sx`, and the pmui ones are ESM/React components whose children can paint
-  before the layout has sized them — which corrupts tile/geo plots irrecoverably (see the new
-  `troubleshooting.md` entry). `using-material-ui.md`, `migrating-to-material-ui.md`, and the
-  example apps were updated to match; keep `pmui.Column`/`Row` where `sx` styling is needed,
-  and keep pmui for the layouts that carry real styling (`Grid`, `Container`, `Paper`, `Card`,
-  `Tabs`, `Accordion`, `Page`).
+## v2026.08.06
 
 ### Added
+
+- **`TypeError: unexpected keyword argument` (pmui params aren't universal)** — new
+  `panel/troubleshooting.md` entry, keyed on the traceback text because `param` raises from
+  `_setup_params` and every frame is `parameterized.py`, naming no pmui code. Tables the params
+  that actually trip this — `RadioButtonGroup`/`CheckButtonGroup` `variant`, `CheckBoxGroup`
+  `orientation`/`size`, `Container`/`Switch`/`FloatSlider` `variant`, `Tabs(variant=…)` (it is on
+  `TabMenu`), `Paper(color=…)`, `Column(spacing=…)`, `Grid(ncols=…)` — plus the note that a wrong
+  *value* raises `ValueError` from the `Selector` instead. Every row verified against pmui 0.12.0.
+- **Verifying with panel-live-server** section in `iterating-on-panel-apps.md` — the `evaluate` /
+  `screenshot` / `show` MCP tools, and which job each is for: `evaluate` for facts about objects,
+  `screenshot(code=…)` for private self-checks while iterating, `show` as the one-time handoff to
+  the user. Scoped explicitly to **snippets, not files** — all three take a `code` string with no
+  path parameter, so they do not replace `panel serve` for an app being edited on disk.
 
 - **Tile plot renders blank inside a pmui layout** — new `panel/troubleshooting.md` entry with a
   yes/no reproducer. The first paint lands with a zero frame dimension, Bokeh's tile aspect
   enforcement writes `±Infinity`/`NaN` into both ranges and their reset values, and no later
   layout pass or resize repairs it.
-
 - `holoviz-skills.plugin` — an all-categories Claude Desktop / Cowork plugin, built alongside
   the per-category ones by `pixi run build-plugin`. Its version comes from the latest git tag,
   since it spans every skill and so has no single `SKILL.md` to read `metadata.version` from.
@@ -64,9 +59,48 @@ in-progress notes so it is skipped by the extraction.
 
 ### Changed
 
+- **`RadioButtonGroup`/`CheckButtonGroup` no longer documented with `variant="outlined"`.** They
+  are MUI `ToggleButtonGroup`s and have no `variant` param at all, so the sidebar-styling
+  recommendation in `using-material-ui.md` raised `TypeError` as written. Replaced with `color` /
+  `size` / `orientation` and an `sx` rule for borders. The `button_style` fallback is worse, not
+  better: these two are the only pmui components carrying that legacy alias with no real `variant`
+  behind it, so the value is accepted and then dropped before reaching the browser — no error, no
+  effect. `migrating-to-material-ui.md` also now warns that its `button_style=` → `variant=` rename
+  row is not mechanical.
+- **Deduplicated the layout guidance in `using-material-ui.md`**, which had two sections both
+  titled "Layouts" — an ambiguous `#layouts` anchor, and the structural reason `Grid`/`Column`
+  advice was written twice. Merged into one, and the `ncols`/`spacing`/`xs` negations now live only
+  in the troubleshooting table, with the positive form (`size=` breakpoints, gaps via `sx`) in the
+  reference.
+- **Skill versions are now CalVer (`YYYY.MM.DD`), not semver.** `metadata.version` records the
+  date a skill last changed. `scripts/bump_skill_version.py` stamps today's date instead of
+  patch-bumping, so a second edit on the same day is a no-op, and the release tag format moves
+  to `vYYYY.MM.DD` (`.github/workflows/build.yml` tag globs updated to match). A date cannot
+  express severity, so the previous convention of a manual minor bump for a reversed
+  recommendation is gone — record the *why* here instead. `scripts/migrate_to_calver.py` is a
+  one-off that dates each existing skill from its last commit; delete it once it has run.
+- **Prefer native `pn.Column`/`pn.Row` over the `pmui` equivalents.** They add no Material
+  styling beyond `sx`, and the pmui ones are ESM/React components whose children can paint
+  before the layout has sized them — which corrupts tile/geo plots irrecoverably (see the new
+  `troubleshooting.md` entry). `using-material-ui.md`, `migrating-to-material-ui.md`, and the
+  example apps were updated to match; keep `pmui.Column`/`Row` where `sx` styling is needed,
+  and keep pmui for the layouts that carry real styling (`Grid`, `Container`, `Paper`, `Card`,
+  `Tabs`, `Accordion`, `Page`).
 - The Panel development loop now runs preflight before the first serve and layout lint once the
   logs are clean, with screenshots reserved for what neither can reveal — hierarchy, whitespace
   rhythm, and whether the page reads as an untouched template.
+
+### Fixed
+
+- **`Select` is not an empty-state fix for the first-option bug — it has the same defect.**
+  `troubleshooting.md` previously advised "use `Select` for an empty state" while
+  `using-material-ui.md` documented `Select` coercing `value=None` to the first option. The latter
+  is correct: `Select`, `RadioButtonGroup` and `RadioBoxGroup` all coerce a `default=None`
+  `Selector` to its first option and display it as chosen, so the widget shows a selection the user
+  never made and clicking it fires no event. The two entries are now one, renamed to cover every
+  affected widget, with `pmui.AutocompleteInput` given as the only single-select that stays `None`
+  and multi-selects noted as unaffected (they start `[]`). Inbound links updated in
+  `reviewing-panel-apps.md` and in the user-facing URL emitted by `scripts/preflight.py`.
 
 ## v0.1.0
 

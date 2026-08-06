@@ -1,10 +1,11 @@
 # Iterating on Panel Apps
 
-Agentic workflow for developing and debugging Panel apps. For agents with shell access: run a static preflight check before first serve, serve with logging, iterate by reading logs after each edit, run a live-browser layout lint before reaching for a screenshot, benchmark time to first paint, and screenshot with Playwright only when you need to verify something a number can't capture — all without requiring user intervention.
+Agentic workflow for developing and debugging Panel apps. For agents with shell access: run a static preflight check before first serve, serve with logging, iterate by reading logs after each edit, run a live-browser layout lint before reaching for a screenshot, benchmark time to first paint, and screenshot only when you need to verify something a number can't capture — all without requiring user intervention. Where panel-live-server's MCP tools are connected, prefer them for rendering and screenshotting snippets.
 
 ## Contents
 
 - [Development Loop](#development-loop)
+- [Verifying with panel-live-server](#verifying-with-panel-live-server) — MCP tools that render and screenshot a snippet for you
 - [Decouple from the Backend](#decouple-from-the-backend)
 - [Serving with Logs](#serving-with-logs)
 - [Benchmarking Startup](#benchmarking-startup)
@@ -27,6 +28,27 @@ Agentic workflow for developing and debugging Panel apps. For agents with shell 
 8. **Screenshot** with Playwright only when you need to confirm something visual that isn't geometry or contrast (see [when to screenshot](#when-to-screenshot)), then **review** the image for hierarchy/styling judgment calls
 
 Drive iteration from preflight, the logs, and layout lint — not from screenshots. Reach for a screenshot at milestones — once preflight, the logs, and layout lint are all clean, when debugging a specifically visual problem those can't reveal, or for a final check — not on every edit.
+
+If [panel-live-server](#verifying-with-panel-live-server) is connected, use its `screenshot` tool for step 8 instead of hand-rolling Playwright, and its `evaluate` tool wherever this loop calls for reading a value out of Python. It takes **snippets, not files**, so it does not replace `panel serve` for an app you're editing on disk — see below for which job each tool is for.
+
+## Verifying with panel-live-server
+
+[panel-live-server](https://panel-extensions.github.io/panel-live-server/tutorials/mcp-server/) exposes an MCP server (`pls mcp`) that executes a Python snippet and renders it, managing the Panel server itself. Check whether these tools are available before hand-rolling the equivalent; all three take a `code` string, so they suit **self-contained snippets** — a chart, a repro, a small dashboard — not an app you are iterating on as a file.
+
+| Tool | Goes to | Use for |
+|------|---------|---------|
+| `evaluate(code)` | you, text | Facts about objects: whether a param exists, what columns a frame has, what range Bokeh computed. No browser, no render. |
+| `screenshot(code=…)` | you, image | Checking your own draft. Renders and returns the PNG **privately** — nothing reaches the user, so iterate here as many rounds as needed. |
+| `show(code=…, name=…)` | the user, live URL | Finished work only. Validates, renders, returns a URL to present as a Markdown link. |
+
+`show` is a handoff, not a verification step. Don't call it to obtain a `snippet_id` to screenshot — that parades every draft past the user. Use `screenshot(code=…)` while iterating, then `show` once. (`screenshot(snippet_id=…)` answers a follow-up about something already shown.)
+
+Two rules for choosing between the other two:
+
+- **Appearance questions go through `screenshot`.** Where the peak sits, which bar is tallest, whether the legend overlaps — read it off the image. Recomputing from the data is unreliable *because* the render disagrees with it: axes invert, categories sort, heatmap rows flip, values get binned.
+- **Everything textual goes through `evaluate`.** Rendering a value into a Markdown pane to read it back out of a PNG costs a browser launch and an image, and tells you nothing the text wouldn't have — the same read-it-as-text-first principle as [layout linting](#layout-linting) and [plot-model inspection](#inspecting-the-plot-model).
+
+Notes: pass the code as the `code` argument — don't write a scratch file and point at it, there is no path parameter. Anything importing Panel to build a dashboard needs `method="server"` plus `.servable()`; the default `"inline"` renders the last expression and needs top-level statements fully dedented. `screenshot` needs Chromium once via `pls install-browser`. The snippets run in the server's own environment, which the agent can't install into — check what's there with `pls list packages`.
 
 ## Decouple from the Backend
 
@@ -213,7 +235,7 @@ most tempting.
 
 ## Screenshotting with Playwright
 
-Screenshots are the expensive step — each one launches a headless browser and adds an image to review. Use them deliberately, not as the default per-edit feedback.
+Screenshots are the expensive step — each one launches a headless browser and adds an image to review. Use them deliberately, not as the default per-edit feedback. Use the code below for an app served from a file; for a self-contained snippet, panel-live-server's [`screenshot` tool](#verifying-with-panel-live-server) gets the same picture with none of the wait-condition boilerplate.
 
 Take a screenshot of a running Panel app to review layout without manual browser interaction:
 
