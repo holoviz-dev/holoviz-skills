@@ -9,7 +9,10 @@ page under ``docs/``.
 Sub-skills that have sibling ``.md`` files alongside their SKILL.md get a
 nested subdirectory in docs: the SKILL.md becomes ``index.md`` and each
 sibling ``.md`` file becomes a page.  Links like ``[name](foo.md)`` resolve
-naturally within the nested docs directory.
+naturally within the nested docs directory.  ``.py`` files in an ``examples/``
+or ``scripts/`` subdirectory become pages too, grouped under an "Examples" or
+"Scripts" nav node.  ``test_*.py`` files are skipped: they exercise the
+scripts rather than documenting them.
 
 After generating pages, the ``nav`` array in ``zensical.toml`` is rewritten so
 the site navigation always reflects the current repo contents.
@@ -97,6 +100,21 @@ HTML_COMMENT_RE = re.compile(r"<!--.*?-->\s*\n?", re.DOTALL)
 MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 NAV_BLOCK_RE = re.compile(r"^nav\s*=\s*\[.*?^\]", re.MULTILINE | re.DOTALL)
 
+# Used to find brackets the Markdown parser will try to resolve as a link.
+FENCE_RE = re.compile(r"^(```|~~~)")
+INLINE_CODE_RE = re.compile(r"(`+)(.+?)\1", re.DOTALL)
+# Full (``[text][id]``) and collapsed (``[text][]``) reference links — masked
+# before the scan so neither half is mistaken for a stray bracket.
+REF_LINK_RE = re.compile(r"\[[^\[\]]*\]\[[^\[\]]*\]")
+# ``[text]`` not followed by ``(``, ``[`` or ``:`` — i.e. neither an inline link,
+# nor a full/collapsed reference, nor a link definition. Markdown reads it as a
+# shortcut reference and warns "unresolved link reference" at build time.
+SHORTCUT_LINK_RE = re.compile(r"(?<!\\)\[([^\[\]]+)\](?![(\[:])")
+# A bare ``some-reference.md`` inside Python source — docstrings and the doc
+# pointers emitted in lint violation messages. The lookbehind keeps it off URL
+# paths (``https://…/x.md``) and dotted names.
+CODE_DOCREF_RE = re.compile(r"(?<![\w/.-])([a-z0-9][a-z0-9_-]*\.md)")
+
 
 # ---------------------------------------------------------------------------
 # Text helpers
@@ -110,6 +128,84 @@ def strip_frontmatter_and_comments(text: str) -> str:
     return text.lstrip()
 
 
+def find_shortcut_links(text: str) -> list[tuple[int, str]]:
+    """Return ``(lineno, inner)`` for brackets Markdown reads as link references.
+
+    Prose like ``are: [...]`` or ``objects[0]`` outside a code span parses as a
+    shortcut reference link, so the docs build emits "unresolved link
+    reference". Fenced blocks and inline code are skipped — brackets there are
+    literal. Scans raw file text so reported line numbers match the source.
+    """
+    hits: list[tuple[int, str]] = []
+    in_fence = False
+    for lineno, raw in enumerate(text.splitlines(), 1):
+        if FENCE_RE.match(raw.strip()):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        # Blank out code spans and well-formed links, preserving offsets, so
+        # only genuinely stray brackets survive to the scan.
+        masked = raw
+        for pattern in (INLINE_CODE_RE, MD_LINK_RE, REF_LINK_RE):
+            masked = pattern.sub(lambda m: " " * len(m.group(0)), masked)
+        hits.extend(
+            (lineno, inner)
+            for m in SHORTCUT_LINK_RE.finditer(masked)
+            if (inner := m.group(1).strip())
+        )
+    return hits
+
+
+def find_broken_links(
+    text: str, source_rel: Path, path_map: dict[Path, Path]
+) -> list[tuple[int, str]]:
+    """Return ``(lineno, target)`` for relative ``.md`` links that point nowhere.
+
+    ``rewrite_internal_links`` leaves an unresolvable target untouched rather
+    than rewriting it, so a renamed or deleted reference silently becomes a dead
+    docs link. Scans the whole text rather than line by line, because a link
+    label may wrap across lines.
+    """
+    broken: list[tuple[int, str]] = []
+    source_dir = source_rel.parent
+    for m in MD_LINK_RE.finditer(text):
+        target = m.group(2).split("#", 1)[0]
+        if not target or target.startswith("http") or not target.endswith(".md"):
+            continue
+        resolved = (REPO_ROOT / source_dir / target).resolve()
+        try:
+            rel = resolved.relative_to(REPO_ROOT.resolve())
+        except ValueError:
+            continue
+        if rel not in path_map and not resolved.is_file():
+            broken.append((text.count("\n", 0, m.start()) + 1, m.group(2)))
+    return broken
+
+
+def find_broken_doc_refs(text: str, source_rel: Path) -> list[tuple[int, str]]:
+    """Return ``(lineno, filename)`` for ``*.md`` names in code that don't exist.
+
+    Scripts and examples cite skill references in docstrings and in the doc
+    pointers their violation messages print, so renaming a reference silently
+    leaves an agent-facing dead pointer that no Markdown link check would see.
+
+    A ``.py`` under ``scripts/`` or ``examples/`` cites its *skill's* references,
+    not siblings in its own directory, so both are accepted. Only file existence
+    is checked, not ``#anchors`` — anchor slugs would need a slug algorithm
+    matched to the docs renderer, and a mismatch there produces false positives
+    on every heading containing an identifier.
+    """
+    broken: list[tuple[int, str]] = []
+    candidates = (REPO_ROOT / source_rel.parent, REPO_ROOT / source_rel.parent.parent)
+    for m in CODE_DOCREF_RE.finditer(text):
+        name = m.group(1)
+        if any((base / name).is_file() for base in candidates):
+            continue
+        broken.append((text.count("\n", 0, m.start()) + 1, name))
+    return broken
+
+
 def build_path_map(
     categories: dict[str, Category],
     standalones: dict[str, Standalone],
@@ -119,16 +215,16 @@ def build_path_map(
     for cat in categories.values():
         for child in cat.children:
             src = child.source.relative_to(REPO_ROOT)
-            if child.references or child.examples:
+            if child.references or child.examples or child.scripts:
                 mapping[src] = Path(cat.dirname) / child.slug / "index.md"
             else:
                 mapping[src] = Path(cat.dirname) / f"{child.slug}.md"
             for ref in child.references:
                 rsrc = ref.source.relative_to(REPO_ROOT)
                 mapping[rsrc] = Path(cat.dirname) / child.slug / f"{ref.slug}.md"
-            for ex in child.examples:
-                esrc = ex.source.relative_to(REPO_ROOT)
-                mapping[esrc] = Path(cat.dirname) / child.slug / f"{ex.slug}.md"
+            for code in (*child.examples, *child.scripts):
+                csrc = code.source.relative_to(REPO_ROOT)
+                mapping[csrc] = Path(cat.dirname) / child.slug / f"{code.slug}.md"
     for st in standalones.values():
         mapping[st.source.relative_to(REPO_ROOT)] = Path(f"{st.slug}.md")
     return mapping
@@ -238,7 +334,7 @@ def inject_version_note(text: str, version: str | None) -> str:
 
 
 def generate_example_md(example: Example, source_rel: str, screenshot_path: str | None) -> str:
-    """Generate markdown content for a Python example."""
+    """Generate markdown content for a Python example or script."""
     lines = [f"# {example.title}", ""]
     if screenshot_path:
         lines.extend([f"![{example.title}]({screenshot_path})", ""])
@@ -287,13 +383,26 @@ def find_examples(skill_md: Path) -> list[Path]:
     return sorted(examples_dir.glob("*.py"))
 
 
+def find_scripts(skill_md: Path) -> list[Path]:
+    """Find .py files in a scripts/ subdirectory alongside a SKILL.md.
+
+    Skips ``test_*.py`` and dunder files: the tests document the scripts' own
+    correctness, not how an agent uses them, and publishing them doubles the
+    page count for no reader benefit.
+    """
+    scripts_dir = skill_md.parent / "scripts"
+    if not scripts_dir.is_dir():
+        return []
+    return sorted(p for p in scripts_dir.glob("*.py") if not p.name.startswith(("test_", "_")))
+
+
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
 
 
 class Example:
-    """A Python example file in an examples/ subdirectory."""
+    """A Python file in an examples/ or scripts/ subdirectory."""
 
     def __init__(self, slug: str, title: str, source: Path, code: str):
         self.slug = slug
@@ -328,6 +437,7 @@ class SubSkill:
         self.version = version
         self.references: list[Reference] = []
         self.examples: list[Example] = []
+        self.scripts: list[Example] = []
 
 
 class Category:
@@ -386,6 +496,11 @@ def ordered_examples(skill: SubSkill) -> list[Example]:
     return sorted(skill.examples, key=lambda e: e.title.lower())
 
 
+def ordered_scripts(skill: SubSkill) -> list[Example]:
+    """Return *skill.scripts* alphabetically by title."""
+    return sorted(skill.scripts, key=lambda s: s.title.lower())
+
+
 def ordered_sections(
     categories: dict[str, Category],
     standalones: dict[str, Standalone],
@@ -436,7 +551,7 @@ def generate_index_md(cat: Category) -> str:
     for child in children:
         # Use the first non-empty paragraph after the H1 as a short description.
         desc = _first_paragraph(child.cleaned)
-        if child.references:
+        if child.references or child.examples or child.scripts:
             lines.append(f"| [{child.title}]({child.slug}/index.md) | {desc} |")
         else:
             lines.append(f"| [{child.title}]({child.slug}.md) | {desc} |")
@@ -474,8 +589,8 @@ def build_nav_toml(
             lines.append(f'  {{ "{section.title}" = [')
             lines.append(f'    "{section.dirname}/index.md",')
             for child in ordered_children(section):
-                if child.references or child.examples:
-                    # Nested sub-section for skill + references/examples.
+                if child.references or child.examples or child.scripts:
+                    # Nested sub-section for skill + references/examples/scripts.
                     lines.append(f'    {{ "{child.title}" = [')
                     lines.append(f'      "{section.dirname}/{child.slug}/index.md",')
                     for ref in ordered_references(child):
@@ -492,6 +607,16 @@ def build_nav_toml(
                             lines.append(
                                 f'        {{ "{ex.title}" = '
                                 f'"{section.dirname}/{child.slug}/{ex.slug}.md" }},'
+                            )
+                        lines.append("      ] },")
+                    scripts = ordered_scripts(child)
+                    if scripts:
+                        # Same grouping for runnable tooling the agent invokes.
+                        lines.append('      { "Scripts" = [')
+                        for sc in scripts:
+                            lines.append(
+                                f'        {{ "{sc.title}" = '
+                                f'"{section.dirname}/{child.slug}/{sc.slug}.md" }},'
                             )
                         lines.append("      ] },")
                     lines.append("    ] },")
@@ -682,7 +807,7 @@ def build() -> int:
                         Reference(ref_slug, ref_title, ref_path, ref_cleaned, child_version)
                     )
 
-                # Discover .py files in examples/ subdirectory.
+                # Discover .py files in examples/ and scripts/ subdirectories.
                 example_paths = find_examples(child_md)
                 examples: list[Example] = []
                 for ex_path in example_paths:
@@ -691,9 +816,30 @@ def build() -> int:
                     ex_title = slug_to_title(ex_slug)
                     examples.append(Example(ex_slug, ex_title, ex_path, ex_code))
 
+                script_paths = find_scripts(child_md)
+                scripts: list[Example] = []
+                for sc_path in script_paths:
+                    sc_code = sc_path.read_text(encoding="utf-8")
+                    sc_slug = sc_path.stem
+                    sc_title = slug_to_title(sc_slug)
+                    scripts.append(Example(sc_slug, sc_title, sc_path, sc_code))
+
                 skill = SubSkill(slug, child_title, child_md, cleaned, child_version)
                 skill.references = refs
                 skill.examples = examples
+                skill.scripts = scripts
+
+                # References, examples and scripts all flatten into one docs
+                # directory, so equal stems would silently overwrite a page.
+                slugs = [r.slug for r in refs] + [c.slug for c in (*examples, *scripts)]
+                dupes = {s for s in slugs if slugs.count(s) > 1}
+                if dupes:
+                    print(
+                        f"build_stubs: WARNING — {slug} has colliding page names "
+                        f"{sorted(dupes)}; rename one so both are published.",
+                        file=sys.stderr,
+                    )
+
                 cat.children.append(skill)
 
             categories[tld] = cat
@@ -706,6 +852,32 @@ def build() -> int:
 
     # ---- Rewrite internal links ----
     path_map = build_path_map(categories, standalones)
+
+    # ---- Warn about brackets the docs build can't resolve as links ----
+    for src_rel in sorted(path_map):
+        raw = (REPO_ROOT / src_rel).read_text(encoding="utf-8")
+        if src_rel.suffix == ".py":
+            for lineno, name in find_broken_doc_refs(raw, src_rel):
+                print(
+                    f"build_stubs: WARNING — {src_rel}:{lineno} — cites {name!r}, "
+                    "which does not exist (renamed or deleted reference?).",
+                    file=sys.stderr,
+                )
+            continue
+        if src_rel.suffix != ".md":
+            continue
+        for lineno, inner in find_shortcut_links(raw):
+            print(
+                f"build_stubs: WARNING — {src_rel}:{lineno} — [{inner}] parses as a "
+                "link reference; wrap it in backticks or escape the brackets.",
+                file=sys.stderr,
+            )
+        for lineno, target in find_broken_links(raw, src_rel, path_map):
+            print(
+                f"build_stubs: WARNING — {src_rel}:{lineno} — link target "
+                f"{target!r} does not exist.",
+                file=sys.stderr,
+            )
 
     for cat in categories.values():
         for child in cat.children:
@@ -742,8 +914,8 @@ def build() -> int:
         for child in cat.children:
             rel_src = child.source.relative_to(REPO_ROOT)
 
-            if child.references or child.examples:
-                # Nested directory: skill index + reference/example pages.
+            if child.references or child.examples or child.scripts:
+                # Nested directory: skill index + reference/example/script pages.
                 skill_dir = out_dir / child.slug
                 skill_dir.mkdir(parents=True, exist_ok=True)
 
@@ -780,6 +952,18 @@ def build() -> int:
                     print(
                         f"build_stubs: {ex_rel_src}  ->  "
                         f"docs/{cat.dirname}/{child.slug}/{ex.slug}.md"
+                    )
+                    page_count += 1
+
+                # Scripts get no screenshot — they're CLI tooling, not apps.
+                for sc in child.scripts:
+                    sc_dest = skill_dir / f"{sc.slug}.md"
+                    sc_rel_src = sc.source.relative_to(REPO_ROOT)
+                    sc_content = generate_example_md(sc, str(sc_rel_src), None)
+                    sc_dest.write_text(sc_content, encoding="utf-8")
+                    print(
+                        f"build_stubs: {sc_rel_src}  ->  "
+                        f"docs/{cat.dirname}/{child.slug}/{sc.slug}.md"
                     )
                     page_count += 1
             else:

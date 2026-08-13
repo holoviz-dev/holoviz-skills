@@ -28,12 +28,17 @@ nav = [
       { "Designing Panel Architecture" = "developing-with-holoviz/panel/designing-panel-architecture.md" },
       { "Migrating to Material UI" = "developing-with-holoviz/panel/migrating-to-material-ui.md" },
       { "Plotting in Panel" = "developing-with-holoviz/panel/plotting-in-panel.md" },
-      { "Troubleshooting Panel Apps" = "developing-with-holoviz/panel/troubleshooting.md" },
+      { "Troubleshooting Panel Apps" = "developing-with-holoviz/panel/troubleshooting-panel-apps.md" },
       { "Using Tabulator" = "developing-with-holoviz/panel/using-tabulator.md" },
+      { "Wrapping React Apps" = "developing-with-holoviz/panel/wrapping-react-apps.md" },
       { "Examples" = [
         { "Dashboard" = "developing-with-holoviz/panel/dashboard.md" },
         { "Graphic Story" = "developing-with-holoviz/panel/graphic_story.md" },
         { "Wizard" = "developing-with-holoviz/panel/wizard.md" },
+      ] },
+      { "Scripts" = [
+        { "Layout Lint" = "developing-with-holoviz/panel/layout_lint.md" },
+        { "Preflight" = "developing-with-holoviz/panel/preflight.md" },
       ] },
     ] },
     { "HoloViews" = [

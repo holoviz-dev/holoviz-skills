@@ -2,7 +2,7 @@
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
 metadata:
-  version: "2026.08.03"
+  version: "2026.08.13"
   author: holoviz
 ---
 
@@ -185,7 +185,9 @@ Use resource files when:
   Reference from SKILL.md: "See `examples/basic_app.py` for a working starter."
 - **scripts/** — Executable scripts the agent runs via Bash. The script code
   itself never enters the context window — only its output does. Use for
-  validation, linting, scaffolding, or any deterministic operation.
+  validation, linting, scaffolding, or any deterministic operation. Each
+  non-test `.py` file also gets a docs page under a "Scripts" nav node;
+  `test_*.py` and `_`-prefixed files are skipped.
 - **assets/** — Templates, sample data, config files the agent fills in or
   copies. Good for: project scaffolds, CI configs, test fixtures.
 
@@ -254,6 +256,12 @@ automatically creates a nested docs section: the SKILL.md becomes
 etc.). Links like `[name](foo.md)` in SKILL.md resolve naturally in both the
 source directory and the docs output. No manual nav configuration needed.
 
+`.py` files in `examples/` and `scripts/` become pages too, grouped under
+"Examples" and "Scripts" nav nodes. All of these flatten into the *same* docs
+directory, so a reference, an example, and a script can't share a stem —
+`build_stubs.py` warns when they do rather than silently overwriting a page.
+Examples are served and screenshotted; scripts are published as source only.
+
 ## Routing skills
 
 The top-level `SKILL.md` in each category is a *routing skill* — it doesn't
@@ -299,8 +307,9 @@ agent-facing frontmatter) and the docs (which need clean Markdown):
 1. Finds every SKILL.md under non-excluded top-level directories.
 2. Strips YAML frontmatter and HTML comments.
 3. Rewrites internal `[name](…/SKILL.md)` links to point at sibling docs pages.
-4. For skills with sibling `.md` files, creates a nested directory
-   (`panel/index.md` + `panel/custom-components.md`, etc.).
+4. For skills with sibling `.md` files, or an `examples/` or `scripts/`
+   directory, creates a nested directory (`panel/index.md` +
+   `panel/custom-components.md` + `panel/preflight.md`, etc.).
 5. Updates the `nav` block in `zensical.toml` with hierarchical sections.
 
 You don't need to edit `zensical.toml` or `docs/` by hand — the script

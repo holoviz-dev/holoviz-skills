@@ -10,7 +10,66 @@ the top for each release; keep `## Unreleased` (no "Version" prefix) for
 in-progress notes so it is skipped by the extraction.
 -->
 
-## v2026.08.06
+## Version 2026.08.13
+
+### Added
+
+- **Wrapping React Apps** reference (`panel/wrapping-react-apps.md`) — serving an existing
+  React/JSX UI as the whole Panel app rather than rebuilding it in pmui: the shell/app class
+  split, `model.useState` as the only transport, `Child` + `model.get_child` for embedding Panel
+  components in JSX, request/response param pairs, the shadow-DOM CSS rules that follow from
+  `use_shadow_dom=True`, the `_importmap` query-string trap that silently pulls in a second React,
+  and the `--dev`-vs-production bundle asymmetry that makes a stale `_bundle` ship unnoticed.
+  Cross-linked from `building-custom-components.md` and `converting-designs-to-material-ui.md`,
+  which now states up front that it assumes a rebuild.
+- **Scripts are published in the docs** — `build_stubs.py` now discovers `.py` files in a skill's
+  `scripts/` directory the same way it already discovered `examples/`, grouping them under a
+  "Scripts" nav node. `test_*.py` and `_`-prefixed files are skipped, and scripts get no
+  screenshot pass since they're CLI tools rather than apps.
+- **`preflight.py` and `layout_lint.py` are named in `panel/SKILL.md`** — previously they appeared
+  only in `iterating-on-panel-apps.md`, which loads on demand, so the common "build me an app"
+  path never learned the cheapest quality gate existed. Serving Workflow now gives both commands,
+  the exit-code contract, and the skill-relative path-resolution caveat.
+- **Docs-integrity warnings in `build_stubs.py`** — four checks that report `file:line` against
+  the source, not the generated page: brackets Markdown would read as an unresolved shortcut
+  reference (`are: [...]`, `objects[0]` outside a code span); relative `.md` link targets that
+  don't exist, which `rewrite_internal_links` otherwise passes through silently; `.md` filenames
+  cited from `scripts/` and `examples/` Python that no longer resolve — the class a rename misses,
+  because the pointer lives in a docstring or in a printed violation message rather than in link
+  syntax; and colliding page names, since references, examples and scripts all flatten into one
+  docs directory. Anchors are deliberately not validated: a slug algorithm out of step with the
+  renderer reports every heading containing an identifier (`from_param`, `_rename`) as broken, and
+  a noisy check gets ignored.
+
+### Changed
+
+- **`panel/troubleshooting.md` → `panel/troubleshooting-panel-apps.md`** — the only reference in
+  the skill with a bare-noun filename, while its H1 and every inbound link label already said
+  "Troubleshooting Panel Apps". Now pairs visibly with its sibling `reviewing-panel-apps.md`. All
+  17 inbound references updated across five references, both index files, and the doc anchors
+  emitted in `scripts/preflight.py` violation messages. Docs URL changes accordingly.
+- **Changelog section headings are `## Version X.Y.Z`** — matching the form this file's own
+  comment documents and `build.yml` greps for. They had drifted to `## vX.Y.Z`, which matched
+  neither, so release-note extraction produced an empty `RELEASE_BODY.md` and every draft release
+  was published with no notes.
+
+### Fixed
+
+- **Unresolved link reference in `holoviews/SKILL.md`** — a `[...]` inside a plain-quoted error
+  message parsed as a shortcut reference link and warned on every docs build. The quoted
+  `.opts()` error strings are now code spans, consistent with the `ValueError` on the same line.
+- **Category-index links for a skill with examples but no references** — `generate_index_md`
+  gated on `child.references` alone while the nav and page writer gated on
+  `references or examples`, so such a skill would have been linked at `{slug}.md` while its page
+  was written to `{slug}/index.md`. All three conditions now agree.
+- **`layout_lint.py` cited a reference that was never written** — its docstring handed the
+  taste-level half of visual review off to `designing-visual-quality.md`, which exists nowhere in
+  the repo. The boundary it draws is real — the tool checks thresholds, not hierarchy or
+  whitespace rhythm — so the clause now points at the screenshot step in
+  `iterating-on-panel-apps.md`, reinforcing the preflight → logs → layout lint → screenshot ladder
+  instead of at a missing file.
+
+## Version 2026.08.06
 
 ### Added
 
@@ -102,7 +161,7 @@ in-progress notes so it is skipped by the extraction.
   and multi-selects noted as unaffected (they start `[]`). Inbound links updated in
   `reviewing-panel-apps.md` and in the user-facing URL emitted by `scripts/preflight.py`.
 
-## v0.1.0
+## Version 0.1.0
 
 ### Added
 

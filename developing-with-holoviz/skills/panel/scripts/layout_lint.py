@@ -20,7 +20,9 @@ Point it at an already-running `panel serve`; it doesn't start one.
 
 Deliberately excluded: hierarchy, whitespace rhythm, whether the design looks
 "templated" — anything needing taste rather than a threshold. This tool is the
-numbers-only half; see designing-visual-quality.md for the rest.
+numbers-only half; judging the rest needs an eye on a rendered page, so run it
+first and spend a screenshot only on what it cannot reach (see the screenshot
+step in iterating-on-panel-apps.md).
 """
 
 from __future__ import annotations

@@ -117,7 +117,7 @@ pmui prefers the new parameter names. Legacy aliases still work, but update them
 `RadioButtonGroup`/`CheckButtonGroup` there is no `variant` to rename *to*, so the sweep
 converts working code into a `TypeError`. Check with `'variant' in pmui.X.param` as you go;
 the params that trip this are tabled in
-[Troubleshooting](troubleshooting.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal).
+[Troubleshooting](troubleshooting-panel-apps.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal).
 
 ## Panes
 
@@ -140,7 +140,7 @@ pmui.Typography("## Overview\n\n- point a\n- point b")
 
 ## Layouts
 
-- **Keep** `pn.Row`/`pn.Column` — the pmui versions add no Material styling and are the less robust implementation (ESM/React components whose children can paint before being sized; see [tile plot renders blank](troubleshooting.md#tilemap-plot-renders-blank-inside-a-pmui-layout)). Don't migrate these, and prefer native ones for new code, especially around plot panes.
+- **Keep** `pn.Row`/`pn.Column` — the pmui versions add no Material styling and are the less robust implementation (ESM/React components whose children can paint before being sized; see [tile plot renders blank](troubleshooting-panel-apps.md#tilemap-plot-renders-blank-inside-a-pmui-layout)). Don't migrate these, and prefer native ones for new code, especially around plot panes.
 - `pmui.Grid` is the Material 12-column **responsive** grid (breakpoint-based), **not** a drop-in for `pn.GridSpec`/`GridStack` coordinate placement (`gspec[0, 0] = ...`). Those have no direct pmui analog — keep them or rebuild against `pmui.Grid`'s breakpoint model.
 - `pn.Card` → `pmui.Card` (prefer `pmui.Paper` for plain grouping); `pn.FlexBox` → `pmui.FlexBox`.
 - `pn.Modal`/`pn.layout.Modal` → `pmui.Dialog` (there is no `pmui.Modal`); use `pmui.Drawer` for a side panel.

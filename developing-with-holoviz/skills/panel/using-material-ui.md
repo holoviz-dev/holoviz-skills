@@ -42,11 +42,11 @@ Base: `https://panel-material-ui.holoviz.org/markdown/` — append the endpoints
 ## Key Differences from Panel
 
 - Import `panel_material_ui as pmui`. Don't add `"panel_material_ui"` or `"bokeh"` to `pn.extension()`. Don't set `design='material'`.
-- `pmui.Column`/`Row` are plain flex containers with no Material styling of their own, and native `pn.Column`/`pn.Row` are the more robust implementation — the pmui ones are ESM/React components, so children can paint before the layout has sized them (see [tile plot renders blank](troubleshooting.md#tilemap-plot-renders-blank-inside-a-pmui-layout)). Prefer `pn.Column`/`pn.Row`, especially as the immediate wrapper around a plot pane. Keep pmui for the layouts that *do* carry styling or layout features: `Grid`, `Container`, `Paper`, `Card`, `Tabs`, `Accordion`, `Page`. `FlexBox` and `Feed` are also mostly plain, though `Feed` has extra scroll machinery worth keeping.
+- `pmui.Column`/`Row` are plain flex containers with no Material styling of their own, and native `pn.Column`/`pn.Row` are the more robust implementation — the pmui ones are ESM/React components, so children can paint before the layout has sized them (see [tile plot renders blank](troubleshooting-panel-apps.md#tilemap-plot-renders-blank-inside-a-pmui-layout)). Prefer `pn.Column`/`pn.Row`, especially as the immediate wrapper around a plot pane. Keep pmui for the layouts that *do* carry styling or layout features: `Grid`, `Container`, `Paper`, `Card`, `Tabs`, `Accordion`, `Page`. `FlexBox` and `Feed` are also mostly plain, though `Feed` has extra scroll machinery worth keeping.
 - Fall back to `pn.*` whenever no pmui equivalent exists (e.g. `pn.pane.HoloViews`). If an existing app already uses `pn.*` layouts, keep them rather than migrating.
 - Use `pmui.Page` instead of `pn.template.FastListTemplate`.
 - Use new param names (`label`, `color`, `variant`) not legacy aliases (`name`, `button_type`, `button_style`).
-- **Params don't generalize across components — don't infer one from a sibling widget.** `variant`, `color` and `size` each exist on only *some* components, and the allowed values differ where they do. Check before writing: `'variant' in pmui.X.param`, `pmui.X.param.variant.objects`, `sorted(pmui.X.param)`. The ones that actually bite are tabled in [Troubleshooting](troubleshooting.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal).
+- **Params don't generalize across components — don't infer one from a sibling widget.** `variant`, `color` and `size` each exist on only *some* components, and the allowed values differ where they do. Check before writing: `'variant' in pmui.X.param`, `pmui.X.param.variant.objects`, `sorted(pmui.X.param)`. The ones that actually bite are tabled in [Troubleshooting](troubleshooting-panel-apps.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal).
 - Quick preview with `python app.py` + `.show()` works the same as for standard Panel. For iterating, prefer `panel serve app.py --dev --show` (see [Serving Workflow](SKILL.md#serving-workflow)).
 - **Widget from a Param:** pmui has no auto `Param` pane, so pick the widget class yourself with `pmui.<Widget>.from_param(obj.param.x)` (or `pn.Param(obj, widgets={"x": {"type": pmui.Select}})` to override auto-generated types). The Param-type → widget baseline matches Panel's own defaults ([Param pane reference](https://panel.holoviz.org/reference/panes/Param.html)); the pmui-specific things to know: `param.Boolean` → `pmui.Switch` (Panel defaults to `Checkbox`), and `param.Array` / `param.DataFrame` have **no** pmui widget — keep `pn.widgets.ArrayInput` / `pn.widgets.Tabulator`.
 
@@ -89,7 +89,7 @@ class MyApp(pn.viewable.Viewer):
 - Add `margin=10` to outer `main` layouts so they stand out from sidebar.
 - Only use a sidebar when there are multiple control widgets. For a single selector, use inline `RadioButtonGroup` or `Select` in the main area with `pmui.Container` — avoids wasting viewport on a near-empty sidebar.
 - Sidebar order: logo → description → widgets → docs.
-- **Page not rendering (no header/sidebar)**: gating the `Page` construction/return on `if pn.state.served:` inside `__panel__` is a bug — that guard is **always** `False` there, even under `panel serve`, so you silently get the blank/fallback layout with no top bar. `pn.state.served` checks whether its *immediate caller's* module is the served script, and it is Panel that calls `__panel__`, not your module. Always build the `Page` once in `__init__` (e.g. `self._page = pmui.Page(...)`) and return it unconditionally from `__panel__` (`return self._page`). `pn.state.served` remains correct at **module level** of the served script (`if pn.state.served: App().servable()`) — see [Troubleshooting](troubleshooting.md#pmuipage-renders-blank-no-headersidebar).
+- **Page not rendering (no header/sidebar)**: gating the `Page` construction/return on `if pn.state.served:` inside `__panel__` is a bug — that guard is **always** `False` there, even under `panel serve`, so you silently get the blank/fallback layout with no top bar. `pn.state.served` checks whether its *immediate caller's* module is the served script, and it is Panel that calls `__panel__`, not your module. Always build the `Page` once in `__init__` (e.g. `self._page = pmui.Page(...)`) and return it unconditionally from `__panel__` (`return self._page`). `pn.state.served` remains correct at **module level** of the served script (`if pn.state.served: App().servable()`) — see [Troubleshooting](troubleshooting-panel-apps.md#pmuipage-renders-blank-no-headersidebar).
 
 ```python
 # ✅ Lists
@@ -188,7 +188,7 @@ pmui.Page(
 - `Card`: prefer `Paper`. Set `collapsible=False` unless needed.
 - `AutocompleteInput` over `Select` past ~20 options — a long `Select` is a scroll hunt — and
   it's the only single-select widget that stays empty for `value=None` ([why that
-  matters](troubleshooting.md#first-option-cant-be-selected-selection-widget-with-defaultnone)):
+  matters](troubleshooting-panel-apps.md#first-option-cant-be-selected-selection-widget-with-defaultnone)):
 
   ```python
   pmui.AutocompleteInput.from_param(
@@ -219,7 +219,7 @@ pmui.Page(
 - `Chip`: use `label=`, not `object=` (deprecated). Chips default to `margin=10`, which blows out tight stacked layouts — set `margin=0` when packing several together. Translucent-pill look: `sx={"color": c, "backgroundColor": f"{c}22"}`.
 - `Accordion` header text: the title renders as a Typography *inside* the summary, so a rule on `.MuiAccordionSummary-root` won't reach it. Target the content to restyle the label: `sx={"& .MuiAccordionSummary-content *": {"fontSize": "13px", "color": "#6d5cff"}}`.
 - `RadioButtonGroup`/`CheckButtonGroup` are MUI `ToggleButtonGroup`s, so they take **no
-  `variant`** ([why, and the other params that surprise](troubleshooting.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal))
+  `variant`** ([why, and the other params that surprise](troubleshooting-panel-apps.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal))
   — only `color`, `size`, `orientation`, `disabled`, `label`, `sx`. In a sidebar go vertical,
   and get borders from `sx`:
 

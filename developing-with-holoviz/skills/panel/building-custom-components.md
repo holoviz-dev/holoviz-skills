@@ -32,6 +32,11 @@ state-sync lifecycle):
 2. **Pure-Python composite** (`Viewer` or `PyComponent`) — wire *existing* widgets into one reusable, Param-synced unit. No JS. See below.
 3. **JS component** — only for rendering no Panel widget provides (JS charting/mapping lib, bespoke DOM, fully-clickable rich row). See [Which JS Component Type](#which-js-component-type).
 
+All three rungs assume you're building *one component* inside a Panel app. If
+instead an entire existing React UI should *be* the app — with Panel components
+embedded into its JSX rather than the reverse — that's a different shape with
+its own rules; see [Wrapping React Apps](wrapping-react-apps.md).
+
 The common mistake is jumping to rung 3 and reimplementing a slider or
 multi-select Panel already ships.
 
@@ -297,6 +302,10 @@ export function render({ model }) {
 
 - Don't import React — it's globally available.
 - Use `?external=react,react-dom` for external React libraries in `_importmap`.
+
+For a `ReactComponent` that renders a whole app rather than one widget —
+embedding Panel components as children, compiling a bundle, and the shadow-DOM
+CSS rules that come with it — see [Wrapping React Apps](wrapping-react-apps.md).
 
 ## AnyWidgetComponent: get/set/save_changes
 
