@@ -28,9 +28,17 @@ build-plugin = { cmd = "python scripts/build_plugin.py", description = "Build th
 python-build = "*"
 hatchling = "*"
 hatch-vcs = "*"
+# Hatchling emits core metadata 2.5 by default; twine only learned to validate
+# and upload that in 7.0.0. An older twine fails with
+# "InvalidDistribution: '2.5' is not a valid metadata version" on a wheel that
+# is actually fine, so pin the floor rather than downgrade the build backend.
+twine = ">=7"
 
 [feature.build.tasks]
 build-pip = 'python -m build --wheel .'
+check-pip = { cmd = 'twine check dist/*', depends-on = [
+    "build-pip",
+], description = "Validate the built wheel's metadata the way PyPI upload will" }
 
 # =================== DOCS ====================
 
