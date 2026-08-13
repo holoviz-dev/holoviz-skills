@@ -55,6 +55,12 @@ in-progress notes so it is skipped by the extraction.
 
 ### Fixed
 
+- **`twine check` rejected a valid wheel** — Hatchling emits core metadata 2.5 by default and
+  twine only learned to validate it in 7.0.0, so an older twine failed with
+  `InvalidDistribution: '2.5' is not a valid metadata version` on a wheel that was fine. The build
+  environment now pins `twine >=7` and exposes a `check-pip` task, and `build.yml` runs it right
+  after `build-pip` so metadata problems surface in the build job rather than in `pip_publish`,
+  which only runs on a tag and after the waiting room.
 - **Unresolved link reference in `holoviews/SKILL.md`** — a `[...]` inside a plain-quoted error
   message parsed as a shortcut reference link and warned on every docs build. The quoted
   `.opts()` error strings are now code spans, consistent with the `ValueError` on the same line.

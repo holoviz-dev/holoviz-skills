@@ -58,6 +58,10 @@ jobs:
           install: false
       - name: Build package
         run: pixi run -e build build-pip
+      - name: Check package metadata
+        # Catches metadata problems here rather than in pip_publish, which runs
+        # after the waiting room and only on a tag.
+        run: pixi run -e build check-pip
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
