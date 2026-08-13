@@ -4,7 +4,7 @@ description: Route to HoloViz sub-skills. Use for ANY task involving interactive
 user-invocable: true
 argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component]"
 metadata:
-  version: "2026.08.06"
+  version: "2026.08.13"
   author: holoviz
 ---
 
@@ -39,6 +39,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Build a data story / graphic article (charts + narrative) | `skills/hvplot/distilling-explanatory-plots.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/data-storytelling.md` |
 | Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` |
 | Convert a design / screenshot / React app into a Material UI (pmui) app | `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/converting-designs-to-material-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
+| Keep an existing React/JSX UI and serve it as the app, embedding Panel components inside it | `skills/panel/SKILL.md` + `skills/panel/building-custom-components.md` + `skills/panel/wrapping-react-apps.md` |
 | HoloViews elements, opts, tooltips, formatters, tools | `skills/holoviews/SKILL.md` |
 | Remove chart junk / clean a plot — hide or autohide toolbar, disable wheel-zoom, one-axis gridlines, share axes, place legend | `skills/holoviews/SKILL.md` + `skills/holoviews/decluttering-plots.md` |
 | Embedding plots in Panel (HoloViews/hvPlot, Matplotlib, Plotly, ECharts; DynamicMap, responsive sizing) | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/plotting-in-panel.md` + `skills/holoviews/SKILL.md` |
@@ -51,7 +52,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Serve, screenshot, verify rendered output, benchmark startup, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
 | Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
 | Migrate an existing plain-Panel app to Material UI / pmui | `skills/panel/SKILL.md` + `skills/panel/migrating-to-material-ui.md` |
-| Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting.md` |
+| Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting-panel-apps.md` |
 
 ## Skill Map
 
@@ -60,4 +61,4 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | [param](skills/param/SKILL.md) | `@param.depends`, `watch=True`, `.watch()`, parameter types, dependent parameters |
 | [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
 | [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, session defaults (`hv.opts.defaults`), hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections. Carries the Decluttering Plots reference. |
-| [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, defaults, templates, serving, performance, plotting gotchas; 12 topic references indexed in its own References section |
+| [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, defaults, templates, serving, performance, plotting gotchas; 13 topic references indexed in its own References section |

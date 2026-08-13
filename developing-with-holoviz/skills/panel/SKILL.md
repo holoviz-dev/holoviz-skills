@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "2026.08.06"
+  version: "2026.08.13"
   author: holoviz
 ---
 
@@ -14,7 +14,7 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 
 ## Contents
 
-- [References](#references) — iterative development, Material UI, plotting, data storytelling, custom components, Playwright testing, app structure & scaling, review
+- [References](#references) — iterative development, Material UI, plotting, data storytelling, custom components, React shells, Playwright testing, app structure & scaling, review
 - [Lookup](#lookup) — component docs URLs and site search
 - [Viewer Class Pattern](#viewer-class-pattern)
 - [Widgets and Extensions](#widgets-and-extensions)
@@ -30,6 +30,7 @@ Read these for specialized topics. Each is a standalone document you can load on
 - [Iterating on Panel Apps](iterating-on-panel-apps.md) — pre-flight lint, serve with logging, panel-live-server MCP tools, live-browser layout lint, Bokeh plot-model inspection, startup benchmarking, screenshot with Playwright, review and debug agentic loop
 - [Designing Panel Architecture](designing-panel-architecture.md) — composing larger apps (State/DataStore/View/App, `param.ClassSelector`, cross-object `@param.depends`, `from_data`, `pn.rx`) and runtime/scale (per-session model, `pn.state` scheduling, URL state sync, generator streaming, caching tiers, `nthreads`, profiling)
 - [Building Custom Components](building-custom-components.md) — Python-vs-JS decision ladder; pure-Python `Viewer`/`PyComponent`; JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent; CDN selection, event handling, state sync lifecycle
+- [Wrapping React Apps](wrapping-react-apps.md) — making an existing React/JSX UI the whole app: shell/app class split, `model.useState` as the only transport, `Child` embedding of Panel components, request/response param pairs, shadow-DOM CSS rules, `_importmap` externals, `panel compile` and the dev-vs-production bundle trap
 - [Using Material UI](using-material-ui.md) — building pmui apps (`pmui.Page`, `Container`/`Grid` layouts, centering, component gotchas) and theming (`theme_config` palette, typography, icons, brand assets, chart theming)
 - [Migrating to Material UI](migrating-to-material-ui.md) — converting an existing plain-Panel app to pmui: template→Page, widget swaps, pane/interaction upgrades, what to leave alone
 - [Converting Designs to Material UI](converting-designs-to-material-ui.md) — workflow for turning a screenshot/design/React app into a pmui app: capture references, map to components, build component-first with mock data, assemble, theme last
@@ -38,7 +39,7 @@ Read these for specialized topics. Each is a standalone document you can load on
 - [Using Tabulator](using-tabulator.md) — `add_filter` with widgets, checkbox selection, row content, function-based filtering
 - [Using Pytest Playwright](using-pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components
 - [Reviewing Panel Apps](reviewing-panel-apps.md) — anti-pattern checklist for code review: flickering, missing hold, watcher gaps, reactive-wiring priority, from_param super() ordering, mutation bugs
-- [Troubleshooting Panel Apps](troubleshooting.md) — symptom→cause→fix for apps that serve but misbehave silently: init ordering, dead-app, blank Page, responsive/spinner issues, version & deprecation diagnosis
+- [Troubleshooting Panel Apps](troubleshooting-panel-apps.md) — symptom→cause→fix for apps that serve but misbehave silently: init ordering, dead-app, blank Page, responsive/spinner issues, version & deprecation diagnosis
 
 ## Lookup
 
@@ -139,9 +140,11 @@ For new apps, use `pmui.Page` from panel-material-ui (see [Using Material UI](us
 
 ## Serving Workflow
 
+- **Preflight before the first serve**: `python <skill-dir>/scripts/preflight.py app.py` — a stdlib-only AST lint for the mechanical anti-patterns this skill documents (flicker-causing `@param.depends` returns, `from_param` before `super()`, missing `pn.io.hold()`, mutated params, `Radio*Group` defaults, missing `throttled`). Exits 0 and prints `preflight: clean` when there's nothing to fix, or 1 with one `file:line: [CHECK_ID] message` per violation, so gate on the exit code and only read the output when it's non-zero. Resolve the script path relative to wherever you read *this* file from — skills install at different paths per tool, so a bare `scripts/preflight.py` won't resolve from the app's own working directory. It needs no server and no dependencies, so run it before spending a log cycle or a screenshot on something greppable.
 - Keep a dev server running: `panel serve app.py --dev --show`. Don't restart after edits.
 - Don't use `--autoreload` (legacy). For iterating on an app, prefer `panel serve app.py --dev --show` over `python app.py` — it auto-reloads on file changes so you don't need to restart the server after each edit.
 - `python app.py` + `.show()` is fine for a one-off quick preview (works for both standard Panel and panel-material-ui apps — it opens a browser tab via Bokeh's server), but it doesn't auto-reload, so it's not the workflow for iterating.
+- Once the logs are clean, `python <skill-dir>/scripts/layout_lint.py http://localhost:5007/app_name` checks the rendered DOM at three viewport widths for overflow, small touch targets, and low contrast — findings as text, before a screenshot. It needs an already-running server plus playwright. Full agentic loop: [Iterating on Panel Apps](iterating-on-panel-apps.md).
 
 ## Performance
 

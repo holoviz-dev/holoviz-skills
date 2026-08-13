@@ -2,7 +2,7 @@
 """Static lint for generated Panel/panel-material-ui app code.
 
 Greps the mechanical anti-patterns already documented in reviewing-panel-apps.md
-and troubleshooting.md, before the first `panel serve`. Cheap and deterministic —
+and troubleshooting-panel-apps.md, before the first `panel serve`. Cheap and deterministic —
 run this before spending a screenshot on a visual check.
 
 Usage:
@@ -318,7 +318,7 @@ def check_dict_selector_objects(tree: ast.Module) -> list[Violation]:
             "DICT_SELECTOR_OBJECTS",
             "A dict assigned to a Selector's .objects — renders blank. Use a list, or a dict "
             "passed to the Selector constructor's `objects=` kwarg instead.",
-            "troubleshooting.md#select-renders-blank-after-setting-objects",
+            "troubleshooting-panel-apps.md#select-renders-blank-after-setting-objects",
         )
         for node in ast.walk(tree)
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)
@@ -334,7 +334,7 @@ def check_radio_default_none(tree: ast.Module) -> list[Violation]:
             "RADIO_DEFAULT_NONE",
             f"{_call_name(node)} constructed with a None default — the first option can't be "
             "selected. Set an explicit non-None default.",
-            "troubleshooting.md#first-option-cant-be-selected-selection-widget-with-defaultnone",
+            "troubleshooting-panel-apps.md#first-option-cant-be-selected-selection-widget-with-defaultnone",
         )
         for node in ast.walk(tree)
         if isinstance(node, ast.Call)

@@ -1,7 +1,7 @@
 """Tests for preflight.py.
 
 Fixtures are the exact WRONG/CORRECT code pairs already published in
-reviewing-panel-apps.md and troubleshooting.md, so this suite doubles as "does
+reviewing-panel-apps.md and troubleshooting-panel-apps.md, so this suite doubles as "does
 the lint tool agree with the docs it enforces": a rule that doesn't fire on its
 own documented WRONG example, or fires on its CORRECT one, is a bug in the rule.
 
@@ -20,7 +20,7 @@ from pathlib import Path
 import preflight
 
 # ---------------------------------------------------------------------------
-# Fixtures — copied verbatim from reviewing-panel-apps.md / troubleshooting.md
+# Fixtures — copied verbatim from reviewing-panel-apps.md / troubleshooting-panel-apps.md
 # ---------------------------------------------------------------------------
 
 CASES: dict[str, dict[str, str]] = {

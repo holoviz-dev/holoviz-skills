@@ -102,7 +102,7 @@ pn.bind(self._on_menu_select, self._nav_menu.param.active, watch=True)
 
 `.from_param()` widgets created before `super().__init__(**params)` have watchers that silently never fire — see [panel/SKILL.md](SKILL.md#viewer-class-pattern) for the full ordering rule.
 
-**What to look for**: a `.from_param()` widget assigned *before* `super().__init__()` whose `@param.depends(..., watch=True)` "isn't firing" — move it below `super()`. Symptom, cause, and the WRONG/CORRECT fix: [Troubleshooting Panel Apps](troubleshooting.md#widgets-change-but-nothing-updates-init-ordering).
+**What to look for**: a `.from_param()` widget assigned *before* `super().__init__()` whose `@param.depends(..., watch=True)` "isn't firing" — move it below `super()`. Symptom, cause, and the WRONG/CORRECT fix: [Troubleshooting Panel Apps](troubleshooting-panel-apps.md#widgets-change-but-nothing-updates-init-ordering).
 
 ## Unintended Stretch and Collapsed Labels
 
@@ -168,12 +168,12 @@ def results_view(self):
 
 ## Component Gotchas
 
-Per-component traps that produce silent bugs rather than errors. Grep for the pattern in review; each cause and fix lives in [Troubleshooting Panel Apps](troubleshooting.md):
+Per-component traps that produce silent bugs rather than errors. Grep for the pattern in review; each cause and fix lives in [Troubleshooting Panel Apps](troubleshooting-panel-apps.md):
 
-- `RadioBoxGroup`/`RadioButtonGroup` constructed with `default=None` → [first radio option can't be selected](troubleshooting.md#first-option-cant-be-selected-selection-widget-with-defaultnone)
-- A **dict** assigned to a `Selector`'s `.objects` → [Select renders blank](troubleshooting.md#select-renders-blank-after-setting-objects)
-- A date-widget value compared directly against a DataFrame column → [date filter returns nothing](troubleshooting.md#date-filter-returns-nothing-type-error)
-- `pn.pane.Markdown` containing headers → [header flickers on hover](troubleshooting.md#markdown-header-flickers-on-hover)
+- `RadioBoxGroup`/`RadioButtonGroup` constructed with `default=None` → [first radio option can't be selected](troubleshooting-panel-apps.md#first-option-cant-be-selected-selection-widget-with-defaultnone)
+- A **dict** assigned to a `Selector`'s `.objects` → [Select renders blank](troubleshooting-panel-apps.md#select-renders-blank-after-setting-objects)
+- A date-widget value compared directly against a DataFrame column → [date filter returns nothing](troubleshooting-panel-apps.md#date-filter-returns-nothing-type-error)
+- `pn.pane.Markdown` containing headers → [header flickers on hover](troubleshooting-panel-apps.md#markdown-header-flickers-on-hover)
 
 ## UX Heuristics
 

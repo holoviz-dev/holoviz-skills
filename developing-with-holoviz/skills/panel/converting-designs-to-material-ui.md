@@ -3,8 +3,9 @@
 A workflow for turning a visual design — a screenshot, a Figma mockup, or an existing app (e.g. a
 React app) you are porting — into a panel-material-ui (pmui) app. This is the *process*; for
 component APIs and theming see [Using Material UI](using-material-ui.md), for custom components see
-[Building Custom Components](building-custom-components.md), and for the serve/screenshot mechanics
-see [Iterating on Panel Apps](iterating-on-panel-apps.md).
+[Building Custom Components](building-custom-components.md), for keeping the React UI as-is instead
+of rebuilding it see [Wrapping React Apps](wrapping-react-apps.md), and for the serve/screenshot
+mechanics see [Iterating on Panel Apps](iterating-on-panel-apps.md).
 
 ## Contents
 
@@ -17,6 +18,12 @@ see [Iterating on Panel Apps](iterating-on-panel-apps.md).
 - [Pitfalls](#pitfalls)
 
 ## Why a Workflow
+
+This document assumes you've already decided to *rebuild* the UI in pmui — the right call when the
+design is mostly components pmui ships. When the source is an existing React app that's large,
+heavily styled, and worth keeping, the cheaper route is often to serve that React UI as the app and
+embed Panel components inside it; see [Wrapping React Apps](wrapping-react-apps.md). Decide which of
+the two you're doing before step 1 — they share almost no work.
 
 The failure mode is building the whole app in one pass, then discovering at the end that a row
 doesn't click, the layout collapses, or the colors are off — with no way to tell which of fifty
