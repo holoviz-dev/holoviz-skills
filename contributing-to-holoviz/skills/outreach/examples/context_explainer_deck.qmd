@@ -1,0 +1,313 @@
+---
+title: "What Really Happens When You Chat with AI"
+subtitle: "An interactive guide to context windows"
+format:
+  revealjs:
+    theme: [default, _context_brand.scss]
+    slide-number: c/t
+    embed-resources: true
+    width: 1100
+    height: 720
+    center: true
+    echo: false
+    fig-align: center
+---
+
+```{python}
+#| include: false
+
+# ── Shared model (same constants as context_explainer.py) ───────
+import holoviews as hv
+import numpy as np
+from bokeh.core.properties import value
+from bokeh.models import NumeralTickFormatter
+
+hv.extension("bokeh")
+
+DISPLAY = "Verdana, sans-serif"
+BODY    = "Verdana, sans-serif"
+INK, MUTED, HAIRLINE = "#1a1a1a", "#6b7280", "#d1d5db"
+ACCENT, ACCENT_SOFT  = "#2563eb", "#dbeafe"
+DANGER, DANGER_SOFT  = "#dc2626", "#fee2e2"
+
+SYS, TURN, MAX_TURNS = 3000, 650, 60
+
+def total_read(n):
+    return n * SYS + TURN * (n * (n + 1)) // 2
+
+def thread_len(n):
+    return n * TURN
+
+def fmt(n):
+    return f"{round(n):,}"
+
+def font_hook(plot, element):
+    fig = plot.state
+    if fig.title is not None:
+        fig.title.text_font = DISPLAY
+        fig.title.text_font_style = "bold"
+        fig.title.text_font_size = "15pt"
+        fig.title.text_color = INK
+    for axis in fig.axis:
+        axis.axis_label_text_font = BODY
+        axis.axis_label_text_font_style = "normal"
+        axis.axis_label_text_color = MUTED
+        axis.major_label_text_font = BODY
+        axis.major_label_text_color = MUTED
+        axis.axis_line_color = HAIRLINE
+        axis.major_tick_line_color = HAIRLINE
+        axis.minor_tick_line_color = None
+    fig.outline_line_color = None
+    for r in fig.renderers:
+        glyph = getattr(r, "glyph", None)
+        if glyph is not None and hasattr(glyph, "text_font"):
+            glyph.text_font = value(BODY)
+
+BASE = dict(toolbar=None, show_grid=False, show_legend=False,
+            hooks=[font_hook], fontscale=1.05)
+```
+
+
+## {.center}
+
+[The big picture]{.section-label}
+
+### What Really Happens When You Chat with AI
+
+A 40-message conversation feels like 40 short exchanges.
+Behind the scenes, it's **much** more work than that.
+
+:::{style="display:flex;gap:40px;justify-content:center;margin:24px 0"}
+
+:::{style="text-align:center"}
+[40]{style="font-size:48px;font-weight:700"}
+
+[messages you sent]{style="font-size:14px;color:#6b7280"}
+:::
+
+:::{style="text-align:center"}
+[653,000]{style="font-size:48px;font-weight:700;color:#2563eb"}
+
+[words the AI processed]{style="font-size:14px;color:#6b7280"}
+:::
+
+:::{style="text-align:center"}
+[25x]{style="font-size:48px;font-weight:700;color:#dc2626"}
+
+[more than you'd expect]{style="font-size:14px;color:#6b7280"}
+:::
+
+:::
+
+. . .
+
+The AI has no memory between messages.
+Every time you hit send, it *re-reads the entire conversation from the beginning*.
+
+
+## {.center}
+
+[How it works]{.section-label}
+
+### Every Message Starts from Scratch
+
+There's no memory. Each time you press send, the AI receives
+**the entire conversation again**.
+
+```{python}
+import pandas as pd
+
+rounds = [1, 2, 3, 4]
+payload = [SYS + TURN * i for i in rounds]
+setup = [SYS] * 4
+prior = [TURN * i - TURN for i in rounds]
+current = [TURN] * 4
+
+bars_current = hv.Bars(
+    [(f"Round {r}", v) for r, v in zip(rounds, current)], "Round", "words"
+).opts(color=ACCENT, alpha=0.9)
+bars_prior = hv.Bars(
+    [(f"Round {r}", v) for r, v in zip(rounds, prior)], "Round", "words"
+).opts(color=ACCENT, alpha=0.35)
+bars_setup = hv.Bars(
+    [(f"Round {r}", v) for r, v in zip(rounds, setup)], "Round", "words"
+).opts(color=MUTED, alpha=0.3)
+
+stacked = hv.Overlay([bars_setup, bars_prior, bars_current])
+
+labels = hv.Labels(
+    [(f"Round {r}", p + 200, f"{p:,}") for r, p in zip(rounds, payload)]
+).opts(color=ACCENT, text_font_size="9pt")
+
+(stacked * labels).opts(
+    width=600, height=300, **BASE,
+    ylabel="words received by AI",
+    title="Each round re-sends everything before it",
+    yformatter=NumeralTickFormatter(format="0a"),
+    ylim=(0, max(payload) * 1.15),
+)
+```
+
+:::{style="text-align:center;color:#1e40af;font-size:0.85em;margin-top:8px"}
+You typed **2,600** words. The AI processed **18,500** — **7x** what you wrote.
+:::
+
+::: {.notes}
+The right column grows because every round re-sends all prior rounds
+plus the setup instructions. That's the whole mechanism.
+:::
+
+
+## {.center}
+
+[The cost]{.section-label}
+
+### The Longer You Go, the Worse It Gets
+
+Each new message re-reads *all* the previous ones.
+The total work **accelerates**.
+
+```{python}
+n = 40
+x = np.arange(0, n + 1)
+read = np.array([total_read(i) for i in x])
+typed = np.array([thread_len(i) for i in x])
+
+gap = hv.Area((x, typed, read), vdims=["y", "y2"]).opts(
+    color=ACCENT, alpha=0.12, line_alpha=0)
+c_read = hv.Curve((x, read)).opts(color=ACCENT, line_width=3)
+c_typed = hv.Curve((x, typed)).opts(
+    color=MUTED, line_width=2, line_dash="dashed")
+lbl_read = hv.Text(n, total_read(n), " AI's workload",
+                   halign="left", valign="bottom").opts(
+                       color=ACCENT, text_font_size="10pt")
+lbl_typed = hv.Text(n, total_read(MAX_TURNS) * 0.045,
+                    " your messages",
+                    halign="left", valign="bottom").opts(
+                        color=MUTED, text_font_size="10pt")
+
+(gap * c_typed * c_read * lbl_read * lbl_typed).opts(
+    width=700, height=340, **BASE,
+    xlim=(0, MAX_TURNS * 1.1), ylim=(0, total_read(MAX_TURNS) * 1.05),
+    yformatter=NumeralTickFormatter(format="0.0a"),
+    xlabel="messages", ylabel="words",
+    title="The longer you go, the worse it gets")
+```
+
+::: {.notes}
+Pause here — this is the load-bearing idea. The curve is quadratic,
+not linear. Every message costs more than the one before it.
+:::
+
+
+## {.center}
+
+[The problem]{.section-label}
+
+### Mistakes Never Go Away
+
+When the AI guesses wrong, that wrong answer **stays forever**.
+Correcting it doesn't remove it.
+
+:::{style="display:flex;gap:32px;justify-content:center;align-items:flex-start"}
+
+:::{style="flex:1;max-width:320px;font-size:0.65em"}
+
+| # | Message |
+|:---:|:---|
+| 1 | 🧑 set up the training pipeline |
+| 2 | 🤖 sure, here is a pipeline config |
+| 3 | 🧑 it needs to checkpoint every epoch |
+| 4 | [🤖 I'll assume you have a GPU]{style="color:#dc2626;font-weight:600"} |
+| 5 | 🧑 no, this runs on CPU only |
+| 6 | 🤖 understood, switching to CPU |
+| 7 | 🧑 the setup still references GPU software |
+| … | *corrections continue…* |
+
+:::
+
+:::{style="flex:1;max-width:300px;background:#fafafa;border-radius:10px;padding:16px;font-size:0.75em"}
+
+**The wrong answer**
+
+[Message 4: *"I'll assume you have a GPU"*]{style="background:#fee2e2;border-radius:6px;padding:4px 8px;display:inline-block"}
+
+Every new message re-reads the mistake alongside your corrections, making the AI **more likely to get confused again**.
+
+:::
+
+:::
+
+::: {.notes}
+The mistake in message 4 is re-read on every subsequent turn.
+By message 12, the AI has re-read it 8 times — alongside 8 corrections
+that are trying to undo it.
+:::
+
+
+## {.center}
+
+[The fix]{.section-label}
+
+### Go Back and Edit, Don't Keep Talking
+
+Most chat apps have a pencil icon next to your messages.
+**Go back to the message that caused the problem** and rewrite it.
+
+:::{style="display:flex;gap:24px;justify-content:center;font-size:0.7em"}
+
+:::{style="flex:1;max-width:300px"}
+[A — Keep correcting]{style="font-weight:700;color:#dc2626;text-transform:uppercase;font-size:0.8em;letter-spacing:0.06em"}
+
+12 messages
+
+**AI workload: [539,500]{style="color:#dc2626"}** words
+
+The wrong answer stays forever.
+:::
+
+:::{style="flex:1;max-width:300px"}
+[B — Edit the original]{style="font-weight:700;color:#2563eb;text-transform:uppercase;font-size:0.8em;letter-spacing:0.06em"}
+
+4 messages
+
+**AI workload: [26,650]{style="color:#2563eb"}** words ✏️
+
+The wrong answer is gone.
+:::
+
+:::
+
+. . .
+
+:::{style="text-align:center;color:#1e40af;margin-top:20px"}
+**95% less work for the AI** — and the mistake is erased, not buried.
+:::
+
+::: {.notes}
+Most chat apps have a pencil icon next to your messages. Use it.
+:::
+
+
+## {.center}
+
+[Takeaways]{.section-label}
+
+### Three Things to Remember
+
+You don't need to understand the technology. Just keep these in mind.
+
+. . .
+
+**1. Long chats get worse, not just longer.**
+The AI re-reads everything every time you send a message.
+
+. . .
+
+**2. When it goes wrong, go back — don't pile on.**
+Find the message that caused it and use the pencil icon to rewrite.
+
+. . .
+
+**3. Fresh starts are free — use them.**
+Start a new chat when the topic changes or things feel off.

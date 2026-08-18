@@ -1,0 +1,20 @@
+/*-- scss:defaults --*/
+$presentation-heading-font: Verdana, sans-serif;
+$presentation-heading-font-weight: 800;
+$presentation-font-size-root: 28px;
+$body-color: #1a1a1a;
+$link-color: #2563eb;
+
+/*-- scss:rules --*/
+.reveal h1, .reveal h2 { text-transform: none; }
+.reveal h3 { text-transform: none; font-size: 1.4em; font-weight: 800; line-height: 1.15; margin-bottom: 8px; }
+.reveal table { font-size: 0.75em; }
+.section-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #2563eb;
+  margin-bottom: 8px;
+}
