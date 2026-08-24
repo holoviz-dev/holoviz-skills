@@ -2,7 +2,7 @@
 name: hvplot
 description: Plot DataFrames and datasets using a Pandas .plot()-like API for Pandas, Polars, Xarray, DuckDB, Dask, and GeoPandas. Use when the user asks to visualize, plot, or chart tabular or multidimensional data. Do not use for element composition, streams, or custom Bokeh tools/tooltips (use HoloViews).
 metadata:
-  version: "2026.08.03"
+  version: "2026.08.24"
   author: holoviz
 ---
 
@@ -14,8 +14,8 @@ Before plotting, consider: what story does the data tell? What comparison matter
 
 ## Contents
 
-- [References](#references) — composing exploratory and distilling explanatory plots
 - [Lookup](#lookup) — plotting-options reference and site search
+- [References](#references) — composing exploratory and distilling explanatory plots
 - [Dependencies](#dependencies)
 - [Serving and Iterating](#serving-and-iterating)
 - [Plot Labels](#plot-labels)
@@ -29,17 +29,27 @@ Before plotting, consider: what story does the data tell? What comparison matter
 - [Subplots and Layouts](#subplots-and-layouts)
 - [Statistical Functions](#statistical-functions)
 
+## Lookup
+
+Fetch hvPlot docs as markdown, not HTML: prefix any hvPlot doc path with `/markdown/` and change `.html`/`.ipynb` to `.md` (also for links found inside pages). If the result is empty, the page moved — use the `llms.txt` index.
+
+Base: `https://hvplot.holoviz.org/en/docs/latest/markdown/` — append the endpoints below.
+
+- **Doc map / index**: `https://hvplot.holoviz.org/en/docs/latest/llms.txt` (site root, *not* under `markdown/`)
+- **API index**: `ref/api/index.md`
+- **Section index** (lists every api): `ref/api/manual/{stem}.md` where {stem} = {module}.{method}
+  e.g. `ref/api/manual/hvplot.hvPlot.area.md`
+- **How-to guides**: `how_to/{guide}.md` (index: `how_to/index.md`)
+- **Plotting Options**: `ref/plotting_options/{group}.md`
+  e.g. `ref/plotting_options/axis.md`
+- **Search**: web-search the topic: `https://hvplot.holoviz.org/en/docs/latest/search.html?q=<topic>`, then convert the `.html` hit to its `/markdown/…​.md` URL.
+
 ## References
 
 Read these for specialized topics. Each is a standalone document you can load on demand.
 
 - [Composing Exploratory Plots](composing-exploratory-plots.md) — layered marks (violin/box/scatter), shared-axis layout for comparison, overlay discipline, faceting around the nested-categorical-axis limit, ordered categoricals, cross-filtering with linked selections
 - [Distilling Explanatory Plots](distilling-explanatory-plots.md) — one-message charts for an audience: takeaway title, gray context + one highlight, direct inline labels, in-place annotation, killing chart junk, assuming no interaction
-
-## Lookup
-
-- Plotting options by group (axes, geographic, styling, resampling): `https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/{group}.html`
-- Anything else: web-search `https://hvplot.holoviz.org/search.html?q=<topic>`.
 
 ## Dependencies
 

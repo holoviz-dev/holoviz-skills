@@ -2,7 +2,7 @@
 name: holoviews
 description: Build interactive visualizations with HoloViews elements, opts, streams, and operations. Use when composing plots from element primitives (Curve, Points, Bars, NdOverlay), customizing Bokeh tools/tooltips/formatters, using DynamicMap, streams, or link_selections. Do not use for simple DataFrame plotting (use hvPlot) or Panel app structure (use Panel).
 metadata:
-  version: "2026.08.13"
+  version: "2026.08.24"
   author: holoviz
 ---
 
@@ -14,8 +14,8 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 
 ## Contents
 
-- [References](#references) — decluttering plots
 - [Lookup](#lookup) — site search
+- [References](#references) — decluttering plots
 - [Opts System](#opts-system)
 - [Session Defaults](#session-defaults)
 - [Hover Tooltips](#hover-tooltips)
@@ -26,15 +26,25 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 - [Streams](#streams)
 - [Cross-Filtering with link_selections](#cross-filtering-with-link_selections)
 
+## Lookup
+
+Fetch HoloViews docs as markdown, not HTML: prefix any HoloViews doc path with `/markdown/` and change `.html`/`.ipynb` to `.md` (also for links found inside pages). If the result is empty, the page moved — use the `llms.txt` index.
+
+Base: `https://holoviews.org/markdown/` — append the endpoints below.
+
+- **Doc map / index**: `https://holoviews.org/llms.txt` (site root, *not* under `markdown/`)
+- **API index**: `reference_manual/index.md`
+- **Section index** (lists every api): `reference_manual/{stem}.md`
+  e.g. `reference_manual/holoviews.annotators.md`
+- **User guides**: `user_guide/{path}.md`
+  e.g. `user_guide/Annotating_Data.md`
+- **Search**: web-search the topic: `https://holoviews.org/search.html?q=<topic>`, then convert the `.html` hit to its `/markdown/…​.md` URL.
+
 ## References
 
 Read these for specialized topics. Each is a standalone document you can load on demand.
 
 - [Decluttering Plots](decluttering-plots.md) — stripping Bokeh chart junk with `.opts()`: hide the toolbar or reveal it on hover (`autohide_toolbar`), disable wheel-zoom (`default_tools`/`active_tools`), one-axis gridlines (`gridstyle`), hide/share axes across stacked plots, legend placement, nested categorical axes, and why these opts belong on the top-level overlay/layout rather than per element
-
-## Lookup
-
-Web-search `https://holoviews.org/search.html?q=<topic>` for anything not covered below.
 
 ## Opts System
 
