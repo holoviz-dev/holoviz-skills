@@ -28,16 +28,8 @@ For embedding HoloViews plots in Panel apps (DynamicMap trigger pattern, respons
 
 ## Lookup
 
-Fetch HoloViews docs as markdown, not HTML: prefix any HoloViews doc path with `/markdown/` and change `.html`/`.ipynb` to `.md` (also for links found inside pages). If the result is empty, the page moved — use the `llms.txt` index.
+Fetch HoloViews docs as markdown, not HTML: prefix any HoloViews doc path with `/markdown/` and change `.html`/`.ipynb` to `.md` (also for links found inside pages), e.g `https://holoviews.org/markdown/reference_manual/holoviews.annotators.md`. If the result is empty, the page moved — use the `llms.txt` index: `https://holoviews.org/llms.txt`.
 
-Base: `https://holoviews.org/markdown/` — append the endpoints below.
-
-- **Doc map / index**: `https://holoviews.org/llms.txt` (site root, *not* under `markdown/`)
-- **API index**: `reference_manual/index.md`
-- **Section index** (lists every api): `reference_manual/{stem}.md`
-  e.g. `reference_manual/holoviews.annotators.md`
-- **User guides**: `user_guide/{path}.md`
-  e.g. `user_guide/Annotating_Data.md`
 - **Search**: web-search the topic: `https://holoviews.org/search.html?q=<topic>`, then convert the `.html` hit to its `/markdown/…​.md` URL.
 
 ## References

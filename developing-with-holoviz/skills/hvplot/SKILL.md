@@ -31,17 +31,8 @@ Before plotting, consider: what story does the data tell? What comparison matter
 
 ## Lookup
 
-Fetch hvPlot docs as markdown, not HTML: prefix any hvPlot doc path with `/markdown/` and change `.html`/`.ipynb` to `.md` (also for links found inside pages). If the result is empty, the page moved — use the `llms.txt` index.
+Fetch hvPlot docs as markdown, not HTML: prefix any hvPlot doc path with `/markdown/` and change `.html`/`.ipynb` to `.md` (also for links found inside pages), e.g `https://hvplot.holoviz.org/en/docs/latest/markdown/ref/api/index.md`. If the result is empty, the page moved — use the `llms.txt` index: `https://hvplot.holoviz.org/en/docs/latest/llms.txt`.
 
-Base: `https://hvplot.holoviz.org/en/docs/latest/markdown/` — append the endpoints below.
-
-- **Doc map / index**: `https://hvplot.holoviz.org/en/docs/latest/llms.txt` (site root, *not* under `markdown/`)
-- **API index**: `ref/api/index.md`
-- **Section index** (lists every api): `ref/api/manual/{stem}.md` where {stem} = {module}.{method}
-  e.g. `ref/api/manual/hvplot.hvPlot.area.md`
-- **How-to guides**: `how_to/{guide}.md` (index: `how_to/index.md`)
-- **Plotting Options**: `ref/plotting_options/{group}.md`
-  e.g. `ref/plotting_options/axis.md`
 - **Search**: web-search the topic: `https://hvplot.holoviz.org/en/docs/latest/search.html?q=<topic>`, then convert the `.html` hit to its `/markdown/…​.md` URL.
 
 ## References
