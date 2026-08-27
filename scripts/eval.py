@@ -378,7 +378,7 @@ Examples:
   python eval.py --timeout 60 --skip-screenshots
 
   # Run with specific models
-  python eval.py --models kilo/kilo-auto/free
+  python eval.py --models kilo/anthropic/claude-sonnet-5
 
   # Compare two models, with-skills only
   python eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free --skills with

@@ -158,12 +158,6 @@ jobs:
         env:
           KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
         run: |
-          # Pin the eval model to the free Kilo auto tier and keep background
-          # tasks (session titles, summaries) on the free small model too, so
-          # a CI run consumes no credits. The gateway API key is referenced
-          # via {env:KILO_API_KEY} so the secret is never written to disk.
-          # Without the secret Kilo falls back to anonymous free-model
-          # access, which is rate-limited (200 requests/h per IP).
           python - <<'PY'
           import json
           import os
@@ -204,7 +198,8 @@ jobs:
       - name: Run eval pipeline
         env:
           KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
-        run: pixi run -e eval evals --models kilo/kilo-auto/free
+        # Some kilo auth accounts doesn't have ``kilo-auto/free``. Need to anonymize the request for this
+        run: XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals --models kilo/kilo-auto/free
 
       - name: Deploy historical dashboard
         if: needs.gate.outputs.deploy_dashboard == 'true'

@@ -114,7 +114,7 @@ python scripts/eval.py --skip-execution --skip-aggregation
 python scripts/eval.py --timeout 60 --skip-screenshots
 
 # Run with specific models
-python scripts/eval.py --models kilo/kilo-auto/free
+python scripts/eval.py --models kilo/anthropic/claude-sonnet-5
 
 # Compare two models, with-skills only
 python scripts/eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free --skills with
@@ -178,7 +178,7 @@ eval_results/
 ├── <model>/                         # e.g. kilo_kilo-auto_free, default
 │   ├── with_skills/
 │   │   └── [query_id]/
-│   │       ├── response.txt        # Kilo response text (assistant message)
+│   │       ├── response.txt        # Kilo response text
 │   │       ├── metadata.json       # Model, tokens, timing, execution result
 │   │       ├── generated_code.py   # Extracted code block
 │   │       ├── execution.log       # stdout/stderr from code run
