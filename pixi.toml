@@ -116,9 +116,9 @@ evals = { cmd = "python scripts/eval.py", cwd = ".", depends-on = [
 eval-no-screenshots = { cmd = "python scripts/eval.py --skip-screenshots", cwd = ".", depends-on = [
     "_eval-check-no-screenshots",
 ], description = "Run evaluation without screenshots (faster, no Playwright needed)" }
-eval-multi = { cmd = "python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-mini", cwd = ".", depends-on = [
+eval-multi = { cmd = "python scripts/eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free", cwd = ".", depends-on = [
     "_eval-setup",
     "eval-check",
-], description = "Run evaluation across multiple models (claude-sonnet-4.6 and gpt-5.4-mini)" }
+], description = "Compare the frontier (paid) and free Kilo auto tiers" }
 eval-history-dashboard = { cmd = "panel serve scripts/compare_history.py --show --args eval_results/", cwd = ".", description = "Open the historical run dashboard in the browser" }
 eval-deploy-dashboard = { cmd = "python scripts/eval_publish.py", cwd = ".", description = "Deploy the historical dashboard using existing eval_results" }
