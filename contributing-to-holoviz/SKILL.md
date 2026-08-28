@@ -2,9 +2,9 @@
 name: contributing-to-holoviz
 description: Maintain and contribute to HoloViz packages. Use when reviewing PRs, refactoring code, writing tests, or updating docs in HoloViz repositories (Panel, hvPlot, HoloViews, Param, etc.).
 user-invocable: true
-argument-hint: "[review PR | write tests | write docs | PR description | minimal example]"
+argument-hint: "[review PR | write tests | write docs | PR description | minimal example | deslop]"
 metadata:
-  version: "2026.08.03"
+  version: "2026.08.28"
   author: holoviz
 ---
 
@@ -32,17 +32,19 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 |---|---|
 | Review a PR or refactor code | `skills/cleanup/SKILL.md` |
 | Write or review tests | `skills/testing/SKILL.md` |
-| Write or review docs | `skills/documentation/SKILL.md` |
-| Write or review a PR description | `skills/pr-description/SKILL.md` |
+| Write or review docs | `skills/documentation/SKILL.md`, `skills/deslop/SKILL.md` |
+| Write or review a PR description | `skills/pr-description/SKILL.md`, `skills/deslop/SKILL.md` |
 | Write a reproducer or minimal example | `skills/minimal-example/SKILL.md` |
-| Full PR review | All five above |
+| Strip LLM slop from prose | `skills/deslop/SKILL.md` |
+| Full PR review | All of the above |
 
 ## Skill Map
 
 | Sub-skill | Covers |
 |---|---|
 | [cleanup](skills/cleanup/SKILL.md) | Code cleanup and refactoring guidelines — review, code style, naming, param ordering, nesting |
-| [documentation](skills/documentation/SKILL.md) | Documentation guidelines — docs coverage, Diátaxis structure, example/reference notebooks |
+| [deslop](skills/deslop/SKILL.md) | Strip LLM slop from prose — AI vocabulary, rhetorical tics, false-profundity constructions, boilerplate |
+| [documentation](skills/documentation/SKILL.md) | Documentation guidelines — docs coverage, prose quality, Diátaxis structure, example/reference notebooks |
 | [minimal-example](skills/minimal-example/SKILL.md) | Writing minimal, self-contained, reproducible examples for bug reports, issue reproducers, and "How to test" snippets |
 | [pr-description](skills/pr-description/SKILL.md) | Writing clear PR descriptions — title, description, before/after, AI disclosure, voice and style |
 | [testing](skills/testing/SKILL.md) | Testing guidelines — general practices, edge cases, logical errors |
