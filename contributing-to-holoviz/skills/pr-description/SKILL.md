@@ -2,13 +2,13 @@
 name: pr-description
 description: Writing a clear pull request description for HoloViz packages. Use when drafting or reviewing the description, summary, or write-up of a PR in any HoloViz repository.
 metadata:
-  version: "2026.07.28"
+  version: "2026.08.28"
   author: holoviz
 ---
 
 # PR Descriptions
 
-Write HoloViz PR descriptions in the first person, as work you did, and keep the prose free of em dashes.
+Write HoloViz PR descriptions in the first person, as work you did.
 
 Follow the repo's PR template rather than inventing sections. Every HoloViz repo inherits it from the org-wide `holoviz/.github` repo, so fetch the current, authoritative sections from the raw template and fill each one in:
 
@@ -36,5 +36,5 @@ Write dense, causal prose rather than a padded list. When a PR makes several dis
 - Chain cause and effect within a sentence ("captured once, meaning ...", "watches it, triggering ... so ...") instead of many short, disconnected ones.
 - Explain the motivation once; don't justify every step or restate the diff. State what each part does and trust the reader and the diff for the rest.
 - Keep concrete anchors (key identifiers, field names, a minimal example) even while compressing, so it stays specific.
-- Stay neutral and declarative; drop selling adverbs like "cleanly", "simply", or "robustly".
 - Reserve backticks for concrete symbols (`obs_id`, `None`, function and parameter names); let conceptual names read as plain prose.
+- After drafting, run the [`deslop` skill](../deslop/SKILL.md) scanner on the description to catch LLM prose patterns (AI vocabulary, selling adverbs, em-dash overuse, negative parallelism). Fix every hit that isn't a false positive.

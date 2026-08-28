@@ -39,6 +39,9 @@ include = ["holoviz_skills"]
 [tool.hatch.build.hooks.vcs]
 version-file = "holoviz_skills/_version.py"
 
+[tool.codespell]
+ignore-words-list = "wasn,couldn"
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100
