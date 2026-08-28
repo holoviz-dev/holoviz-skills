@@ -6,7 +6,7 @@ description: >-
   blog.holoviz.org, and interactive explainers of how a HoloViz concept works.
   Use when the deliverable teaches an audience rather than shipping a feature.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   author: holoviz
 ---
 
@@ -36,6 +36,10 @@ The distinction that decides everything downstream:
 
 ## References
 
+- [HoloViz in Quarto](holoviz-in-quarto.md) — how HoloViews, hvPlot, and Panel
+  output behaves inside a `{python}` chunk. The setup that fails silently, the
+  table of what stays interactive, and the two open bugs. Applies to posts and
+  decks alike; read it before either.
 - [Publishing to the Blog](publishing-to-the-blog.md) — Quarto setup, the
   `posts/template` folder, the header fields, how interactivity actually
   survives into a post, the PR preview flow.
@@ -61,8 +65,11 @@ linkable at the end for people who want to actually understand it.
 
 **Default to Quarto** for both posts and decks. Contributors already have it for
 the blog, authoring is markdown, and interactive Bokeh plots embed the same way
-in both. Reach for Panel only when you need **live Python** in front of the
-audience — see [Building Slides](building-slides.md).
+in both. A `.qmd` executes `{python}` chunks at render time, so HoloViews,
+hvPlot, and Panel output all land live in the page — see
+[HoloViz in Quarto](holoviz-in-quarto.md) for what stays interactive once
+Python is gone. Reach for Panel only when you need **live Python** in front of
+the audience — see [Building Slides](building-slides.md).
 
 ## Show the mechanism
 
@@ -83,10 +90,15 @@ The artifact you present from and the artifact people take away are usually
 | Path | Artifact | Opens offline | Interactivity that survives |
 |---|---|---|---|
 | Quarto + `embed-resources: true` | one `.html` | yes | pan, zoom, hover, linked selection |
+| Quarto + `.embed()` in a chunk | one `.html` | yes | above, plus precomputed widget states |
 | Quarto to PDF (`?print-pdf`) | one `.pdf` | yes | none — static images |
+| Quarto + `{panel-convert-python}` | `.html` + CDN | **no** | full Python, inline in the page |
 | `.save(embed=True, resources=INLINE)` | one `.html` | yes | precomputed widget states only |
 | `panel convert --to pyodide-worker` | `.html` + CDN | **no** | full Python |
 | `panel serve` | nothing | no | full Python |
+
+The two extra Quarto rows are the ones people miss — a `.qmd` is not limited to
+static plots. See [HoloViz in Quarto](holoviz-in-quarto.md).
 
 Two things people get wrong here:
 

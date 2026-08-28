@@ -16,12 +16,15 @@ Getting a post onto [blog.holoviz.org](https://blog.holoviz.org). The site is
 ## Setup
 
 ```bash
-conda create -n holoviz-blog -c conda-forge r-quarto perl
+conda create -n holoviz-blog -c conda-forge r-quarto perl jupyter
 conda activate holoviz-blog
 ```
 
-`perl` is not optional — Quarto's toolchain wants it. Preview from the repo
-root, which builds the site and live-reloads on save:
+`perl` is not optional — Quarto's toolchain wants it. `jupyter` is only needed
+if you author in `.qmd`, since that is what executes the `{python}` chunks; add
+it anyway, it costs nothing and its absence is confusing when you hit it.
+
+Preview from the repo root, which builds the site and live-reloads on save:
 
 ```bash
 quarto preview
@@ -89,7 +92,9 @@ What that buys, and what it does not:
 - **Works for a reader:** pan, zoom, hover, linked selection, anything Bokeh's
   JavaScript does on its own.
 - **Does not work:** anything needing Python at read time. A Panel widget driving
-  a callback is dead on the page.
+  a callback is dead on the page — unless you pre-compute its states with
+  `.embed()` or compile the link to JS with `.jslink()`. See
+  [HoloViz in Quarto](holoviz-in-quarto.md#what-survives-into-the-page).
 
 If the piece genuinely needs live Python, that is a `panel convert` artifact
 embedded or linked from the post — and it is not offline. See the
@@ -97,8 +102,15 @@ embedded or linked from the post — and it is not offline. See the
 
 **Authoring in `.qmd` instead.** `_quarto.yml` renders `*.qmd` too, and a `.qmd`
 with `{python}` chunks lets Quarto execute at render time rather than requiring
-you to commit an evaluated notebook. Either is fine; `.ipynb` matches what most
-existing posts do.
+you to commit an evaluated notebook — so the diff stays readable and the plots
+cannot go stale against the prose. Both routes produce the same interactivity;
+`.ipynb` matches what every existing post does, and no post in the repo is a
+`.qmd` yet (`index.qmd` is the listing page). If you take the `.qmd` route,
+you are the first — build the dev site early.
+
+The `{python}` chunk has its own rules, chiefly that a missing `.extension()`
+call produces a blank plot with no error. See
+[HoloViz in Quarto](holoviz-in-quarto.md).
 
 ## Review and publish
 

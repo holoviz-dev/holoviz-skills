@@ -364,6 +364,13 @@ These are usually two different artifacts:
 - **`embed-resources: true` does not cover webfonts pulled from a CDN.** A theme
   that `@import`s Google Fonts still phones home. Self-host the woff2 for a
   genuinely offline deck.
+- **`hv.extension("bokeh")` in an `#| include: false` cell kills all plots.**
+  `include: false` suppresses cell output, which discards the BokehJS `<script>`
+  tag that `hv.extension()` emits. Without it, every HoloViews/hvPlot cell
+  renders blank. Fix: put `hv.extension("bokeh")` in the first *plot* cell
+  instead of the setup cell — the BokehJS output is an invisible HTML element
+  that won't affect the slide's appearance. Keep constants and helper functions
+  in the `#| include: false` cell; they don't produce output.
 - **Check the rendered deck, not the preview.** Speaker view, fragments, and PDF
   export each behave differently from the live-reload preview.
 

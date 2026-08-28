@@ -2,7 +2,7 @@
 name: pr-description
 description: Writing a clear pull request description for HoloViz packages. Use when drafting or reviewing the description, summary, or write-up of a PR in any HoloViz repository.
 metadata:
-  version: "2026.07.28"
+  version: "2026.08.28"
   author: holoviz
 ---
 
@@ -31,10 +31,10 @@ https://raw.githubusercontent.com/holoviz/.github/refs/heads/main/.github/pull_r
 Write dense, causal prose rather than a padded list. When a PR makes several distinct changes, prefer a short bullet list with one bullet per change, each a complete change-then-mechanism statement (not a fragment); a single-change PR can be one short paragraph instead. Either way keep it skimmable, and add a short "How to test" note or a minimal reproducible example.
 
 - Lead with the change, then the mechanism, e.g. "This PR adds X, where ...". State what changed before how it works.
-- One bullet per independent change. Pack the cause and effect into that bullet rather than splitting it across several, e.g. "Fixed the Viewer example, which created widgets before `super().__init__()`; values synced but notifications didn't, so callbacks never fired."
+- One bullet per independent change that needs context beyond the diff. Trivial file changes (a one-line README addition, a standard config file, a pixi task update) are visible in the diff and do not need a bullet. Pack the cause and effect into each bullet rather than splitting across several, e.g. "Fixed the Viewer example, which created widgets before `super().__init__()`; values synced but notifications didn't, so callbacks never fired."
 - Don't hard-wrap inside a bullet or paragraph: keep each bullet on a single line. A PR description is a GitHub comment field, where every single newline renders as a line break (unlike a committed `.md` file), so wrapping shows up as mid-sentence breaks.
 - Chain cause and effect within a sentence ("captured once, meaning ...", "watches it, triggering ... so ...") instead of many short, disconnected ones.
-- Explain the motivation once; don't justify every step or restate the diff. State what each part does and trust the reader and the diff for the rest.
+- Explain the motivation once; don't justify every step or restate the diff. State what each part does and trust the reader and the diff for the rest. Drop implementation details (how a script parses, what regex it uses) that the diff already shows; a bullet should say what something does for the reviewer, not how it works internally.
 - Keep concrete anchors (key identifiers, field names, a minimal example) even while compressing, so it stays specific.
 - Stay neutral and declarative; drop selling adverbs like "cleanly", "simply", or "robustly".
 - Reserve backticks for concrete symbols (`obs_id`, `None`, function and parameter names); let conceptual names read as plain prose.

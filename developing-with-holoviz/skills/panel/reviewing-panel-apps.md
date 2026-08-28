@@ -14,6 +14,8 @@ This checklist operationalizes Panel's official best-practices guides for review
 - [Unintended Stretch and Collapsed Labels](#unintended-stretch-and-collapsed-labels)
 - [Spacer vs Margin](#spacer-vs-margin)
 - [Mutating Instead of Reassigning](#mutating-instead-of-reassigning)
+- [Stale Dependent Panels on Selection Change](#stale-dependent-panels-on-selection-change)
+- [Empty-State Copy on a Still-Loading Panel](#empty-state-copy-on-a-still-loading-panel)
 - [Watch vs Depends Misuse](#watch-vs-depends-misuse)
 - [Component Gotchas](#component-gotchas)
 - [UX Heuristics](#ux-heuristics)
@@ -137,6 +139,42 @@ pn.Column(
 In-place operations on param values (`list.append()`, `dict.update()`, `+=` on lists) don't trigger watchers, so dependents go stale with no error. Mechanism and the reassignment idioms: [param skill](../param/SKILL.md#parameter-types).
 
 **What to look for**: any `self.<param>.append(...)`, `self.<param>[key] = ...`, or `self.<param> +=` where the param has a watcher or a `@param.depends` reader. Rewrite as a whole-object assignment.
+
+## Stale Dependent Panels on Selection Change
+
+When a selection handler is async, the panels it feeds get rewritten at the *end* — after a store read or a query. Anything it does **not** clear up front keeps showing the previous selection's data in the meantime, under the new selection's name.
+
+**What to look for**: an `_on_<selection>` watcher that assigns some params synchronously (a header, a skeleton) and leaves others to an awaited path (`pn.state.execute(...)`, `asyncio.create_task`). Every param in that second group is stale for the whole duration.
+
+```python
+# WRONG — `detail` is only written inside the async load
+def _on_select(self, event):
+    self.header = frame_for(event.new)                  # instant
+    pn.state.execute(partial(self._load, event.new))    # self.detail = previous item
+
+# CORRECT — clear first, in the same tick, on every path
+def _on_select(self, event):
+    self.detail = {}                                    # and every other dependent panel
+    self.header = frame_for(event.new)
+    if not event.new:
+        return
+    pn.state.execute(partial(self._load, event.new))
+```
+
+Check the early returns too — an empty or unresolvable selection is where stale panels survive longest. Pair it with an identity guard on the async write (`if self.selected == item_id:`), or a slow result for the *previous* selection repaints over the current one. Both halves: [The user moved on](designing-panel-architecture.md#the-user-moved-on).
+
+## Empty-State Copy on a Still-Loading Panel
+
+An app that paints before all its data has arrived will render its empty states over the gap. Every one of them asserts a *completed check* — "No results", "0 found", "nothing hidden" — so mid-load each reports a gap in the read as a fact about the data, and the user acts on it.
+
+**What to look for**: a payload/render path that can be entered with partial data (a streaming callback, a per-item `create_task`, a generator, `defer_load`) and, in the same view, any of: empty-state text, a count or total, an all-clear, a "no matches" for a search box, or a digest computed over the whole payload. Each needs a still-loading variant or must be withheld.
+
+Two follow-ups in the same review:
+
+- **The renderer must branch on the loading state.** A state the view doesn't test renders wrongly — check that the state the model emits appears in the view's conditionals, not just in the model.
+- **Prefer a skeleton to a sentence**, and don't caption the skeleton; then make the *finished* state say so positively rather than by the absence of a banner.
+
+Full treatment: [Painting Partial Results](designing-panel-architecture.md#painting-partial-results).
 
 ## Watch vs Depends Misuse
 

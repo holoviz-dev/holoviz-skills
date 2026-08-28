@@ -16,6 +16,9 @@ Symptom-indexed fixes for Panel/pmui apps that serve but misbehave *silently*. L
 - ["responsive mode could not be enabled" / won't resize](#responsive-mode-could-not-be-enabled-wont-resize)
 - [Tile/map plot renders blank inside a pmui layout](#tilemap-plot-renders-blank-inside-a-pmui-layout)
 - [Screenshot shows a loading spinner](#screenshot-shows-a-loading-spinner)
+- [Every user's page freezes while one session loads](#every-users-page-freezes-while-one-session-loads)
+- [A panel still shows the previous selection's data](#a-panel-still-shows-the-previous-selections-data)
+- [The page says there's no data, then shows data](#the-page-says-theres-no-data-then-shows-data)
 - [Behavior or deprecation differs across versions](#behavior-or-deprecation-differs-across-versions)
 
 ## Widgets change but nothing updates (init ordering)
@@ -136,6 +139,55 @@ page.wait_for_function("() => !document.querySelector('.pn-loading')", timeout=3
 ```
 
 Full pattern: [Iterating on Panel Apps](iterating-on-panel-apps.md#screenshot-shows-a-loading-spinner).
+
+## Every user's page freezes while one session loads
+
+Widgets stop responding for *everyone* — including sessions doing nothing — then recover together. One event loop serves all sessions, so this is a blocking call on the loop, and it will not show up in your timings: the log records the work, the freeze is the wait.
+
+Usual cause: an `async def` that calls a **synchronous** client and `await`s only between calls (a DB driver, `requests`, `boto3`, a blocking `get_connection()`) — it reads as non-blocking because the `await` is right there. Confirm before hunting, with a heartbeat task that reports its own overshoot:
+
+```python
+async def loop_monitor(interval=0.25, warn=0.5):
+    while True:
+        before = perf_counter()
+        await asyncio.sleep(interval)
+        if (stall := (perf_counter() - before) - interval) >= warn:
+            logger.warning(f"event loop stalled {stall:.2f}s")
+```
+
+Fix: wrap each blocking call in `await asyncio.to_thread(...)`. To attribute a stall to a specific callback, set `loop.set_debug(True)` and `loop.slow_callback_duration` (the latter is read only in debug mode). Full treatment — thread-safety check, poll-cadence tax, measured before/after: [Blocking the Event Loop](designing-panel-architecture.md#blocking-the-event-loop).
+
+## A panel still shows the previous selection's data
+
+The user picks a different item, the header updates, but a detail panel beside it still describes the *old* one. Cause: that panel is only rewritten at the *end* of an async handler — after a store read or a query — so between the click and that write, the previously published payload is still on screen, under a name and figures that have already changed. Worse than an empty panel, because it looks authoritative.
+
+Fix: clear every dependent param in the **same synchronous tick** as the selection change, before the first `await`, and let the async path republish once it has real data.
+
+```python
+def _on_select(self, event):
+    self._clear_dependent_panels()     # ✅ before any await, on every branch
+    if not event.new:
+        return
+    ...
+    pn.state.execute(partial(self._load, event.new))
+```
+
+Two details. Do it on *every* exit path, including early returns for an empty or unresolvable selection — those returns are how stale panels survive longest. And don't blank a param that the click handler itself sets optimistically (a "loading"/"composing" flag): clearing that one first makes the UI flash the pre-request control before hiding it again.
+
+## The page says there's no data, then shows data
+
+A section reads "No results" / "0 found" / "nothing to review" for a few seconds, then fills in. Nobody filed it as a bug — it looks like a page, not an error — but the user has already read a false answer and acted on it, and the copy that misled them is the copy you were most careful about.
+
+Cause: the render path is being handed a partial result and rendering it in **settled vocabulary**. Every empty state asserts a completed check, so on a still-loading payload each one reports a gap in the *read* as a finding about the *data*.
+
+Fix, in order:
+
+1. Give the payload a state that means "still arriving" and **check the renderer branches on it** — a state the view doesn't test renders wrongly. (A common shape: Python grows a fourth state, the view still reads `if state === "thin"`, so the "still loading" message is computed on every chunk and displayed never.)
+2. Replace empty-state prose with a **skeleton** in the sections that have not arrived, and don't caption the skeleton.
+3. Sweep the rest of the payload for the same class of claim: counts and totals, all-clears ("nothing hidden", "no conflicts"), a search box's "no matches", and any digest/fingerprint computed over the whole payload.
+4. Make the finished state say so *positively* — a badge, not the absence of a banner.
+
+Full treatment: [Painting Partial Results](designing-panel-architecture.md#painting-partial-results).
 
 ## Behavior or deprecation differs across versions
 

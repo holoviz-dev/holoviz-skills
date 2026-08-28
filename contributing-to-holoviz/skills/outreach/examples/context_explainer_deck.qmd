@@ -21,8 +21,7 @@ import holoviews as hv
 import numpy as np
 from bokeh.core.properties import value
 from bokeh.models import NumeralTickFormatter
-
-hv.extension("bokeh")
+from IPython.display import HTML
 
 DISPLAY = "Verdana, sans-serif"
 BODY    = "Verdana, sans-serif"
@@ -115,42 +114,61 @@ There's no memory. Each time you press send, the AI receives
 **the entire conversation again**.
 
 ```{python}
-import pandas as pd
-
-rounds = [1, 2, 3, 4]
-payload = [SYS + TURN * i for i in rounds]
-setup = [SYS] * 4
-prior = [TURN * i - TURN for i in rounds]
-current = [TURN] * 4
-
-bars_current = hv.Bars(
-    [(f"Round {r}", v) for r, v in zip(rounds, current)], "Round", "words"
-).opts(color=ACCENT, alpha=0.9)
-bars_prior = hv.Bars(
-    [(f"Round {r}", v) for r, v in zip(rounds, prior)], "Round", "words"
-).opts(color=ACCENT, alpha=0.35)
-bars_setup = hv.Bars(
-    [(f"Round {r}", v) for r, v in zip(rounds, setup)], "Round", "words"
-).opts(color=MUTED, alpha=0.3)
-
-stacked = hv.Overlay([bars_setup, bars_prior, bars_current])
-
-labels = hv.Labels(
-    [(f"Round {r}", p + 200, f"{p:,}") for r, p in zip(rounds, payload)]
-).opts(color=ACCENT, text_font_size="9pt")
-
-(stacked * labels).opts(
-    width=600, height=300, **BASE,
-    ylabel="words received by AI",
-    title="Each round re-sends everything before it",
-    yformatter=NumeralTickFormatter(format="0a"),
-    ylim=(0, max(payload) * 1.15),
+# Static version of PayloadDemo at turn=4
+CHAT = [
+    ("why is this environment failing?", "the lockfile is out of date"),
+    ("how do I regenerate it?", "delete it and reinstall"),
+    ("that broke two packages", "pin the majors and retry"),
+    ("still broken", "the channel mirror is stale"),
+]
+max_pay = SYS + TURN * len(CHAT)
+header = (
+    f'<tr><th style="padding:0 8px 4px;font-size:9px;font-weight:700;'
+    f'color:{MUTED};text-transform:uppercase;letter-spacing:.06em;'
+    f'text-align:left"></th>'
+    f'<th style="text-align:left;font-size:9px;font-weight:700;'
+    f'color:{MUTED};text-transform:uppercase;letter-spacing:.06em">'
+    f'Exchange</th>'
+    f'<th style="text-align:left;font-size:9px;font-weight:700;'
+    f'color:{MUTED};text-transform:uppercase;letter-spacing:.06em">'
+    f'What the AI received</th></tr>'
 )
+rows = []
+for i, (msg, reply) in enumerate(CHAT):
+    pay = SYS + TURN * (i + 1)
+    pct = max(4, round(100 * pay / max_pay))
+    note = "setup included" if i == 0 else "all prior rounds re-sent"
+    rows.append(
+        f'<tr style="border-top:1px solid #f0f0f0">'
+        f'<td style="padding:5px 8px;font-size:12px;font-weight:600;'
+        f'color:{MUTED};white-space:nowrap">Round {i+1}</td>'
+        f'<td style="padding:5px 4px;font-size:11px">'
+        f'<div style="background:{ACCENT_SOFT};border-radius:4px;'
+        f'padding:2px 6px;display:inline-block;max-width:180px;'
+        f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+        f'{msg}</div></td>'
+        f'<td style="padding:5px 4px;width:55%">'
+        f'<div style="height:16px;border-radius:3px;background:#f0f0f0;'
+        f'overflow:hidden"><div style="height:100%;width:{pct}%;'
+        f'background:{ACCENT};border-radius:3px"></div></div>'
+        f'<div style="font-size:10px;margin-top:1px;text-align:left">'
+        f'<b style="color:{ACCENT}">{fmt(pay)}</b> '
+        f'<span style="color:{MUTED}">· {note}</span></div></td></tr>'
+    )
+table = (
+    f'<table style="width:100%;border-collapse:collapse;max-width:620px;'
+    f'margin:0 auto;font-family:{BODY}">{header}{"".join(rows)}</table>'
+)
+typed = thread_len(4)
+rd = sum(SYS + TURN * (i + 1) for i in range(4))
+summary = (
+    f'<p style="text-align:center;font-family:{BODY};font-size:13px;'
+    f'color:#1e40af;margin:8px 0"><b>You typed {fmt(typed)} words.</b> '
+    f'The AI processed <b>{fmt(rd)}</b> — '
+    f'<b>{rd // typed}x</b> what you wrote.</p>'
+)
+HTML(table + summary)
 ```
-
-:::{style="text-align:center;color:#1e40af;font-size:0.85em;margin-top:8px"}
-You typed **2,600** words. The AI processed **18,500** — **7x** what you wrote.
-:::
 
 ::: {.notes}
 The right column grows because every round re-sends all prior rounds
@@ -168,6 +186,8 @@ Each new message re-reads *all* the previous ones.
 The total work **accelerates**.
 
 ```{python}
+hv.extension("bokeh", logo=False)
+
 n = 40
 x = np.arange(0, n + 1)
 read = np.array([total_read(i) for i in x])
@@ -180,15 +200,17 @@ c_typed = hv.Curve((x, typed)).opts(
     color=MUTED, line_width=2, line_dash="dashed")
 lbl_read = hv.Text(n, total_read(n), " AI's workload",
                    halign="left", valign="bottom").opts(
-                       color=ACCENT, text_font_size="10pt")
-lbl_typed = hv.Text(n, total_read(MAX_TURNS) * 0.045,
+                       text_color=ACCENT, text_font_size="9pt")
+lbl_typed = hv.Text(n, thread_len(n) + 1500,
                     " your messages",
                     halign="left", valign="bottom").opts(
-                        color=MUTED, text_font_size="10pt")
+                        text_color=MUTED, text_font_size="9pt")
 
 (gap * c_typed * c_read * lbl_read * lbl_typed).opts(
-    width=700, height=340, **BASE,
-    xlim=(0, MAX_TURNS * 1.1), ylim=(0, total_read(MAX_TURNS) * 1.05),
+    width=580, height=250, toolbar="disable",
+    show_grid=False, show_legend=False,
+    hooks=[font_hook], fontscale=1.05,
+    xlim=(0, n * 1.25), ylim=(0, total_read(n) * 1.12),
     yformatter=NumeralTickFormatter(format="0.0a"),
     xlabel="messages", ylabel="words",
     title="The longer you go, the worse it gets")
@@ -209,38 +231,73 @@ not linear. Every message costs more than the one before it.
 When the AI guesses wrong, that wrong answer **stays forever**.
 Correcting it doesn't remove it.
 
-:::{style="display:flex;gap:32px;justify-content:center;align-items:flex-start"}
+```{python}
+# Static version of MistakeDemo at shown=8
+TALK = [
+    ("you", "set up the training pipeline", False),
+    ("ai", "sure, here is a pipeline config", False),
+    ("you", "it needs to checkpoint every epoch", False),
+    ("ai", "I'll assume you have a GPU", True),
+    ("you", "no, this runs on CPU only", False),
+    ("ai", "understood, switching to CPU", False),
+    ("you", "the setup still references GPU software", False),
+    ("ai", "fixed that", False),
+]
+shown = len(TALK)
+bubbles = []
+for i in range(shown):
+    who, text, bad = TALK[i]
+    bg = ACCENT_SOFT if who == "you" else "#f5f5f5"
+    align = "flex-end" if who == "you" else "flex-start"
+    if bad:
+        bg = DANGER_SOFT
+    bubbles.append(
+        f'<div style="align-self:{align};max-width:82%;padding:4px 8px;'
+        f'border-radius:6px;background:{bg};font-size:11.5px;'
+        f'line-height:1.35">{text}</div>'
+    )
+chat_html = (
+    f'<div style="font-family:{BODY};display:flex;flex-direction:column;'
+    f'gap:3px;min-width:260px">'
+    + "".join(bubbles)
+    + "</div>"
+)
 
-:::{style="flex:1;max-width:320px;font-size:0.65em"}
+rereads = max(0, shown - 4)
+sidebar_html = (
+    f'<div style="font-family:{BODY};padding:10px 12px;background:#fafafa;'
+    f'border-radius:8px;min-width:190px;text-align:center">'
+    f'<div style="font-size:9px;font-weight:700;text-transform:uppercase;'
+    f'color:{MUTED};letter-spacing:.06em;margin-bottom:6px">'
+    f'The wrong answer</div>'
+    f'<div style="background:{DANGER_SOFT};border-radius:6px;padding:4px 8px;'
+    f'font-size:11.5px;display:inline-block">'
+    f'<em>"I\'ll assume you have a GPU"</em></div>'
+    f'<div style="margin-top:8px;font-size:13px;display:flex;'
+    f'justify-content:center;gap:20px">'
+    f'<div><span style="color:{MUTED}">Re-read</span> '
+    f'<b style="color:{DANGER}">{rereads}x</b></div>'
+    f'<div><span style="color:{MUTED}">Corrections</span> '
+    f'<b>{rereads}</b></div></div>'
+    f'<p style="margin:8px 0 0;font-size:11.5px;color:{MUTED};'
+    f'line-height:1.45;text-align:left">'
+    f'<b style="color:{INK}">The AI re-reads the mistake</b> alongside '
+    f'every correction, making it more likely to get confused again.</p>'
+    f'</div>'
+)
 
-| # | Message |
-|:---:|:---|
-| 1 | 🧑 set up the training pipeline |
-| 2 | 🤖 sure, here is a pipeline config |
-| 3 | 🧑 it needs to checkpoint every epoch |
-| 4 | [🤖 I'll assume you have a GPU]{style="color:#dc2626;font-weight:600"} |
-| 5 | 🧑 no, this runs on CPU only |
-| 6 | 🤖 understood, switching to CPU |
-| 7 | 🧑 the setup still references GPU software |
-| … | *corrections continue…* |
-
-:::
-
-:::{style="flex:1;max-width:300px;background:#fafafa;border-radius:10px;padding:16px;font-size:0.75em"}
-
-**The wrong answer**
-
-[Message 4: *"I'll assume you have a GPU"*]{style="background:#fee2e2;border-radius:6px;padding:4px 8px;display:inline-block"}
-
-Every new message re-reads the mistake alongside your corrections, making the AI **more likely to get confused again**.
-
-:::
-
-:::
+HTML(
+    f'<div style="display:flex;gap:32px;justify-content:center;'
+    f'align-items:flex-start;max-width:580px;margin:0 auto">'
+    f'<div style="flex:1">{chat_html}</div>'
+    f'<div style="flex:0 0 220px">{sidebar_html}</div>'
+    f'</div>'
+)
+```
 
 ::: {.notes}
 The mistake in message 4 is re-read on every subsequent turn.
-By message 12, the AI has re-read it 8 times — alongside 8 corrections
+By message 8, the AI has re-read it 4 times — alongside 4 corrections
 that are trying to undo it.
 :::
 
@@ -254,35 +311,89 @@ that are trying to undo it.
 Most chat apps have a pencil icon next to your messages.
 **Go back to the message that caused the problem** and rewrite it.
 
-:::{style="display:flex;gap:24px;justify-content:center;font-size:0.7em"}
+```{python}
+# Static version of FixComparison at stage=2
+def _bubble(who, text, bad=False, edited=False):
+    bg = ACCENT_SOFT if who == "you" else "#f5f5f5"
+    if bad:
+        bg = DANGER_SOFT
+    if edited:
+        bg = "#dcfce7"
+    icon = " ✏️" if edited else ""
+    return (
+        f'<div style="padding:3px 7px;border-radius:5px;background:{bg};'
+        f'font-size:11px;line-height:1.3">{text}{icon}</div>'
+    )
 
-:::{style="flex:1;max-width:300px"}
-[A — Keep correcting]{style="font-weight:700;color:#dc2626;text-transform:uppercase;font-size:0.8em;letter-spacing:0.06em"}
+_BASE_MSGS = [
+    ("you", "set up the training pipeline"),
+    ("ai", "here is a pipeline config"),
+    ("you", "it needs to checkpoint every epoch"),
+]
+_BAD = "added a step — assuming you have a GPU"
+_CORRECTIONS = [
+    ("you", "no, CPU only"), ("ai", "switching"),
+    ("you", "still references GPU"), ("ai", "fixed"),
+    ("you", "memory settings wrong"), ("ai", "updating"),
+    ("you", "file sizes too"), ("ai", "adjusted"),
+]
 
-12 messages
+# Path A — keep correcting
+a = [_bubble(w, t) for w, t in _BASE_MSGS]
+a.append(_bubble("ai", _BAD, bad=True))
+for w, t in _CORRECTIONS:
+    a.append(_bubble(w, t))
 
-**AI workload: [539,500]{style="color:#dc2626"}** words
+# Path B — edit the original
+b = [
+    _bubble("you", _BASE_MSGS[0][1]),
+    _bubble("ai", _BASE_MSGS[1][1]),
+    _bubble("you", "checkpoint every epoch — CPU only, no GPU", edited=True),
+    _bubble("ai", "added a CPU-safe checkpoint step"),
+]
 
-The wrong answer stays forever.
-:::
+kA = total_read(12)
+kB = total_read(3) + (SYS + TURN * 3) + (SYS + TURN * 4)
+pct = round(100 * (1 - kB / kA))
 
-:::{style="flex:1;max-width:300px"}
-[B — Edit the original]{style="font-weight:700;color:#2563eb;text-transform:uppercase;font-size:0.8em;letter-spacing:0.06em"}
+stats_a = (
+    f'<div style="margin-top:5px;font-size:11px;color:{MUTED}">'
+    f'<b>{len(a)}</b> messages · '
+    f'<b style="color:{DANGER}">{fmt(kA)}</b> words</div>'
+)
+stats_b = (
+    f'<div style="margin-top:5px;font-size:11px;color:{MUTED}">'
+    f'<b>{len(b)}</b> messages · '
+    f'<b style="color:{ACCENT}">{fmt(kB)}</b> words</div>'
+)
 
-4 messages
+view = (
+    f'<div style="font-family:{BODY};display:flex;gap:20px;'
+    f'justify-content:center;max-width:680px;margin:0 auto">'
+    f'<div style="flex:1;max-width:300px">'
+    f'<div style="font-size:9px;font-weight:700;text-transform:uppercase;'
+    f'letter-spacing:.06em;color:{DANGER};margin-bottom:5px;'
+    f'text-align:center">A — Keep correcting</div>'
+    f'<div style="display:flex;flex-direction:column;gap:2px;'
+    f'max-height:180px;overflow-y:auto">{"".join(a)}</div>{stats_a}</div>'
+    f'<div style="width:1px;background:{HAIRLINE};align-self:stretch"></div>'
+    f'<div style="flex:1;max-width:300px">'
+    f'<div style="font-size:9px;font-weight:700;text-transform:uppercase;'
+    f'letter-spacing:.06em;color:{ACCENT};margin-bottom:5px;'
+    f'text-align:center">B — Edit the original</div>'
+    f'<div style="display:flex;flex-direction:column;gap:2px;'
+    f'max-height:180px;overflow-y:auto">{"".join(b)}</div>{stats_b}</div>'
+    f'</div>'
+)
 
-**AI workload: [26,650]{style="color:#2563eb"}** words ✏️
+result = (
+    f'<p style="text-align:center;font-family:{BODY};font-size:13px;'
+    f'color:#1e40af;margin:6px 0"><b>{pct}% less work for the AI</b>'
+    f' — and the wrong answer is gone, not buried.</p>'
+)
 
-The wrong answer is gone.
-:::
-
-:::
-
-. . .
-
-:::{style="text-align:center;color:#1e40af;margin-top:20px"}
-**95% less work for the AI** — and the mistake is erased, not buried.
-:::
+HTML(view + result)
+```
 
 ::: {.notes}
 Most chat apps have a pencil icon next to your messages. Use it.

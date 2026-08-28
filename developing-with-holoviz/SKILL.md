@@ -4,7 +4,7 @@ description: Route to HoloViz sub-skills. Use for ANY task involving interactive
 user-invocable: true
 argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component]"
 metadata:
-  version: "2026.08.13"
+  version: "2026.08.28"
   author: holoviz
 ---
 
@@ -52,7 +52,9 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Serve, screenshot, verify rendered output, benchmark startup, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
 | Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
 | Migrate an existing plain-Panel app to Material UI / pmui | `skills/panel/SKILL.md` + `skills/panel/migrating-to-material-ui.md` |
-| Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting-panel-apps.md` |
+| Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, freezes for every user at once, a panel showing the previous selection, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting-panel-apps.md` |
+| Make a served app faster or properly concurrent — `async`/`await` callbacks, blocking I/O on the event loop, `asyncio.to_thread`, parallel queries, cancelling work the user moved on from, caching across sessions | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
+| Show results as they arrive rather than after the slowest one — progressive/incremental loading, streaming a partial result, time-to-first-paint, skeletons and loading placeholders, "no data" showing while data is still loading | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
 
 ## Skill Map
 
