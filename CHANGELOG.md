@@ -10,6 +10,21 @@ the top for each release; keep `## Unreleased` (no "Version" prefix) for
 in-progress notes so it is skipped by the extraction.
 -->
 
+## Unreleased
+
+### Changed
+
+- **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline
+  (`.github/workflows/eval.yml` and `scripts/`) now drives the Kilo Code CLI
+  (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier instead of the Copilot CLI.
+  CI reads a `KILO_API_KEY` repository secret, referenced via `{env:KILO_API_KEY}` in the
+  generated Kilo config so it is never written to disk; without the secret the run falls
+  back to anonymous free-model access, which is rate-limited (200 requests/h per IP).
+  Token and cost usage are now parsed from the Kilo CLI's JSON event stream rather than a
+  text footer, and each `metadata.json` additionally records `cost` and the resolved
+  underlying model. `eval-multi` now compares the paid `kilo/kilo-auto/frontier` tier
+  against the free tier so per-run cost can be compared.
+
 ## Version 2026.08.13
 
 ### Added

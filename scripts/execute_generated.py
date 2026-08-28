@@ -2,7 +2,7 @@
 """
 Execute generated code and capture screenshots.
 
-WARNING: This script executes Copilot-generated Python code in a subprocess.
+WARNING: This script executes agent-generated Python code in a subprocess.
 Although execution is confined to a temporary working directory, the subprocess
 runs with the same user permissions and has full network access. Only run this
 against code you are willing to execute locally.
