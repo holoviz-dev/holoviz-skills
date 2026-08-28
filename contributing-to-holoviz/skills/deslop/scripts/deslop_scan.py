@@ -24,9 +24,9 @@ import re
 import sys
 from dataclasses import dataclass, field
 
-ICASE = re.IGNORECASE
+# ------------------------------------------------------------------ constants
 
-# ---------------------------------------------------------------- regex rules
+ICASE = re.IGNORECASE
 
 # Each rule: (id, description, pattern, exclusion pattern or None)
 RULES: list[tuple[str, str, str, str | None]] = [
@@ -207,7 +207,8 @@ RULES: list[tuple[str, str, str, str | None]] = [
         "not-just-but",
         '"Not just X, but Y"',
         r"\bnot\s+(?:just|only|merely|simply)\s+[^,;.!?]{1,50}[,;]?\s*but\s+(?:also\s+)?"
-        r"|\bit(?:'s|\u2019s| is)\s+not\s+[^—–.!?]{1,45}[—–]\s*it(?:'s|\u2019s| is)\b",
+        r"|\bit(?:'s|\u2019s| is)\s+not\s+[^\u2014\u2013.!?]{1,45}"
+        r"[\u2014\u2013]\s*it(?:'s|\u2019s| is)\b",
         None,
     ),
     (
@@ -308,54 +309,31 @@ for _key, (_rid, _desc, _pat, _ex) in OPTIONAL_RULES.items():
     COMPILED[_rid] = re.compile(_pat, ICASE)
     if _ex:
         COMPILED_EXCL[_rid] = re.compile(_ex, ICASE)
+
 DESCRIPTIONS = {rid: desc for rid, desc, _, _ in RULES}
 DESCRIPTIONS.update({rid: desc for rid, desc, _, _ in OPTIONAL_RULES.values()})
+DESCRIPTIONS.update(
+    {
+        "stacked-questions": "Stacked rhetorical questions",
+        "repeated-openers": "Repeated sentence openers",
+        "echoing-run": "Echoing sentence run",
+    }
+)
 
-# ------------------------------------------------------------- masking prose
+COUNTED_RULES = {
+    "no-x-no-y": r"\bno\s+",
+    "did-not-chain": r"\b(?:did\s+not|didn['\u2019]t)\b",
+}
 
 FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
 INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
 LINK_TARGET_RE = re.compile(r"\]\([^)\s]+\)")
 URL_RE = re.compile(r"\bhttps?://\S+")
 
-
-def mask_non_prose(text: str, keep_urls: bool = False) -> str:
-    """Blank out code and quotes, preserving offsets so positions stay valid."""
-    lines = text.split("\n")
-    out: list[str] = []
-    fence: str | None = None
-    for line in lines:
-        if fence is not None:
-            out.append(" " * len(line))
-            if line.strip().startswith(fence):
-                fence = None
-            continue
-        m = FENCE_RE.match(line)
-        if m:
-            fence = m.group(2)[0] * 3
-            out.append(" " * len(line))
-            continue
-        stripped = line.lstrip()
-        is_indented_code = (
-            line[:4] == "    "
-            and not stripped.startswith(("-", "*", "+", ">", "|"))
-            and not re.match(r"^\d+[.)]\s", stripped)
-        )
-        if is_indented_code or stripped.startswith(">"):
-            out.append(" " * len(line))
-            continue
-        out.append(line)
-    masked = "\n".join(out)
-    masked = INLINE_CODE_RE.sub(lambda m: " " * len(m.group(0)), masked)
-    masked = LINK_TARGET_RE.sub(lambda m: " " * len(m.group(0)), masked)
-    if not keep_urls:
-        masked = URL_RE.sub(lambda m: " " * len(m.group(0)), masked)
-    return masked
-
-
-# ------------------------------------------------------- sentence-level rules
-
 SENTENCE_END_RE = re.compile(r"(?<=[.!?])[\"')\]]*\s+|\n{2,}")
+STRUCTURAL_RE = re.compile(r"^(?:#{1,6}\s|\||[-*+]\s|\d+[.)]\s|!\[|\[!)")
+WORD_RE = re.compile(r"[A-Za-z][A-Za-z''\-]*")
+
 ABBREV = {
     "e.g",
     "i.e",
@@ -374,7 +352,6 @@ ABBREV = {
     "ca",
     "ibid",
 }
-WORD_RE = re.compile(r"[A-Za-z][A-Za-z''\-]*")
 
 FUNCTION_WORDS = {
     "a",
@@ -495,6 +472,8 @@ OPENER_STOPLIST = {
     "your",
 }
 
+# ---------------------------------------------------------------- dataclasses
+
 
 @dataclass
 class Sentence:
@@ -502,7 +481,61 @@ class Sentence:
     start: int
 
 
-STRUCTURAL_RE = re.compile(r"^(?:#{1,6}\s|\||[-*+]\s|\d+[.)]\s|!\[|\[!)")
+@dataclass
+class Hit:
+    rule: str
+    line: int
+    col: int
+    match: str
+    count: int = 0
+
+
+@dataclass
+class FileReport:
+    path: str
+    words: int
+    hits: list[Hit] = field(default_factory=list)
+    em_dashes: int = 0
+
+
+# ------------------------------------------------------------------ masking
+
+
+def mask_non_prose(text: str, keep_urls: bool = False) -> str:
+    """Blank out code and quotes, preserving offsets so positions stay valid."""
+    lines = text.split("\n")
+    out: list[str] = []
+    fence: str | None = None
+    for line in lines:
+        if fence is not None:
+            out.append(" " * len(line))
+            if line.strip().startswith(fence):
+                fence = None
+            continue
+        m = FENCE_RE.match(line)
+        if m:
+            fence = m.group(2)[0] * 3
+            out.append(" " * len(line))
+            continue
+        stripped = line.lstrip()
+        is_indented_code = (
+            line[:4] == "    "
+            and not stripped.startswith(("-", "*", "+", ">", "|"))
+            and not re.match(r"^\d+[.)]\s", stripped)
+        )
+        if is_indented_code or stripped.startswith(">"):
+            out.append(" " * len(line))
+            continue
+        out.append(line)
+    masked = "\n".join(out)
+    masked = INLINE_CODE_RE.sub(lambda m: " " * len(m.group(0)), masked)
+    masked = LINK_TARGET_RE.sub(lambda m: " " * len(m.group(0)), masked)
+    if not keep_urls:
+        masked = URL_RE.sub(lambda m: " " * len(m.group(0)), masked)
+    return masked
+
+
+# ----------------------------------------------------------- sentence helpers
 
 
 def is_structural(text: str) -> bool:
@@ -553,6 +586,19 @@ def first_significant_word(sentence: str) -> str | None:
     return words[0].lower() if words else None
 
 
+# ------------------------------------------------------------------ scanning
+
+
+def _run_hit(rule_id: str, run: list[Sentence], count: int) -> dict:
+    text = " ".join(s.text for s in run)
+    return {
+        "rule": rule_id,
+        "start": run[0].start,
+        "match": text,
+        "count": count,
+    }
+
+
 def scan_sentences(masked: str) -> list[dict]:
     hits: list[dict] = []
     sentences = split_sentences(masked)
@@ -596,48 +642,6 @@ def scan_sentences(masked: str) -> list[dict]:
     return hits
 
 
-def _run_hit(rule_id: str, run: list[Sentence], count: int) -> dict:
-    text = " ".join(s.text for s in run)
-    return {
-        "rule": rule_id,
-        "start": run[0].start,
-        "match": text,
-        "count": count,
-    }
-
-
-SENTENCE_DESCRIPTIONS = {
-    "stacked-questions": "Stacked rhetorical questions",
-    "repeated-openers": "Repeated sentence openers",
-    "echoing-run": "Echoing sentence run",
-}
-DESCRIPTIONS.update(SENTENCE_DESCRIPTIONS)
-
-COUNTED_RULES = {
-    "no-x-no-y": r"\bno\s+",
-    "did-not-chain": r"\b(?:did\s+not|didn['\u2019]t)\b",
-}
-
-# ------------------------------------------------------------------ reporting
-
-
-@dataclass
-class Hit:
-    rule: str
-    line: int
-    col: int
-    match: str
-    count: int = 0
-
-
-@dataclass
-class FileReport:
-    path: str
-    words: int
-    hits: list[Hit] = field(default_factory=list)
-    em_dashes: int = 0
-
-
 def line_col(text: str, offset: int) -> tuple[int, int]:
     line = text.count("\n", 0, offset) + 1
     last_nl = text.rfind("\n", 0, offset)
@@ -678,6 +682,9 @@ def scan_text(text: str, path: str, enabled_optional: set[str], context: int) ->
     return report
 
 
+# ----------------------------------------------------------------- reporting
+
+
 def print_report(report: FileReport, show_density: bool) -> None:
     header = f"{report.path}  ({report.words} words)"
     print(header)
@@ -710,9 +717,14 @@ def print_report(report: FileReport, show_density: bool) -> None:
     print()
 
 
+# --------------------------------------------------------------------- main
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(
-        add_help=True, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        add_help=True,
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("paths", nargs="+", metavar="FILE")
     ap.add_argument("--colon-triple", action="store_true")
