@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "2026.08.13"
+  version: "2026.08.28"
   author: holoviz
 ---
 
@@ -28,7 +28,7 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 Read these for specialized topics. Each is a standalone document you can load on demand.
 
 - [Iterating on Panel Apps](iterating-on-panel-apps.md) — pre-flight lint, serve with logging, panel-live-server MCP tools, live-browser layout lint, Bokeh plot-model inspection, startup benchmarking, screenshot with Playwright, review and debug agentic loop
-- [Designing Panel Architecture](designing-panel-architecture.md) — composing larger apps (State/DataStore/View/App, `param.ClassSelector`, cross-object `@param.depends`, `from_data`, `pn.rx`) and runtime/scale (per-session model, `pn.state` scheduling, URL state sync, generator streaming, caching tiers, `nthreads`, profiling)
+- [Designing Panel Architecture](designing-panel-architecture.md) — composing larger apps (State/DataStore/View/App, `param.ClassSelector`, cross-object `@param.depends`, `from_data`, `pn.rx`) and runtime/scale (per-session model, reconnect/disconnect notifications, `pn.state` scheduling, URL state sync, generator streaming, **painting partial results** — the `on_chunk` hook, why a partial result is not an empty result, skeletons over prose, keeping the headline from being stolen mid-load — caching tiers and the `@pn.cache`-on-a-method trap, `nthreads`, **blocking the event loop** — why `async def` alone doesn't make I/O async, `asyncio.to_thread`, measuring stalls, bounded fan-out, work the user moved on from — profiling)
 - [Building Custom Components](building-custom-components.md) — Python-vs-JS decision ladder; pure-Python `Viewer`/`PyComponent`; JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent; CDN selection, event handling, state sync lifecycle
 - [Wrapping React Apps](wrapping-react-apps.md) — making an existing React/JSX UI the whole app: shell/app class split, `model.useState` as the only transport, `Child` embedding of Panel components, request/response param pairs, shadow-DOM CSS rules, `_importmap` externals, `panel compile` and the dev-vs-production bundle trap
 - [Using Material UI](using-material-ui.md) — building pmui apps (`pmui.Page`, `Container`/`Grid` layouts, centering, component gotchas) and theming (`theme_config` palette, typography, icons, brand assets, chart theming)
@@ -39,7 +39,7 @@ Read these for specialized topics. Each is a standalone document you can load on
 - [Using Tabulator](using-tabulator.md) — `add_filter` with widgets, checkbox selection, row content, function-based filtering
 - [Using Pytest Playwright](using-pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components
 - [Reviewing Panel Apps](reviewing-panel-apps.md) — anti-pattern checklist for code review: flickering, missing hold, watcher gaps, reactive-wiring priority, from_param super() ordering, mutation bugs
-- [Troubleshooting Panel Apps](troubleshooting-panel-apps.md) — symptom→cause→fix for apps that serve but misbehave silently: init ordering, dead-app, blank Page, responsive/spinner issues, version & deprecation diagnosis
+- [Troubleshooting Panel Apps](troubleshooting-panel-apps.md) — symptom→cause→fix for apps that serve but misbehave silently: init ordering, dead-app, blank Page, responsive/spinner issues, an app that freezes for *every* user at once, panels showing the previous selection, version & deprecation diagnosis
 
 ## Lookup
 
@@ -157,4 +157,5 @@ For new apps, use `pmui.Page` from panel-material-ui (see [Using Material UI](us
       self._next_btn.label = "Submit" if is_last else "Continue"
       self._content.update(current_step)
   ```
+- **Never block the event loop.** One loop serves every session, so a single synchronous DB/HTTP call in one user's callback freezes *everyone*. `async def` does not make a sync client async — wrap each blocking call in `await asyncio.to_thread(...)`, and measure it rather than assume ([Blocking the Event Loop](designing-panel-architecture.md#blocking-the-event-loop)).
 - For caching tiers, automatic threading, generator streaming, profiling, the loading-spinner pattern, and memory management, see [Designing Panel Architecture](designing-panel-architecture.md).

@@ -2,7 +2,7 @@
 name: hvplot
 description: Plot DataFrames and datasets using a Pandas .plot()-like API for Pandas, Polars, Xarray, DuckDB, Dask, and GeoPandas. Use when the user asks to visualize, plot, or chart tabular or multidimensional data. Do not use for element composition, streams, or custom Bokeh tools/tooltips (use HoloViews).
 metadata:
-  version: "2026.08.03"
+  version: "2026.08.17"
   author: holoviz
 ---
 
