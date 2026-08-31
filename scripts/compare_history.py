@@ -38,6 +38,7 @@ _HEATMAP = {
     "execution_time": ("{:.1f}", "RdYlGn_r"),
 }
 _CONDITIONS = ("with_skills", "without_skills")
+_CONDITION_ABBR = {"with_skills": "on", "without_skills": "off"}
 GREEN, RED = "#2ca02c", "#d62728"
 GRADE_STYLE = {
     True: "background-color: #e6f4ea; font-weight: 600",
@@ -403,7 +404,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             xaxis=xaxis,
             split="condition",
             tools=["hover"],
-            legend_position="top_right",
+            legend_position="top",
         )
         status = df["execution_success"].fillna(False).astype(bool)
         scatter_kw = dict(
@@ -419,7 +420,11 @@ class HistoricalDashboard(pn.viewable.Viewer):
         )
         over = df[status].hvplot.scatter(color=GREEN, **scatter_kw)
         under = df[~status].hvplot.scatter(color=RED, **scatter_kw)
-        return (violin * over * under).opts(xaxis=xaxis, tools=["hover"])
+        return (violin * over * under).opts(
+            xaxis=xaxis,
+            tools=["hover"],
+            backend_opts={"plot.min_border_left": 85},
+        )
 
     @param.depends("df")
     def _distributions(self):
@@ -449,6 +454,10 @@ class HistoricalDashboard(pn.viewable.Viewer):
             .agg(**{metric: (metric, "mean"), "created_at": ("created_at", "first")})
             .sort_values(["created_at", "run_id", "model", "condition"])
         )
+        # Short combined series label ("model · on"/"off") — one legend column instead
+        # of "model, condition", so a vertical right-side legend stays narrow and the
+        # color swatches line up in a single readable list.
+        agg["series"] = agg["model"] + " · " + agg["condition"].map(_CONDITION_ABBR)
         xaxis = stack_xaxis(i, n - 1)
         if agg.empty:
             return hv.Curve([], kdims=["run_id"], vdims=[metric]).opts(
@@ -457,7 +466,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         kw = dict(
             x="run_id",
             y=metric,
-            by=["model", "condition"],
+            by="series",
             xlabel="run" if xaxis else "",
         )
         line = agg.hvplot.line(
@@ -470,7 +479,11 @@ class HistoricalDashboard(pn.viewable.Viewer):
             **kw,
         )
         scatter = agg.hvplot.scatter(legend=False, **kw)
-        return (line * scatter).opts(xaxis=xaxis, tools=["hover"])
+        return (line * scatter).opts(
+            xaxis=xaxis,
+            tools=["hover"],
+            backend_opts={"plot.min_border_left": 85, "plot.min_border_right": 230},
+        )
 
     @param.depends("df")
     def _trends(self):
