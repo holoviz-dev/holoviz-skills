@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "2026.08.13"
+  version: "2026.08.31"
   author: holoviz
 ---
 
@@ -14,14 +14,20 @@ Always use a `pn.viewable.Viewer` class to structure apps. This keeps state, lay
 
 ## Contents
 
-- [References](#references) — iterative development, Material UI, plotting, data storytelling, custom components, React shells, Playwright testing, app structure & scaling, review
 - [Lookup](#lookup) — component docs URLs and site search
+- [References](#references) — iterative development, Material UI, plotting, data storytelling, custom components, React shells, Playwright testing, app structure & scaling, review
 - [Viewer Class Pattern](#viewer-class-pattern)
 - [Widgets and Extensions](#widgets-and-extensions)
 - [Defaults](#defaults)
 - [Templates and Layouts](#templates-and-layouts)
 - [Serving Workflow](#serving-workflow)
 - [Performance](#performance)
+
+## Lookup
+
+Fetch Panel docs as markdown, not HTML: prefix any Panel doc path with `/markdown/` and change `.html`/`.ipynb` to `.md` (also for links found inside pages), e.g `https://panel.holoviz.org/markdown/tutorials/basic/build_dashboard.md`. If the result is empty, the page moved — use the `llms.txt` index: `https://panel.holoviz.org/llms.txt`.
+
+- Anything else: web-search `https://panel.holoviz.org/search.html?q=<topic>`, then convert the `.html` hit to its `/markdown/…​.md` URL.
 
 ## References
 
@@ -40,11 +46,6 @@ Read these for specialized topics. Each is a standalone document you can load on
 - [Using Pytest Playwright](using-pytest-playwright.md) — `serve_component`/`wait_until` utilities, JS↔Python sync tests, complete test patterns for custom components
 - [Reviewing Panel Apps](reviewing-panel-apps.md) — anti-pattern checklist for code review: flickering, missing hold, watcher gaps, reactive-wiring priority, from_param super() ordering, mutation bugs
 - [Troubleshooting Panel Apps](troubleshooting-panel-apps.md) — symptom→cause→fix for apps that serve but misbehave silently: init ordering, dead-app, blank Page, responsive/spinner issues, version & deprecation diagnosis
-
-## Lookup
-
-- Component docs: `https://panel.holoviz.org/reference/{section}/{Component}.html` — sections are `panes`, `widgets`, `layouts`, `chat`, `global`, `indicators`, `templates`, `custom_components`.
-- Anything else: web-search `https://panel.holoviz.org/search.html?q=<topic>`.
 
 ## Viewer Class Pattern
 
