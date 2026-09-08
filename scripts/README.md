@@ -1,6 +1,6 @@
 # HoloViz Skills Evaluation
 
-Automated system to measure whether SKILL.md files improve Copilot's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces JSON summaries plus dashboards. Supports running multiple models in a single pass to compare their outputs side by side.
+Automated system to measure whether SKILL.md files improve Kilo Code's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces JSON summaries plus dashboards. Supports running multiple models in a single pass to compare their outputs side by side.
 
 ## Coverage
 
@@ -13,8 +13,10 @@ adding queries for other skills are welcome — see "Adding Queries" below.
 
 ## Requirements
 
-- A GitHub Copilot subscription (Individual, Business, or Enterprise) or access via the GitHub Copilot API
-- GitHub Copilot CLI installed and authenticated — see [installation guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli)
+- Kilo Code CLI installed — `npm install -g @kilocode/cli` (see the [Kilo CLI docs](https://kilo.ai/docs/code-with-ai/platforms/cli))
+- A Kilo account API key for authenticated runs. The free `kilo/kilo-auto/free` tier also
+  runs anonymously, but anonymous access is rate-limited (200 requests/h per IP), so a key
+  is recommended — and required for reliable CI runs.
 
 ## Quick Start
 
@@ -31,7 +33,7 @@ pixi run evals
 # Run without screenshots (faster, no Playwright needed)
 pixi run eval-no-screenshots
 
-# Run across multiple models
+# Compare the frontier (paid) and free Kilo auto tiers
 pixi run eval-multi
 
 # Run eval and merge history into eval_results/
@@ -59,7 +61,10 @@ Security and scope:
 
 Required repository secret:
 
-- `COPILOT_GITHUB_TOKEN`: a fine-grained PAT with `Copilot Requests` permission, tied to a user with Copilot CLI access
+- `KILO_API_KEY`: a Kilo account API key (from your profile at app.kilo.ai). It is
+  referenced via `{env:KILO_API_KEY}` in the generated Kilo config and never written to
+  disk. If it is not set, the workflow falls back to anonymous free-model access, which is
+  rate-limited (200 requests/h per IP).
 
 Workflow outputs:
 
@@ -77,11 +82,11 @@ python scripts/eval.py [options]
 Options:
   --queries ID [ID ...]     Run specific query IDs only (default: all)
   --models MODEL [MODEL ...]
-                            Model(s) to evaluate (default: Copilot's default).
-                            E.g. --models claude-sonnet-4.6 gpt-5.4-mini
+                            Model(s) to evaluate in provider/model format
+                            (default: Kilo's default). E.g. --models kilo/kilo-auto/free
   --skills both|with|without
                             Which condition(s) to evaluate (default: both)
-  --skip-generation         Skip Copilot queries; use existing generated_code.py files
+  --skip-generation         Skip Kilo queries; use existing generated_code.py files
   --skip-execution          Skip code execution step
   --skip-aggregation        Skip metrics aggregation step
   --skip-screenshots        Skip Playwright screenshot capture (faster)
@@ -96,10 +101,10 @@ Options:
 # Full pipeline, specific queries only
 python scripts/eval.py --queries hvplot_earthquake_plot
 
-# With-skills condition only (skip Copilot without-skills run)
+# With-skills condition only (skip Kilo without-skills run)
 python scripts/eval.py --skills with
 
-# Re-run execution + report without re-querying Copilot
+# Re-run execution + report without re-querying Kilo
 python scripts/eval.py --skip-generation
 
 # Generate responses only, no execution or report
@@ -109,27 +114,27 @@ python scripts/eval.py --skip-execution --skip-aggregation
 python scripts/eval.py --timeout 60 --skip-screenshots
 
 # Run with specific models
-python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-mini
+python scripts/eval.py --models kilo/anthropic/claude-sonnet-5
 
 # Compare two models, with-skills only
-python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-mini --skills with
+python scripts/eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free --skills with
 ```
 
 ### Available models
 
-Run `copilot --allow-all -p "list available model IDs"` to see current models. At time of writing:
+Models are given in `provider/model` format. Run `kilo models kilo` to list the Kilo
+Gateway catalog. Auto tiers route to underlying models server-side, so the tier ID stays
+stable even as the models behind it change:
 
-- `claude-sonnet-4.6` (default)
-- `claude-sonnet-4.5`
-- `claude-haiku-4.5`
-- `gpt-5.4`
-- `gpt-5.4-mini`
-- `gpt-5.3-codex`
-- `gpt-5-mini`
-- `gemini-3.1-pro-preview`
-- `gemini-3.5-flash`
+- `kilo/kilo-auto/free` — best available free models, no credits required (CI default)
+- `kilo/kilo-auto/efficient`, `kilo/kilo-auto/balanced`, `kilo/kilo-auto/frontier` — paid tiers
+- Individual free models appear as `*:free` entries in `kilo models kilo | grep :free`,
+  but that list rotates as providers change promotional periods
 
-When `--models` is not specified, Copilot uses its own default model. The `model` field is recorded as `"default"` in `metadata.json`, while the CLI labels it as `Default (Copilot)`.
+`pixi run eval-multi` compares the paid `kilo/kilo-auto/frontier` tier against the free
+tier so per-run cost can be compared.
+
+When `--models` is not specified, Kilo uses its own default model. The `model` field is recorded as `"default"` in `metadata.json`, while the CLI labels it as `Default (Kilo)`.
 
 ## Historical Dashboard
 
@@ -170,10 +175,10 @@ These scripts are still independently runnable in addition to being called by `e
 
 ```
 eval_results/
-├── <model>/                         # e.g. claude-sonnet-4.6, gpt-5.4-mini, default
+├── <model>/                         # e.g. kilo_kilo-auto_free, default
 │   ├── with_skills/
 │   │   └── [query_id]/
-│   │       ├── response.txt        # Raw Copilot output
+│   │       ├── response.txt        # Kilo response text
 │   │       ├── metadata.json       # Model, tokens, timing, execution result
 │   │       ├── generated_code.py   # Extracted code block
 │   │       ├── execution.log       # stdout/stderr from code run
@@ -238,8 +243,8 @@ queries:
 
 Fields:
 - `id` — unique slug (lowercase, underscores or hyphens)
-- `prompt` — the question/task sent to Copilot
-- `timeout` — per-query Copilot timeout in seconds
+- `prompt` — the question/task sent to Kilo
+- `timeout` — per-query Kilo timeout in seconds
 - `expected_output` — **not currently read or enforced by `eval.py`**; only
   `static_plot` outputs are actually supported by `execute_generated.py` (it
   can save HoloViews `Dimensioned` objects and Bokeh `Model` objects to
@@ -251,10 +256,17 @@ Fields:
 
 ## Troubleshooting
 
+**`Model not found: kilo/kilo-auto/free`**
+The free auto tier must be offered by the account behind `KILO_API_KEY`. Some
+organization or paid accounts do not serve `kilo-auto/free` (they expose only the paid
+tiers). If you hit this, use a key from an account that offers the free tier, or remove
+the `KILO_API_KEY` secret so the workflow falls back to anonymous free-model access
+(which always serves the free tier, but is rate-limited to 200 requests/h per IP).
+
 **Tokens and execution time show 0**
-The Copilot CLI token format changed. The parser in `eval.py` handles the current format:
-`Tokens  ↑ 13.0k (6.8k cached) • ↓ 170 (128 reasoning)`. If you see zeros, capture
-a raw `response.txt` and check the `Tokens` line format matches this pattern.
+Token and cost usage are read from the JSON event stream that `kilo run --format json`
+emits (summed across the `step_finish` events). If you see zeros, capture the raw
+`response.txt` and check it contains `step_finish` JSON events with a `tokens` field.
 
 **Code execution fails**
 Check `execution.log` in the query result directory for the full traceback.

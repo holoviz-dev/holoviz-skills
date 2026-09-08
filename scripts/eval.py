@@ -2,7 +2,7 @@
 """
 HoloViz skills evaluation runner.
 
-Runs Copilot queries with and without skills enabled, optionally executes
+Runs Kilo Code queries with and without skills enabled, optionally executes
 the generated code and aggregates metrics — all in a single command.
 
 Usage:
@@ -15,17 +15,17 @@ Usage:
   # Specific queries, with-skills condition only
   python eval.py --queries hvplot_earthquake_plot --skills with
 
-  # Re-run execution and reporting without re-querying Copilot
+  # Re-run execution and reporting without re-querying Kilo
   python eval.py --skip-generation
 
   # Full pipeline, longer execution timeout, no screenshots
   python eval.py --timeout 60 --skip-screenshots
 
   # Run with specific models
-  python eval.py --models claude-sonnet-4.6 gpt-5.4-mini
+  python eval.py --models kilo/kilo-auto/free
 
   # Compare two models, with-skills condition only
-  python eval.py --models claude-sonnet-4.6 gpt-5.4-mini --skills with
+  python eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free --skills with
 """
 
 import argparse
@@ -46,76 +46,94 @@ CODE_OUTPUT_INSTRUCTION = (
     "\n\nRespond with a single self-contained ```python``` code block and nothing else outside it."
 )
 
-# Sentinel used when no --model flag is passed (Copilot picks its default).
+# Sentinel used when no --model flag is passed (Kilo picks its default).
 DEFAULT_MODEL = "default"
-DEFAULT_MODEL_LABEL = "Default (Copilot)"
+DEFAULT_MODEL_LABEL = "Default (Kilo)"
 
 SCRIPTS_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPTS_DIR.parent
 
 
-def _parse_token_value(val: str) -> int:
-    """Convert a token value string like '13.0k' or '170' to an integer."""
-    val = val.strip()
-    if "k" in val.lower():
-        return int(float(val.lower().replace("k", "")) * 1000)
-    return int(val)
+def _parse_kilo_events(raw_output: str) -> list[dict]:
+    """Parse the JSON event stream emitted by `kilo run --format json`.
+
+    Non-JSON lines (e.g. first-run database migration notices) are skipped.
+    """
+    events = []
+    for line in raw_output.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return events
 
 
-class CopilotResponse:
-    """Parsed response from Copilot CLI."""
+def _extract_text_from_events(events: list[dict]) -> str:
+    """Reconstruct the assistant's visible text from `text` events.
 
-    def __init__(self, raw_output: str, query: str, execution_time: float, model: str):
+    A part may be streamed across several events carrying its accumulated
+    text, so keep only the latest text per part id.
+    """
+    texts: dict[str, str] = {}
+    order: list[str] = []
+    for event in events:
+        part = event.get("part") or {}
+        if event.get("type") != "text" or not part.get("text"):
+            continue
+        part_id = part.get("id") or f"part-{len(order)}"
+        if part_id not in texts:
+            order.append(part_id)
+        texts[part_id] = part["text"]
+    return "\n".join(texts[part_id] for part_id in order)
+
+
+def _extract_usage_from_events(events: list[dict]) -> tuple[dict[str, int], float, list[str]]:
+    """Sum token usage, cost, and routed models across `step_finish` events."""
+    tokens = {"input": 0, "output": 0, "cached": 0, "reasoning": 0}
+    cost = 0.0
+    resolved_models: list[str] = []
+    for event in events:
+        if event.get("type") != "step_finish":
+            continue
+        part = event.get("part") or {}
+        step_tokens = part.get("tokens") or {}
+        tokens["input"] += step_tokens.get("input", 0)
+        tokens["output"] += step_tokens.get("output", 0)
+        tokens["reasoning"] += step_tokens.get("reasoning", 0)
+        tokens["cached"] += (step_tokens.get("cache") or {}).get("read", 0)
+        cost += part.get("cost", 0)
+        model_id = (part.get("model") or {}).get("modelID")
+        if model_id and model_id not in resolved_models:
+            resolved_models.append(model_id)
+    return tokens, cost, resolved_models
+
+
+class KiloResponse:
+    """Parsed response from the Kilo Code CLI."""
+
+    def __init__(
+        self,
+        raw_output: str,
+        query: str,
+        execution_time: float,
+        model: str,
+        events: list[dict] | None = None,
+    ):
         self.raw_output = raw_output
         self.query = query
         self.execution_time = execution_time
         self.model = model
+        self.events = events or []
         self.code_blocks = self._extract_code_blocks()
-        self.tokens = self._extract_token_usage()
+        self.tokens, self.cost, self.resolved_models = _extract_usage_from_events(self.events)
 
     def _extract_code_blocks(self) -> list[str]:
         """Extract Python code blocks from the response (fenced ``` blocks only)."""
         pattern = r"```(?:python)?\s*\n(.*?)```"
         return re.findall(pattern, self.raw_output, re.DOTALL)
-
-    def _extract_token_usage(self) -> dict[str, int]:
-        """Extract token usage from the response footer.
-
-        The Copilot CLI footer looks like (fields are optional):
-          Tokens     ↑ 13.0k (6.8k cached) • ↓ 170 (128 reasoning)
-          Tokens     ↑ 14.3k • ↓ 18 (10 reasoning)
-          Tokens     ↑ 13.0k • ↓ 42
-        """
-        tokens = {"input": 0, "output": 0, "cached": 0, "reasoning": 0}
-
-        # Match the Tokens line; all parenthetical sub-fields are optional.
-        token_line_pattern = r"Tokens\s+↑\s*([\d.k]+)"
-        match = re.search(token_line_pattern, self.raw_output)
-        if not match:
-            return tokens
-
-        # Start of line (for sub-field extraction)
-        line_start = match.start()
-        line = self.raw_output[line_start : self.raw_output.find("\n", line_start)]
-
-        tokens["input"] = _parse_token_value(match.group(1))
-
-        # Optional: (N cached) after the input value
-        cached_match = re.search(r"\(([\d.k]+)\s+cached\)", line)
-        if cached_match:
-            tokens["cached"] = _parse_token_value(cached_match.group(1))
-
-        # Output tokens: after the • ↓
-        output_match = re.search(r"•\s*↓\s*([\d.k]+)", line)
-        if output_match:
-            tokens["output"] = _parse_token_value(output_match.group(1))
-
-        # Optional: (N reasoning) after the output value
-        reasoning_match = re.search(r"\(([\d.k]+)\s+reasoning\)", line)
-        if reasoning_match:
-            tokens["reasoning"] = _parse_token_value(reasoning_match.group(1))
-
-        return tokens
 
     def get_primary_code(self) -> str | None:
         return self.code_blocks[0] if self.code_blocks else None
@@ -126,6 +144,8 @@ class CopilotResponse:
             "model": self.model,
             "execution_time": self.execution_time,
             "tokens": self.tokens,
+            "cost": self.cost,
+            "resolved_models": self.resolved_models,
             "code_blocks_count": len(self.code_blocks),
             "has_code": len(self.code_blocks) > 0,
         }
@@ -148,15 +168,20 @@ def model_to_slug(model: str | None) -> str:
     return re.sub(r"[^a-zA-Z0-9_\-.]", "_", model)
 
 
-def run_copilot_query(
+def run_kilo_query(
     query: str, model: str | None = None, timeout: int = 180
-) -> tuple[str, float]:
+) -> tuple[str, float, list[dict]]:
+    """Run one query through the Kilo Code CLI in autonomous mode.
+
+    Returns the reconstructed assistant text, wall-clock time, and the
+    parsed JSON events (token/cost usage comes from the events, not text).
+    """
     start_time = time.time()
     try:
-        cmd = ["copilot", "--allow-all"]
+        cmd = ["kilo", "run", "--auto", "--format", "json"]
         if model:
-            cmd += ["--model", model]
-        cmd += ["-p", query]
+            cmd += ["-m", model]
+        cmd += [query]
 
         result = subprocess.run(
             cmd,
@@ -166,19 +191,20 @@ def run_copilot_query(
             cwd=REPO_ROOT,
         )
         execution_time = time.time() - start_time
-        output = result.stdout
+        events = _parse_kilo_events(result.stdout)
+        output = _extract_text_from_events(events)
         if result.stderr:
             output += f"\n\n[STDERR]\n{result.stderr}"
-        return output, execution_time
+        return output, execution_time, events
     except subprocess.TimeoutExpired:
-        return f"[TIMEOUT after {timeout}s]", time.time() - start_time
+        return f"[TIMEOUT after {timeout}s]", time.time() - start_time, []
     except Exception as e:
-        return f"[ERROR: {str(e)}]", time.time() - start_time
+        return f"[ERROR: {str(e)}]", time.time() - start_time, []
 
 
 def save_results(
     query_id: str,
-    response: CopilotResponse,
+    response: KiloResponse,
     output_dir: Path,
     skills_enabled: bool,
 ):
@@ -231,8 +257,12 @@ def run_generation(
                 print("  Running WITHOUT skills...")
                 disable_skills(REPO_ROOT)
                 try:
-                    raw_output, exec_time = run_copilot_query(prompt, model=model, timeout=timeout)
-                    response = CopilotResponse(raw_output, prompt, exec_time, model=model_label)
+                    raw_output, exec_time, events = run_kilo_query(
+                        prompt, model=model, timeout=timeout
+                    )
+                    response = KiloResponse(
+                        raw_output, prompt, exec_time, model=model_label, events=events
+                    )
                     tok = response.tokens
                     print(
                         f"  Completed in {exec_time:.2f}s | "
@@ -245,8 +275,10 @@ def run_generation(
 
             if not skip_with_skills:
                 print("  Running WITH skills...")
-                raw_output, exec_time = run_copilot_query(prompt, model=model, timeout=timeout)
-                response = CopilotResponse(raw_output, prompt, exec_time, model=model_label)
+                raw_output, exec_time, events = run_kilo_query(prompt, model=model, timeout=timeout)
+                response = KiloResponse(
+                    raw_output, prompt, exec_time, model=model_label, events=events
+                )
                 tok = response.tokens
                 print(
                     f"  Completed in {exec_time:.2f}s | "
@@ -336,7 +368,7 @@ Examples:
   # With-skills condition only
   python eval.py --skills with
 
-  # Re-run execution + report without re-querying Copilot
+  # Re-run execution + report without re-querying Kilo
   python eval.py --skip-generation
 
   # Generate only
@@ -346,10 +378,10 @@ Examples:
   python eval.py --timeout 60 --skip-screenshots
 
   # Run with specific models
-  python eval.py --models claude-sonnet-4.6 gpt-5.4-mini
+  python eval.py --models kilo/anthropic/claude-sonnet-5
 
   # Compare two models, with-skills only
-  python eval.py --models claude-sonnet-4.6 gpt-5.4-mini --skills with
+  python eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free --skills with
         """,
     )
 
@@ -376,7 +408,7 @@ Examples:
         default=None,
         metavar="MODEL",
         help=(
-            "Model(s) to evaluate (e.g. claude-sonnet-4.6 gpt-5.4-mini). "
+            "Model(s) to evaluate in provider/model format (e.g. kilo/kilo-auto/free). "
             f"Defaults to {DEFAULT_MODEL_LABEL}."
         ),
     )
@@ -389,7 +421,7 @@ Examples:
     parser.add_argument(
         "--skip-generation",
         action="store_true",
-        help="Skip Copilot query step (use existing generated_code.py files)",
+        help="Skip Kilo query step (use existing generated_code.py files)",
     )
     parser.add_argument(
         "--skip-execution",
@@ -442,7 +474,7 @@ Examples:
         print("No queries matched.")
         return 1
 
-    # None in the list means "use Copilot's default model" (no --model flag)
+    # None in the list means "use Kilo's default model" (no --model flag)
     models: list[str | None] = args.models if args.models else [None]
     models_requested = [model or DEFAULT_MODEL for model in models]
     run_id = args.run_id or _default_run_id(

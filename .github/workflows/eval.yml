@@ -151,39 +151,33 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Copilot CLI
-        run: npm install -g @github/copilot
+      - name: Install Kilo Code CLI
+        run: npm install -g @kilocode/cli
 
-      - name: Validate Copilot token configuration
+      - name: Configure Kilo Code
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
         run: |
-          if [[ -z "${COPILOT_GITHUB_TOKEN}" ]]; then
-            echo "::error::Missing required secret COPILOT_GITHUB_TOKEN"
-            exit 1
-          fi
-          mkdir -p "$HOME/.copilot"
-          # Copilot CLI requires the workspace directory to be listed in
-          # trustedFolders inside ~/.copilot/config.json before it will run
-          # non-interactively. This inline script adds GITHUB_WORKSPACE to
-          # that list, preserving any existing entries.
           python - <<'PY'
           import json
           import os
           from pathlib import Path
 
-          cfg_dir = Path.home() / ".copilot"
-          cfg_path = cfg_dir / "config.json"
-          cfg = {}
-          if cfg_path.exists():
-              try:
-                  cfg = json.loads(cfg_path.read_text())
-              except Exception:
-                  cfg = {}
-          trusted = set(cfg.get("trustedFolders", []))
-          trusted.add(os.environ["GITHUB_WORKSPACE"])
-          cfg["trustedFolders"] = sorted(trusted)
-          cfg_path.write_text(json.dumps(cfg, indent=2))
+          cfg_dir = Path.home() / ".config" / "kilo"
+          cfg_dir.mkdir(parents=True, exist_ok=True)
+          cfg = {
+              "$schema": "https://app.kilo.ai/config.json",
+              "model": "kilo/kilo-auto/free",
+              "small_model": "kilo/kilo-auto/free",
+              "experimental": {"openTelemetry": False},
+          }
+          if os.environ.get("KILO_API_KEY"):
+              cfg["provider"] = {
+                  "kilo": {"options": {"apiKey": "{env:KILO_API_KEY}"}},
+              }
+          else:
+              print("::warning::KILO_API_KEY is not set; Kilo runs anonymously (free tier, 200 req/h per IP)")
+          (cfg_dir / "kilo.jsonc").write_text(json.dumps(cfg, indent=2) + "\n")
           PY
 
       - name: Set up Pixi
@@ -193,7 +187,7 @@ jobs:
 
       - name: Preflight checks
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
         run: pixi run -e eval eval-check
 
       - name: Compute run metadata
@@ -203,8 +197,9 @@ jobs:
 
       - name: Run eval pipeline
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-        run: pixi run -e eval evals
+          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
+        # Some kilo auth accounts doesn't have ``kilo-auto/free``. Need to anonymize the request for this
+        run: XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals --models kilo/kilo-auto/free
 
       - name: Deploy historical dashboard
         if: needs.gate.outputs.deploy_dashboard == 'true'
