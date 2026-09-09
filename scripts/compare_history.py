@@ -247,16 +247,12 @@ class HistoricalDashboard(pn.viewable.Viewer):
             ("avg response time", df["execution_time"].mean(), "{value:.1f} s"),
             ("avg tokens", df["tokens_output"].mean(), "{value:,.0f}"),
         ]
-        kpis = pmui.Grid(
+        kpis = pn.FlexBox(
             *[
-                pmui.Grid(
-                    pn.indicators.Number(label=text, value=value, format=fmt),
-                    size={"xs": 6, "md": 4},
-                )
+                pn.indicators.Number(label=text, value=value, format=fmt, width=200)
                 for text, value, fmt in cards
             ],
-            container=True,
-            spacing=2,
+            gap="10px",
         )
         ws_ok, ws_fail = counts(with_df)
         wo_ok, wo_fail = counts(without_df)
