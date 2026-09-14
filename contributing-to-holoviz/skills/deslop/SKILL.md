@@ -2,7 +2,7 @@
 name: deslop
 description: Strip LLM slop from prose — rhetorical tics, false-profundity constructions, AI vocabulary, and boilerplate. Use when writing or reviewing any HoloViz prose (PR descriptions, docs, blog posts, READMEs, commit messages) to remove recognizable LLM patterns.
 metadata:
-  version: "2026.08.28"
+  version: "2026.09.14"
   author: holoviz
 ---
 
