@@ -2,7 +2,7 @@
 name: cleanup
 description: Code cleanup and refactoring guidelines for HoloViz packages. Use when reviewing PRs, refactoring code, or checking adherence to code quality standards in any HoloViz repository.
 metadata:
-  version: "2026.07.28"
+  version: "2026.09.14"
   author: holoviz
 ---
 
@@ -36,7 +36,7 @@ This skill covers code quality patterns and common pitfalls when reviewing or re
 - Use consistent naming. If a class is `FollowUpSuggestion`, the variable should be `follow_up_suggestion`, not `followup_suggestion` or `follow_up_suggestions`.
 - Sort `param` declarations alphabetically with a blank line between each.
 - Include `doc="""..."""` on every public param, starting on a new line.
-- Ensure comments are about *why* and *what must remain true*, not what the syntax does. Good comments explain intent, constraints, workarounds, performance rationale, or API quirks. Avoid restating obvious code or narrating line-by-line. Keep them concise; over-explaining is also a smell.
+- Ensure comments are about *why* and *what must remain true*, not what the syntax does. Good comments explain intent, constraints, workarounds, performance rationale, or API quirks. Avoid restating obvious code or narrating line-by-line. Keep them concise; over-explaining is also a smell. Run the [`deslop` skill](../deslop/SKILL.md) over comments and docstrings as well as prose: an AI-assisted diff tends to leave a comment that recounts the symptom, the trace and the fix, where the constraint alone was wanted. Cutting a comment can also strand the one above it, so check that neighbouring comments still describe what the code does.
 - Compute derived values (ranges, extents, validation scans) once and reuse them; don't rescan the data in every method or on every render.
 - Place internal `_`-prefixed params after public params. Use a `_`-prefixed param (e.g. `_cache = param.Dict()`) when the value needs to trigger watches or be serialized. Use a plain class/instance variable (e.g. `self._cache = {}` in `__init__`) for transient internal state that doesn't need param machinery.
 
