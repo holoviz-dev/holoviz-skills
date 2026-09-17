@@ -2,7 +2,7 @@
 name: pr-description
 description: Writing a clear pull request description for HoloViz packages. Use when drafting or reviewing the description, summary, or write-up of a PR in any HoloViz repository.
 metadata:
-  version: "2026.08.28"
+  version: "2026.09.14"
   author: holoviz
 ---
 
@@ -14,6 +14,8 @@ Follow the repo's PR template rather than inventing sections. Every HoloViz repo
 
 https://raw.githubusercontent.com/holoviz/.github/refs/heads/main/.github/pull_request_template.md
 
+The template carries HTML comments with instructions for each section. Read them, then delete them.
+
 ## Contents
 
 - [Writing each part well](#writing-each-part-well)
@@ -21,10 +23,13 @@ https://raw.githubusercontent.com/holoviz/.github/refs/heads/main/.github/pull_r
 
 ## Writing each part well
 
+The template's sections are authoritative; fetch them rather than working from the bullets below, which cover how to fill a section well, not which sections exist. The title is a separate PR field, not a template section.
+
 - **Title:** conventional-commit style (`fix:`, `feat:`, `docs:`, `chore:`) summarizing the change in one line.
-- **Description:** 2-3 sentences in your own words on what changed and why, with the motivation and a minimal reproducible example. Write the example per the [`minimal-example` skill](../minimal-example/SKILL.md) so a reviewer can paste and run it unchanged. Flag any breaking change, API change, new dependency, or migration step prominently so a reviewer cannot miss it.
-- **Before / After:** include for any observable or visual change (behavior, UI, plotting, rendered docs) with screenshots, GIFs, or video, labelled old versus new. Skip it when there is nothing to compare, such as docs or refactors.
-- **AI disclosure:** if AI was used, name the tool and model (for example Claude Code + Opus) and how it was used, and never delete the section. Non-disclosure can result in a ban.
+- **Description:** summarize the change and its motivation in your own words, say which issue it fixes, describe the tests you ran to verify it, and include a copy-pastable minimal reproducible example. Write the example per the [`minimal-example` skill](../minimal-example/SKILL.md) so a reviewer can paste and run it unchanged. Add visuals for any observable or visual change (behavior, UI, plotting, rendered docs) as screenshots, GIFs, or video, labelled old versus new; skip them when there is nothing to compare, such as docs or refactors. Flag any breaking change, API change, new dependency, or migration step prominently so a reviewer cannot miss it.
+- **`Fixes #{issue}`:** replace the placeholder with the issue number, or delete the line when the PR fixes no filed issue. Leaving `#{issue}` in place renders literally.
+- **AI Disclosure:** delete the section only if AI was not used. Otherwise name the tool and model on `Tool & Model:` (for example `Claude Code + Opus 4.6`), say briefly on `Usage:` what it did, and leave both checkboxes for the author to tick, since they are statements about the author's own testing and responsibility. Non-disclosure can result in a ban.
+- **Checklist:** keep the items that apply and remove the rest. "Tests added and are passing" stays unticked until the tests exist and pass, and per the [`testing` skill](../testing/SKILL.md) a new test must fail on `main` first. "Added documentation" goes when the PR adds or changes user-facing behavior.
 
 ## Voice and style
 
@@ -37,7 +42,8 @@ Write dense, causal prose rather than a padded list. When a PR makes several dis
 - Explain the motivation once; don't justify every step or restate the diff. State what each part does and trust the reader and the diff for the rest. Drop implementation details (how a script parses, what regex it uses) that the diff already shows; a bullet should say what something does for the reviewer, not how it works internally.
 - Keep concrete anchors (key identifiers, field names, a minimal example) even while compressing, so it stays specific.
 - Reserve backticks for concrete symbols (`obs_id`, `None`, function and parameter names); let conceptual names read as plain prose.
-- After drafting, run the [`deslop` skill](../deslop/SKILL.md) scanner on the description to catch LLM prose patterns (AI vocabulary, selling adverbs, em-dash overuse, negative parallelism). Fix every hit that isn't a false positive.
+- After drafting, run the [`deslop` skill](../deslop/SKILL.md) scanner on the description to catch LLM prose patterns (AI vocabulary, selling adverbs, em-dash overuse, negative parallelism). Fix every hit that isn't a false positive. Scan the prose only: leave the template's headings, checkboxes and `Fixes #` line intact, and don't scan the minimal example, since a reproducer's repeated imports and parallel assignments are not prose tics. A colon-into-a-triple inside an `AI Disclosure` `Usage:` field is a form field rather than a rhetorical flourish, so it stays.
+- Writing the description is the moment to re-read the diff's comments against the [`cleanup` skill](../cleanup/SKILL.md). Drafting the mechanism in prose exposes comments that narrate the same mechanism at length, and a comment only needs the constraint and what must remain true; the symptom, the trace and the reproducer belong in the description, which is why the two get written together. Check too that the change hasn't left a neighbouring comment describing behavior the diff removed.
 
 ## Example
 
