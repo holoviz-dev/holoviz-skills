@@ -14,27 +14,23 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
-- **Shared `eval-data` branch for eval run history, snapshots, and visuals** — after every
-  successful CI eval run, `scripts/eval_sync.py` writes `runs.json`, `history_summary.json`,
-  `runs/<run_id>/` snapshots, and per-query `plot_output.html`/`screenshot.png` to an orphan
-  `eval-data` git branch that mirrors the `eval_results/` layout. `pixi run eval-sync` pulls
-  that subset into a local `eval_results/`. `scripts/eval_publish.py` deploys the Outerbounds
-  dashboard from this branch by default (`--source branch`; `--source local` uses a local
-  `eval_results/`). Concurrent CI uploads re-merge JSON registries by key and retry.
+- **Shared `eval-data` branch for eval run history, snapshots, and visuals** — `scripts/eval_sync.py`
+  uploads `runs.json`, `history_summary.json`, `runs/<run_id>/` snapshots, and per-query
+  `plot_output.html`/`screenshot.png` to an orphan `eval-data` branch mirroring the
+  `eval_results/` layout. `pixi run eval-sync` pulls that subset into a local `eval_results/`.
+  `scripts/eval_publish.py` deploys the Outerbounds dashboard from this branch by default
+  (`--source local` uses a local `eval_results/` instead).
 
 ### Fixed
 
 - **Generated code no longer runs with credentials** — `execute_generated.py` strips
-  credential-like environment variables (`*_API_KEY`, `*TOKEN*`, `*SECRET*`,
-  `*PASSWORD*`, `*CREDENTIAL*`) from the subprocess that runs untrusted, model-generated
-  code.
-- **Failed Kilo invocations no longer record "successful" runs** — `scripts/eval.py`
-  checks the CLI's exit code and aborts before aggregation and publishing, instead of
-  uploading an empty failed run to `eval-data` with exit 0.
-- **First upload to `eval-data` commits only eval data** — orphan branch creation now uses
-  `git switch --orphan` on a temporary ref, which starts from an empty index; the previous
-  `git checkout --orphan` carried over the start point's tree. Local `eval-data` branches
-  belonging to contributors are no longer force-deleted.
+  credential-like environment variables from the subprocess, and CI checkout no longer
+  persists the git token to `.git/config`.
+- **Failed Kilo invocations no longer record "successful" runs** — `scripts/eval.py` checks
+  each invocation's CLI exit code and aborts before aggregation and publishing.
+- **First upload to `eval-data` commits only eval data** — orphan branch creation uses
+  `git switch --orphan` on a temporary ref, and never deletes a contributor's local
+  `eval-data` branch.
 
 ### Changed
 

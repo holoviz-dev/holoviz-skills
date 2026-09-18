@@ -244,10 +244,10 @@ def run_generation(
     skip_without_skills: bool = False,
     skip_with_skills: bool = False,
 ) -> list[str]:
-    """Run the generation step, returning the query IDs whose Kilo invocation
-    failed (nonzero CLI exit). Failed invocations still write their raw
-    output to disk for debugging, but the caller must not aggregate or
-    publish a run that contains them."""
+    """Run the generation step, returning the "model/condition/query" labels
+    whose Kilo invocation failed (nonzero CLI exit). Failed invocations still
+    write their raw output to disk for debugging, but the caller must not
+    aggregate or publish a run that contains them."""
     failed: list[str] = []
     for model in models:
         model_label = model or DEFAULT_MODEL
@@ -285,6 +285,9 @@ def run_generation(
                         + (f" ({tok['cached']} cached)" if tok["cached"] else "")
                     )
                     save_results(query_id, response, output_dir, skills_enabled=False)
+                    if returncode != 0:
+                        failed.append(f"{model_label}/without_skills/{query_id}")
+                        print(f"  ✗ Kilo CLI exited with code {returncode}")
                 finally:
                     enable_skills(REPO_ROOT)
 
@@ -308,10 +311,9 @@ def run_generation(
                     + (f" ({tok['cached']} cached)" if tok["cached"] else "")
                 )
                 save_results(query_id, response, output_dir, skills_enabled=True)
-
-            if returncode != 0:
-                failed.append(query_id)
-                print(f"  ✗ Kilo CLI exited with code {returncode}")
+                if returncode != 0:
+                    failed.append(f"{model_label}/with_skills/{query_id}")
+                    print(f"  ✗ Kilo CLI exited with code {returncode}")
 
             print(f"{'─' * 60}")
 
