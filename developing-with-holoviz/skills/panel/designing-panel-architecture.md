@@ -314,3 +314,117 @@ Profile a callback with `@pn.io.profile("name", engine=...)` (engines: `pyinstru
 - **Defer heavy components:** `pn.extension(defer_load=True, loading_indicator=True)` renders the page first and loads slow panes afterward with a spinner.
 - **Loading spinner:** wrap a slow update in the component's `loading` flag — `with self._main.param.update(loading=True): ...` sets it on enter and reverts on exit. **Caveat:** a synchronous callback won't flush the spinner until it returns; make the slow work `async` if you need it visible *during* the load.
 - **Memory:** cap streaming history, call `pn.state.clear_caches()` when appropriate, and schedule periodic restarts for long-running deployments.
+
+### Eager Init
+
+When the app has a landing page (search-first, login, etc.), move connection setup and reference-data loads into a background task so the first real action skips the cold-start cost:
+
+```python
+import threading
+
+class MyApp(pn.viewable.Viewer):
+    def __init__(self, **params):
+        super().__init__(**params)
+        self._con = None
+        self._init_lock = threading.Lock()
+        asyncio.ensure_future(self._eager_init())
+
+    async def _eager_init(self):
+        try:
+            await asyncio.to_thread(self._warm_connection)
+        except Exception:
+            pass  # will retry on first query
+
+    def _warm_connection(self):
+        with self._init_lock:
+            if self._con is None:
+                self._con = self._connect()
+```
+
+The `threading.Lock` prevents a search that arrives before init finishes from creating a duplicate connection — it blocks on the lock instead. The query method calls the same `_warm_connection()`; if init is done, the lock is free and the inner check is false.
+
+### Two-Phase Rendering
+
+When one component is orders of magnitude heavier than others (a datashader map vs. an ECharts chart), don't make the user wait for everything:
+
+**Phase 1** — lightweight results:
+```python
+# Tables and KPIs appear immediately
+self.shell.kpis = kpis
+with pn.io.hold():
+    self._records_table.value = records
+    self._state_chart.object = bar_config
+# Clear loading on visible tabs
+with pn.io.hold():
+    self._chart.loading = False
+    self._table.loading = False
+```
+
+**Phase 2** — heavy map (background):
+```python
+await asyncio.sleep(0)  # yield so phase 1 flushes
+element = await asyncio.to_thread(self._build_map, data)
+self._map.object = element
+self._map.loading = False
+```
+
+### Tab-Aware Loading
+
+With `pmui.Tabs(dynamic=True)`, inactive tabs don't render. Exploit this by putting the heaviest pane on a non-default tab:
+
+1. Default tab = lightweight (ECharts bar chart: ~0.03s)
+2. Map tab = heavy (HoloViews/datashader: 2–7s Bokeh serialize)
+3. Phase 2 builds the map in the background
+4. Map serializes only when the user clicks the tab
+
+Start with a bare basemap as the initial map object so the Map tab always has something instant to show. Phase 2 replaces it with the data overlay.
+
+### ReactComponent Params Outside hold()
+
+`pn.io.hold()` batches Bokeh model syncs but may not flush ReactComponent param changes. Always set shell params outside the hold block:
+
+```python
+# ✅ ReactComponent params flush immediately
+self.shell.kpis = kpis
+self.shell.count_message = "95,173 records"
+
+# ✅ Bokeh widgets batched together
+with pn.io.hold():
+    self._records_table.value = records
+    self._chart.object = config
+```
+
+### Loading Flag Discipline
+
+Loading flags must always clear regardless of code path. Use try/finally — `finally` runs whether `_do_search` succeeds, raises, or returns early from a stale check:
+
+```python
+async def _update(self, _nonce):
+    with pn.io.hold():
+        self._chart.loading = True
+        self._table.loading = True
+    try:
+        await self._do_search(street)  # clears loading internally after phase 1
+    except Exception as exc:
+        self.shell.count_message = f"Query failed: {exc}"
+    finally:
+        with pn.io.hold():
+            self._chart.loading = False
+            self._table.loading = False
+```
+
+Setting `False` on something already `False` (because `_do_search` cleared it in phase 1) is a no-op — the `finally` is a safety net, not the primary clear.
+
+### Split Build Methods
+
+Separate table processing (FIPS decoding, column renaming — no geometry) from map building (WKB decode, projection, rasterize pipeline). This lets phase 1 return results without touching geometry:
+
+```python
+def _build_tables(self, sel, by_state):
+    """DataFrames only. <0.1s."""
+    ...
+
+def _build_map(self, sel):
+    """WKB → project → spatialpandas → rasterize. 1–2s."""
+    ...
+```

@@ -182,3 +182,21 @@ Layout and interaction patterns for data apps and interactive tools:
 - **Context before controls**: show the data a control acts on *before* the control itself — users shouldn't scroll back up to act after scrolling down to look. Applies to forms, dashboards, and review screens alike.
 - **Neutral defaults for captured input**: don't preselect an answer the user is meant to provide, and keep submit disabled until they choose — a default silently skews the data. (See the radio `default=None` gotcha above; a directly-created widget makes an unset state real.)
 - **Group controls with what they affect**: place action controls adjacent to their content rather than in a distant sidebar.
+
+### Dashboard Layout Patterns
+
+**Sidebar vs full-width.** A sidebar works well for persistent controls (filters, navigation, settings) that the user references while viewing the main content. It works poorly when the sidebar holds a data table that duplicates or competes with the main view — both end up too narrow. If the sidebar content is a different *view* of the same data (a leaderboard next to a map), consider giving each its own tab instead.
+
+**Search-first landing pages.** If the app's primary action is a search, the landing page IS the search. Full-viewport hero with centered content: brand badge → title → search bar (wider than the title) → example-query chips → teaser stat. No empty chart placeholders, no "Connecting..." text. Use a dark background with subtle CSS grid watermark for texture.
+
+**KPI ledger, not cards.** A single horizontal strip with `flex: 1 1 0` cells, separated by hairline borders. No shadows, no individual card backgrounds. Typography hierarchy within each cell: label (serif, small, muted) → value (sans, large, accent color, `tabular-nums`) → caption (small, muted). Avoid monospace for values — system sans with `letter-spacing: -0.02em` and `font-variant-numeric: tabular-nums` gives alignment without the Courier look.
+
+**Tab order = perceived performance.** Put the lightest tab first. An ECharts bar chart (~0.03s) as the default tab, with the datashader map (2–7s) on a secondary tab, makes the app feel instant even though the heaviest component hasn't loaded.
+
+**Horizontal bars over donuts.** A donut with 50 slices is decoration. A sorted horizontal bar chart with inline count labels is scannable at a glance.
+
+**Table design.** Decode codes (FIPS → state name). Add computed columns (geodesic length, lat/lon centroid). Sort by the most interesting column (longest streets first), not database order. Use `layout="fit_data_stretch"` on Tabulator to avoid percentage-width fights inside Tabs.
+
+**Two accent colors.** Structural accent (dark green: header, active tab, focus rings) + data accent (amber: KPI values, chart bars, map density colormap). Everything else neutral. Match the Bokeh plot `bgcolor` to the page background so the map frame disappears.
+
+**Empty/loading states.** Pre-search: the landing page is the empty state. During search: "Searching..." in the header, spinners on panes (`loading_spinner="arc"`, `loading_color` to data accent). KPIs show dashes ("—") until phase 1 completes. Map shows bare basemap (renders instantly) until phase 2 overlays data.
