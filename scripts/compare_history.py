@@ -240,7 +240,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         lift = None if None in (with_rate, without_rate) else with_rate - without_rate
         cards = [
             ("runs shown", df["run_id"].nunique(), "{value}"),
-            ("queries × models", df["query_id"].nunique(), f"{{value}} × {df['model'].nunique()}"),
+            ("queries x models", df["query_id"].nunique(), f"{{value}} x {df['model'].nunique()}"),
             ("success with skills", with_rate, "{value:.0%}"),
             ("success without skills", without_rate, "{value:.0%}"),
             ("pass-rate lift", lift, "{value:+.0%}"),
