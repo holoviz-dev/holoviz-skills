@@ -192,14 +192,21 @@ jobs:
 
       - name: Compute run metadata
         id: runmeta
+        env:
+          CHECKOUT_REF: ${{ needs.gate.outputs.checkout_ref }}
         run: |
-          echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          # issue_comment runs check out the PR head SHA, which differs from GITHUB_SHA
+          SHA="$GITHUB_SHA"
+          if [[ "$CHECKOUT_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            SHA="$CHECKOUT_REF"
+          fi
+          echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${SHA:0:7}" >> "$GITHUB_OUTPUT"
 
       - name: Run eval pipeline
         env:
           KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
         # Some kilo auth accounts doesn't have ``kilo-auto/free``. Need to anonymize the request for this
-        run: XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals --models kilo/kilo-auto/free
+        run: XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals --models kilo/kilo-auto/free --run-id "${{ steps.runmeta.outputs.run_id }}"
 
       - name: Push eval history to eval-data
         if: success()
