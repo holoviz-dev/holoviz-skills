@@ -208,11 +208,12 @@ Useful environment variables:
 - `EVAL_RUN_TRIGGER` (`manual`, `ci_comment`, `ci_dispatch`, `ci_schedule`)
 - `OUTERBOUNDS_CONFIG_TOKEN` (optional; configures the CLI profile before deploy)
 
-The deploy command stages only:
+The deploy command stages:
 
 - `scripts/compare_history.py`
 - `eval_results/runs.json`
 - `eval_results/history_summary.json`
+- `eval_results/**/plot_output.html` (or `screenshot.png` if no plot) for the Plot Outputs tab
 
 and deploys that bundle to Outerbounds.
 
