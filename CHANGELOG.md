@@ -10,6 +10,46 @@ the top for each release; keep `## Unreleased` (no "Version" prefix) for
 in-progress notes so it is skipped by the extraction.
 -->
 
+## Unreleased
+
+### Added
+
+- **Shared `eval-data` branch for eval run history, snapshots, and visuals** — `scripts/eval_sync.py`
+  uploads `runs.json`, `history_summary.json`, `runs/<run_id>/` snapshots, and per-query
+  `plot_output.html`/`screenshot.png` to an orphan `eval-data` branch mirroring the
+  `eval_results/` layout. `pixi run eval-sync` pulls that subset into a local `eval_results/`.
+  `scripts/eval_publish.py` deploys the Outerbounds dashboard from this branch by default
+  (`--source local` uses a local `eval_results/` instead).
+
+### Fixed
+
+- **Generated code no longer runs with credentials** — `execute_generated.py` strips
+  credential-like environment variables from the subprocess, and CI checkout no longer
+  persists the git token to `.git/config`.
+- **Failed Kilo invocations no longer record "successful" runs** — `scripts/eval.py` checks
+  each invocation's CLI exit code and aborts before aggregation and publishing.
+- **First upload to `eval-data` commits only eval data** — orphan branch creation uses
+  `git switch --orphan` on a temporary ref, and never deletes a contributor's local
+  `eval-data` branch.
+- **Visuals are replaced as a pair** — `eval_sync.py` clears `plot_output.html` and
+  `screenshot.png` together before copying, so a run that no longer produces one of them
+  cannot leave a stale file for the dashboard.
+- **CI run IDs match the evaluated commit** — `runmeta` reads `git rev-parse HEAD`, and the
+  eval step retries anonymously when the authenticated run cannot access the free tier.
+
+### Changed
+
+- **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline
+  (`.github/workflows/eval.yml` and `scripts/`) now drives the Kilo Code CLI
+  (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier instead of the Copilot CLI.
+  CI reads a `KILO_API_KEY` repository secret, referenced via `{env:KILO_API_KEY}` in the
+  generated Kilo config so it is never written to disk; without the secret the run falls
+  back to anonymous free-model access, which is rate-limited (200 requests/h per IP).
+  Token and cost usage are now parsed from the Kilo CLI's JSON event stream rather than a
+  text footer, and each `metadata.json` additionally records `cost` and the resolved
+  underlying model. `eval-multi` now compares the paid `kilo/kilo-auto/frontier` tier
+  against the free tier so per-run cost can be compared.
+
 ## Version 2026.08.13
 
 ### Added
