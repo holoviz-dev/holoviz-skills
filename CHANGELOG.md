@@ -31,6 +31,11 @@ in-progress notes so it is skipped by the extraction.
 - **First upload to `eval-data` commits only eval data** — orphan branch creation uses
   `git switch --orphan` on a temporary ref, and never deletes a contributor's local
   `eval-data` branch.
+- **Visuals are replaced as a pair** — `eval_sync.py` clears `plot_output.html` and
+  `screenshot.png` together before copying, so a run that no longer produces one of them
+  cannot leave a stale file for the dashboard.
+- **CI run IDs match the evaluated commit** — `runmeta` reads `git rev-parse HEAD`, and the
+  eval step retries anonymously when the authenticated run cannot access the free tier.
 
 ### Changed
 

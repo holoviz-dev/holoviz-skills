@@ -66,8 +66,9 @@ Required repository secret:
 
 - `KILO_API_KEY`: a Kilo account API key (from your profile at app.kilo.ai). It is
   referenced via `{env:KILO_API_KEY}` in the generated Kilo config and never written to
-  disk. If it is not set, the workflow falls back to anonymous free-model access, which is
-  rate-limited (200 requests/h per IP).
+  disk. If it is not set, or the account behind it cannot access the free tier, the
+  workflow retries with anonymous free-model access, which is rate-limited (200 requests/h
+  per IP).
 
 Workflow outputs:
 
@@ -282,9 +283,9 @@ Fields:
 **`Model not found: kilo/kilo-auto/free`**
 The free auto tier must be offered by the account behind `KILO_API_KEY`. Some
 organization or paid accounts do not serve `kilo-auto/free` (they expose only the paid
-tiers). If you hit this, use a key from an account that offers the free tier, or remove
-the `KILO_API_KEY` secret so the workflow falls back to anonymous free-model access
-(which always serves the free tier, but is rate-limited to 200 requests/h per IP).
+tiers). The workflow retries such a failed run with anonymous free-model access, which
+always serves the free tier but is rate-limited to 200 requests/h per IP; if that is too
+slow, use a key from an account that offers the free tier.
 
 **Tokens and execution time show 0**
 Token and cost usage are read from the JSON event stream that `kilo run --format json`

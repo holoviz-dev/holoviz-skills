@@ -81,11 +81,8 @@ def _remote_branch_exists(repo_root: Path, remote: str, branch: str) -> bool:
 def _data_branch_worktree(repo_root: Path, remote: str, branch: str) -> Iterator[Path]:
     """Check out `branch` into a fresh, temporary git worktree.
 
-    Yields a worktree ready to receive eval data: either a detached checkout
-    of the remote branch, or a fresh orphan when the branch doesn't exist on
-    `remote` yet. All work happens on a uniquely named temporary ref that
-    only this script creates, so any local branch a user may have named
-    `branch` is never touched, and the worktree is always removed again.
+    Yields a detached checkout of the remote branch, or a fresh orphan ref at
+    a unique temporary name when the branch does not exist on `remote` yet.
     """
     _git(["worktree", "prune"], cwd=repo_root, check=False)
     _git(["fetch", remote, branch], cwd=repo_root, check=False)
@@ -119,10 +116,16 @@ def _iter_query_dirs(eval_results_dir: Path) -> Iterator[tuple[str, str, Path]]:
 
 
 def _copy_visuals(source_root: Path, dest_root: Path) -> int:
-    """Copy plot_output.html/screenshot.png for every query dir, latest-wins."""
+    """Copy plot_output.html/screenshot.png for every query dir, latest-wins.
+
+    The destination pair is cleared per query dir so both filenames stay in
+    sync with the source run.
+    """
     copied = 0
     for model, condition, query_dir in _iter_query_dirs(source_root):
         dest_dir = dest_root / model / condition / query_dir.name
+        for filename in VISUAL_FILENAMES:
+            (dest_dir / filename).unlink(missing_ok=True)
         for filename in VISUAL_FILENAMES:
             src = query_dir / filename
             if not src.exists():
@@ -136,8 +139,7 @@ def _copy_visuals(source_root: Path, dest_root: Path) -> int:
 def _copy_run_snapshots(source_root: Path, dest_root: Path, run_ids: set[str] | None) -> int:
     """Copy runs/<run_id>/ dirs not already present at the destination.
 
-    Snapshots are immutable once written, so an existing destination dir is
-    never overwritten.
+    Snapshots are immutable, so an existing destination dir is kept.
     """
     source_runs_dir = source_root / "runs"
     if not source_runs_dir.is_dir():

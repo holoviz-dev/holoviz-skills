@@ -178,8 +178,7 @@ def run_kilo_query(
 
     Returns the reconstructed assistant text, wall-clock time, the parsed
     JSON events (token/cost usage comes from the events, not text), and the
-    CLI's exit code (nonzero means the query itself failed, e.g. auth or
-    rate-limit errors, as opposed to a model that answered without code).
+    CLI's exit code.
     """
     start_time = time.time()
     try:
@@ -245,9 +244,8 @@ def run_generation(
     skip_with_skills: bool = False,
 ) -> list[str]:
     """Run the generation step, returning the "model/condition/query" labels
-    whose Kilo invocation failed (nonzero CLI exit). Failed invocations still
-    write their raw output to disk for debugging, but the caller must not
-    aggregate or publish a run that contains them."""
+    whose Kilo invocation exited nonzero. Failed invocations still write their
+    raw output to disk for debugging."""
     failed: list[str] = []
     for model in models:
         model_label = model or DEFAULT_MODEL

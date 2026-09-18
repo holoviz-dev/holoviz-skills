@@ -94,15 +94,12 @@ _HEADLESS_SAVE_CODE = textwrap.dedent("""
 """)
 
 
-# Matches variable names that hold credentials. Generated code is untrusted
-# and has network access, so the execution subprocess must not inherit
-# anything an exfiltration snippet could read and send elsewhere.
+# Variable names that hold credentials; excluded from the execution env.
 _CREDENTIAL_NAME = re.compile(r"API_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL", re.IGNORECASE)
 
 
 def _execution_env() -> dict[str, str]:
-    """Child environment for generated code: non-interactive matplotlib
-    backend, credential-like variables removed."""
+    """Child environment for generated code: credential variables removed."""
     env = {key: value for key, value in os.environ.items() if not _CREDENTIAL_NAME.search(key)}
     env["MPLBACKEND"] = "Agg"
     return env

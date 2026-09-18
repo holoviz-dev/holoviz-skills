@@ -145,9 +145,7 @@ jobs:
         with:
           ref: ${{ needs.gate.outputs.checkout_ref }}
           fetch-depth: 0
-          # Generated code runs in the same workspace; keep git credentials out
-          # of .git/config so it cannot read them. The token is injected only for
-          # the later push step.
+          # Authenticate git only in the push step, after generated code has run.
           persist-credentials: false
 
       - name: Set up Node.js
@@ -196,21 +194,41 @@ jobs:
 
       - name: Compute run metadata
         id: runmeta
-        env:
-          CHECKOUT_REF: ${{ needs.gate.outputs.checkout_ref }}
         run: |
-          # issue_comment runs check out the PR head SHA, which differs from GITHUB_SHA
-          SHA="$GITHUB_SHA"
-          if [[ "$CHECKOUT_REF" =~ ^[0-9a-f]{40}$ ]]; then
-            SHA="$CHECKOUT_REF"
-          fi
+          SHA="$(git rev-parse HEAD)"
           echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${SHA:0:7}" >> "$GITHUB_OUTPUT"
 
       - name: Run eval pipeline
         env:
           KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
-        # Some kilo auth accounts doesn't have ``kilo-auto/free``. Need to anonymize the request for this
-        run: XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals --models kilo/kilo-auto/free --run-id "${{ steps.runmeta.outputs.run_id }}"
+          RUN_ID: ${{ steps.runmeta.outputs.run_id }}
+        # Isolate Kilo's local session/database state. Accounts without
+        # free-tier access are retried anonymously below.
+        run: |
+          run_eval() {
+            XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals \
+              --models kilo/kilo-auto/free --run-id "$RUN_ID"
+          }
+          if run_eval; then
+            exit 0
+          fi
+          if [ -z "$KILO_API_KEY" ]; then
+            exit 1
+          fi
+          echo "::warning::Authenticated eval run failed; retrying anonymously."
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          cfg = Path.home() / ".config" / "kilo" / "kilo.jsonc"
+          data = json.loads(cfg.read_text())
+          data.pop("provider", None)
+          cfg.write_text(json.dumps(data, indent=2) + "\n")
+          PY
+          env -u KILO_API_KEY bash -c 'run_eval() {
+            XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals \
+              --models kilo/kilo-auto/free --run-id "$RUN_ID"
+          }; run_eval'
 
       - name: Push eval history to eval-data
         if: success()
@@ -219,8 +237,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Generated code has already run by now, so it is safe to make the
-          # remote authenticated for the push (and for the dashboard pull below).
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           pixi run -e eval eval-sync --upload --run-id "${{ steps.runmeta.outputs.run_id }}"
 
