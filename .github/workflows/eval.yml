@@ -201,28 +201,18 @@ jobs:
         # Some kilo auth accounts doesn't have ``kilo-auto/free``. Need to anonymize the request for this
         run: XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals --models kilo/kilo-auto/free
 
-      - name: Deploy historical dashboard
-        if: needs.gate.outputs.deploy_dashboard == 'true'
-        run: pixi run -e eval eval-deploy-dashboard
-
-      - name: Commit updated eval history
-        if: needs.gate.outputs.deploy_dashboard == 'true' && github.event_name != 'issue_comment' && always()
+      - name: Push eval history to eval-data
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add eval_results/runs.json eval_results/history_summary.json
-          if git diff --cached --quiet; then
-            echo "No tracked eval history changes to commit."
-            exit 0
-          fi
-          git commit -m "chore: update eval history"
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            git push origin HEAD:main --no-ff
-          else
-            git push
-          fi
+          pixi run -e eval eval-sync --upload --run-id "${{ steps.runmeta.outputs.run_id }}"
+
+      - name: Deploy historical dashboard
+        if: needs.gate.outputs.deploy_dashboard == 'true'
+        run: pixi run -e eval eval-deploy-dashboard
 
       - name: Upload eval artifacts
         if: always()

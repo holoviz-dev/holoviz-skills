@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Deploy the historical dashboard from existing eval results."""
+"""Deploy the historical dashboard from the shared `eval-data` branch
+(or from a local eval_results/ with `--source local`)."""
 
 from __future__ import annotations
 
@@ -10,15 +11,30 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import eval_sync
+
 
 def main() -> int:
     repo_root = Path(__file__).parent.parent
     parser = argparse.ArgumentParser(description="Deploy the historical dashboard")
     parser.add_argument(
+        "--source",
+        choices=["branch", "local"],
+        default="branch",
+        help="Where to source eval history/snapshots/visuals from: the shared "
+        f"'{eval_sync.DEFAULT_BRANCH}' branch (default) or the local --eval-results directory",
+    )
+    parser.add_argument(
+        "--branch",
+        default=eval_sync.DEFAULT_BRANCH,
+        help="Shared eval-data branch to pull from when --source=branch "
+        f"(default: {eval_sync.DEFAULT_BRANCH})",
+    )
+    parser.add_argument(
         "--eval-results",
         type=Path,
         default=Path(__file__).parent.parent / "eval_results",
-        help="Output directory for eval results",
+        help="Local eval results directory, used when --source=local",
     )
     parser.add_argument(
         "--outerbounds-config-token",
@@ -56,12 +72,22 @@ def main() -> int:
 
         eval_results_dst = staging_path / "eval_results"
         eval_results_dst.mkdir(parents=True, exist_ok=True)
-        for name in ("runs.json", "history_summary.json"):
-            src = args.eval_results / name
-            if not src.exists():
-                print(f"Missing tracked eval history file: {src}")
+
+        if args.source == "branch":
+            pull_args = argparse.Namespace(
+                branch=args.branch,
+                eval_results=eval_results_dst,
+                skip_visuals=False,
+            )
+            if eval_sync.cmd_pull(pull_args) != 0:
                 return 1
-            shutil.copy2(src, eval_results_dst / name)
+        else:
+            for name in ("runs.json", "history_summary.json"):
+                src = args.eval_results / name
+                if not src.exists():
+                    print(f"Missing tracked eval history file: {src}")
+                    return 1
+                shutil.copy2(src, eval_results_dst / name)
 
         deploy_cmd = [
             "outerbounds",

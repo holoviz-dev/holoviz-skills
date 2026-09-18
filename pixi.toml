@@ -123,4 +123,5 @@ eval-multi = { cmd = "python scripts/eval.py --models kilo/kilo-auto/frontier ki
     "eval-check",
 ], description = "Compare the frontier (paid) and free Kilo auto tiers" }
 eval-history-dashboard = { cmd = "panel serve scripts/compare_history.py --show --args eval_results/", cwd = ".", description = "Open the historical run dashboard in the browser" }
-eval-deploy-dashboard = { cmd = "python scripts/eval_publish.py", cwd = ".", description = "Deploy the historical dashboard using existing eval_results" }
+eval-deploy-dashboard = { cmd = "python scripts/eval_publish.py", cwd = ".", description = "Deploy the historical dashboard from the shared eval-data branch" }
+eval-sync = { cmd = "python scripts/eval_sync.py", cwd = ".", description = "Pull eval history, snapshots and screenshots from the shared eval-data branch" }

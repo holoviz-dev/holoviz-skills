@@ -12,6 +12,16 @@ in-progress notes so it is skipped by the extraction.
 
 ## Unreleased
 
+### Added
+
+- **Shared `eval-data` branch for eval run history, snapshots, and visuals** — after every
+  successful CI eval run, `scripts/eval_sync.py` writes `runs.json`, `history_summary.json`,
+  `runs/<run_id>/` snapshots, and per-query `plot_output.html`/`screenshot.png` to an orphan
+  `eval-data` git branch that mirrors the `eval_results/` layout. `pixi run eval-sync` pulls
+  that subset into a local `eval_results/`. `scripts/eval_publish.py` deploys the Outerbounds
+  dashboard from this branch by default (`--source branch`; `--source local` uses a local
+  `eval_results/`). Concurrent CI uploads re-merge JSON registries by key and retry.
+
 ### Changed
 
 - **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline
