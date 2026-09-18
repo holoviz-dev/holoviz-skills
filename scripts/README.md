@@ -235,9 +235,21 @@ Useful environment variables:
 - `EVAL_RUN_TRIGGER` (`manual`, `ci_comment`, `ci_dispatch`, `ci_schedule`)
 - `OUTERBOUNDS_CONFIG_TOKEN` (optional; configures the CLI profile before deploy)
 
-`eval-deploy-dashboard` pulls history, snapshots, and visuals from `eval-data`
-(`--source branch`, default) or from a local `--eval-results` directory (`--source local`),
-stages them with `scripts/compare_history.py`, and deploys that bundle to Outerbounds.
+The deploy command stages:
+
+- `scripts/compare_history.py`
+- `eval_results/runs.json`
+- `eval_results/history_summary.json`
+- `eval_results/**/plot_output.html` (or `screenshot.png` if no plot) for the Plot Outputs tab
+
+and deploys that bundle to Outerbounds.
+
+To deploy the dashboard without rerunning eval:
+
+```bash
+pixi run -e eval eval-deploy-dashboard
+```
+
 ## Adding Queries
 
 Edit `scripts/eval_queries.yaml`:
