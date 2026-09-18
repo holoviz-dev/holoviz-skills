@@ -94,6 +94,20 @@ _HEADLESS_SAVE_CODE = textwrap.dedent("""
 """)
 
 
+# Matches variable names that hold credentials. Generated code is untrusted
+# and has network access, so the execution subprocess must not inherit
+# anything an exfiltration snippet could read and send elsewhere.
+_CREDENTIAL_NAME = re.compile(r"API_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL", re.IGNORECASE)
+
+
+def _execution_env() -> dict[str, str]:
+    """Child environment for generated code: non-interactive matplotlib
+    backend, credential-like variables removed."""
+    env = {key: value for key, value in os.environ.items() if not _CREDENTIAL_NAME.search(key)}
+    env["MPLBACKEND"] = "Agg"
+    return env
+
+
 class CodeExecutor:
     """Execute generated Python code in isolation."""
 
@@ -130,14 +144,13 @@ class CodeExecutor:
             temp_file.write_text(modified_code)
 
             try:
-                exec_env = {**os.environ, "MPLBACKEND": "Agg"}
                 result = subprocess.run(
                     [sys.executable, str(temp_file)],
                     capture_output=True,
                     text=True,
                     timeout=self.timeout,
                     cwd=tmpdir,
-                    env=exec_env,
+                    env=_execution_env(),
                 )
 
                 execution_time = time.time() - start_time

@@ -26,6 +26,7 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from uuid import uuid4
 
 from aggregate_metrics import (
     CONDITIONS,
@@ -80,29 +81,26 @@ def _remote_branch_exists(repo_root: Path, remote: str, branch: str) -> bool:
 def _data_branch_worktree(repo_root: Path, remote: str, branch: str) -> Iterator[Path]:
     """Check out `branch` into a fresh, temporary git worktree.
 
-    Creates `branch` as an orphan if it doesn't exist on `remote` yet. The
-    worktree is detached (or freshly orphaned) — never a checkout of `branch`
-    that could collide with another worktree — and is always removed again.
-
-    Any local `branch` ref is dropped first. It is never meaningful on its
-    own outside of a worktree created here, but a previous attempt that
-    committed and then failed to upload (e.g. a retry) can leave one behind,
-    which would otherwise make a fresh orphan checkout fail with "branch
-    already exists".
+    Yields a worktree ready to receive eval data: either a detached checkout
+    of the remote branch, or a fresh orphan when the branch doesn't exist on
+    `remote` yet. All work happens on a uniquely named temporary ref that
+    only this script creates, so any local branch a user may have named
+    `branch` is never touched, and the worktree is always removed again.
     """
     _git(["worktree", "prune"], cwd=repo_root, check=False)
     _git(["fetch", remote, branch], cwd=repo_root, check=False)
-    _git(["branch", "-D", branch], cwd=repo_root, check=False)
     tmp_dir = Path(tempfile.mkdtemp(prefix="eval-data-worktree-"))
+    tmp_ref = f"{branch}-tmp-{uuid4().hex[:8]}"
     try:
         if _remote_branch_exists(repo_root, remote, branch):
             _git(["worktree", "add", "--detach", str(tmp_dir), f"{remote}/{branch}"], cwd=repo_root)
         else:
             _git(["worktree", "add", "--no-checkout", "--detach", str(tmp_dir)], cwd=repo_root)
-            _git(["checkout", "--orphan", branch], cwd=tmp_dir)
+            _git(["switch", "--orphan", tmp_ref], cwd=tmp_dir)
         yield tmp_dir
     finally:
         _git(["worktree", "remove", "--force", str(tmp_dir)], cwd=repo_root, check=False)
+        _git(["branch", "-D", tmp_ref], cwd=repo_root, check=False)
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 

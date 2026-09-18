@@ -121,12 +121,14 @@ class KiloResponse:
         execution_time: float,
         model: str,
         events: list[dict] | None = None,
+        returncode: int = 0,
     ):
         self.raw_output = raw_output
         self.query = query
         self.execution_time = execution_time
         self.model = model
         self.events = events or []
+        self.returncode = returncode
         self.code_blocks = self._extract_code_blocks()
         self.tokens, self.cost, self.resolved_models = _extract_usage_from_events(self.events)
 
@@ -148,6 +150,7 @@ class KiloResponse:
             "resolved_models": self.resolved_models,
             "code_blocks_count": len(self.code_blocks),
             "has_code": len(self.code_blocks) > 0,
+            "cli_exit_code": self.returncode,
         }
 
 
@@ -170,11 +173,13 @@ def model_to_slug(model: str | None) -> str:
 
 def run_kilo_query(
     query: str, model: str | None = None, timeout: int = 180
-) -> tuple[str, float, list[dict]]:
+) -> tuple[str, float, list[dict], int]:
     """Run one query through the Kilo Code CLI in autonomous mode.
 
-    Returns the reconstructed assistant text, wall-clock time, and the
-    parsed JSON events (token/cost usage comes from the events, not text).
+    Returns the reconstructed assistant text, wall-clock time, the parsed
+    JSON events (token/cost usage comes from the events, not text), and the
+    CLI's exit code (nonzero means the query itself failed, e.g. auth or
+    rate-limit errors, as opposed to a model that answered without code).
     """
     start_time = time.time()
     try:
@@ -195,11 +200,11 @@ def run_kilo_query(
         output = _extract_text_from_events(events)
         if result.stderr:
             output += f"\n\n[STDERR]\n{result.stderr}"
-        return output, execution_time, events
+        return output, execution_time, events, result.returncode
     except subprocess.TimeoutExpired:
-        return f"[TIMEOUT after {timeout}s]", time.time() - start_time, []
+        return f"[TIMEOUT after {timeout}s]", time.time() - start_time, [], 1
     except Exception as e:
-        return f"[ERROR: {str(e)}]", time.time() - start_time, []
+        return f"[ERROR: {str(e)}]", time.time() - start_time, [], 1
 
 
 def save_results(
@@ -238,7 +243,12 @@ def run_generation(
     models: list[str | None],
     skip_without_skills: bool = False,
     skip_with_skills: bool = False,
-):
+) -> list[str]:
+    """Run the generation step, returning the query IDs whose Kilo invocation
+    failed (nonzero CLI exit). Failed invocations still write their raw
+    output to disk for debugging, but the caller must not aggregate or
+    publish a run that contains them."""
+    failed: list[str] = []
     for model in models:
         model_label = model or DEFAULT_MODEL
         if len(models) > 1:
@@ -257,11 +267,16 @@ def run_generation(
                 print("  Running WITHOUT skills...")
                 disable_skills(REPO_ROOT)
                 try:
-                    raw_output, exec_time, events = run_kilo_query(
+                    raw_output, exec_time, events, returncode = run_kilo_query(
                         prompt, model=model, timeout=timeout
                     )
                     response = KiloResponse(
-                        raw_output, prompt, exec_time, model=model_label, events=events
+                        raw_output,
+                        prompt,
+                        exec_time,
+                        model=model_label,
+                        events=events,
+                        returncode=returncode,
                     )
                     tok = response.tokens
                     print(
@@ -275,9 +290,16 @@ def run_generation(
 
             if not skip_with_skills:
                 print("  Running WITH skills...")
-                raw_output, exec_time, events = run_kilo_query(prompt, model=model, timeout=timeout)
+                raw_output, exec_time, events, returncode = run_kilo_query(
+                    prompt, model=model, timeout=timeout
+                )
                 response = KiloResponse(
-                    raw_output, prompt, exec_time, model=model_label, events=events
+                    raw_output,
+                    prompt,
+                    exec_time,
+                    model=model_label,
+                    events=events,
+                    returncode=returncode,
                 )
                 tok = response.tokens
                 print(
@@ -287,7 +309,13 @@ def run_generation(
                 )
                 save_results(query_id, response, output_dir, skills_enabled=True)
 
+            if returncode != 0:
+                failed.append(query_id)
+                print(f"  ✗ Kilo CLI exited with code {returncode}")
+
             print(f"{'─' * 60}")
+
+    return failed
 
 
 def run_execution(
@@ -498,7 +526,7 @@ Examples:
 
     # Step 1: Generate
     if not args.skip_generation:
-        run_generation(
+        failed_queries = run_generation(
             queries=queries,
             output_dir=args.output,
             models=models,
@@ -506,6 +534,13 @@ Examples:
             skip_with_skills=args.skills == "without",
         )
         print("\nGeneration complete.")
+        if failed_queries:
+            print(
+                "\nError: the Kilo CLI exited nonzero for: "
+                f"{', '.join(sorted(set(failed_queries)))}. The run is not "
+                "aggregated or published; fix the CLI invocation and retry."
+            )
+            return 1
 
     # Step 2: Execute
     if not args.skip_execution:

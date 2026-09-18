@@ -288,8 +288,10 @@ the `KILO_API_KEY` secret so the workflow falls back to anonymous free-model acc
 
 **Tokens and execution time show 0**
 Token and cost usage are read from the JSON event stream that `kilo run --format json`
-emits (summed across the `step_finish` events). If you see zeros, capture the raw
-`response.txt` and check it contains `step_finish` JSON events with a `tokens` field.
+emits (summed across the `step_finish` events). If you see zeros, run
+`kilo run --format json -m <model> "<prompt>"` manually and check its stdout contains
+`step_finish` events with a `tokens` field; the raw event stream is not persisted in
+`eval_results/`.
 
 **Code execution fails**
 Check `execution.log` in the query result directory for the full traceback.

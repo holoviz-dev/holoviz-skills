@@ -22,6 +22,20 @@ in-progress notes so it is skipped by the extraction.
   dashboard from this branch by default (`--source branch`; `--source local` uses a local
   `eval_results/`). Concurrent CI uploads re-merge JSON registries by key and retry.
 
+### Fixed
+
+- **Generated code no longer runs with credentials** — `execute_generated.py` strips
+  credential-like environment variables (`*_API_KEY`, `*TOKEN*`, `*SECRET*`,
+  `*PASSWORD*`, `*CREDENTIAL*`) from the subprocess that runs untrusted, model-generated
+  code.
+- **Failed Kilo invocations no longer record "successful" runs** — `scripts/eval.py`
+  checks the CLI's exit code and aborts before aggregation and publishing, instead of
+  uploading an empty failed run to `eval-data` with exit 0.
+- **First upload to `eval-data` commits only eval data** — orphan branch creation now uses
+  `git switch --orphan` on a temporary ref, which starts from an empty index; the previous
+  `git checkout --orphan` carried over the start point's tree. Local `eval-data` branches
+  belonging to contributors are no longer force-deleted.
+
 ### Changed
 
 - **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline
