@@ -1,0 +1,26 @@
+{
+  "run_id": "ci-34-1-8d17612",
+  "created_at": "2026-09-18T18:04:26+00:00",
+  "status": "success",
+  "results_relpath": "runs/ci-34-1-8d17612",
+  "total_queries": 2,
+  "models": [
+    "kilo_kilo-auto_free"
+  ],
+  "run_trigger": "manual",
+  "publish_target": "local",
+  "models_requested": [
+    "kilo/kilo-auto/free"
+  ],
+  "query_ids": [
+    "hvplot_interactive_scatter",
+    "hvplot_earthquake_plot"
+  ],
+  "skip_generation": false,
+  "skip_execution": false,
+  "skip_aggregation": false,
+  "git_commit": "8d1761207b91fd8bc6d7f14a15c8cb311610298a",
+  "git_branch": "switch-model",
+  "python_version": "3.12.14",
+  "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39"
+}

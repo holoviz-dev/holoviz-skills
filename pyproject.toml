@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "holoviz-skills"
+dynamic = ["version"]
+description = "A curated collection of Skills for the HoloViz ecosystem — Panel, hvPlot, HoloViews, Param, and more."
+readme = "README.md"
+license = { text = "BSD" }
+requires-python = ">=3.12"
+authors = [{ name = "HoloViz", email = "developers@holoviz.org" }]
+maintainers = [{ name = "HoloViz", email = "developers@holoviz.org" }]
+
+[project.scripts]
+holoviz-skills = "holoviz_skills.cli:main"
+
+[project.urls]
+Homepage = "https://holoviz-dev.github.io/holoviz-skills/"
+Source = "https://github.com/holoviz-dev/holoviz-skills"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { version_scheme = "no-guess-dev" }
+
+[tool.hatch.build.targets.wheel]
+include = ["holoviz_skills"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"contributing-to-holoviz" = "holoviz_skills/skills/contributing-to-holoviz"
+"creating-custom-holoviz-skills" = "holoviz_skills/skills/creating-custom-holoviz-skills"
+"developing-with-holoviz" = "holoviz_skills/skills/developing-with-holoviz"
+
+[tool.hatch.build.targets.sdist.force-include]
+"contributing-to-holoviz" = "holoviz_skills/skills/contributing-to-holoviz"
+"creating-custom-holoviz-skills" = "holoviz_skills/skills/creating-custom-holoviz-skills"
+"developing-with-holoviz" = "holoviz_skills/skills/developing-with-holoviz"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "holoviz_skills/_version.py"
+
+[tool.codespell]
+ignore-words-list = "wasn,couldn"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "UP", # pyupgrade
+]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["holoviz-skills"]

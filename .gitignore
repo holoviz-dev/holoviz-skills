@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# IDEs
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+._*
+
+# Environments
+.env
+.venv/
+venv/
+
+# Pixi
+.pixi/
+pixi.lock
+
+# Build outputs
+/dist/
+/site
+/_build_plugin_tmp/
+# Plugin + skill zips — built on release by build_plugin.py, attached to the
+# GitHub release rather than committed.
+/artifacts/
+docs/developing-with-holoviz/
+docs/contributing-to-holoviz/
+docs/creating-custom-holoviz-skills.md
+
+# Staged skills — copied in at build time by hatch's force-include
+# (see [tool.hatch.build.targets.*.force-include] in pyproject.toml).
+holoviz_skills/skills/
+
+# Version file (generated at build time by hatch-vcs)
+holoviz_skills/_version.py
+
+# Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Evals
+eval_results/*
+!eval_results/runs.json
+!eval_results/history_summary.json
+
+.github/instructions/
+.*/skills/*
+
+# Outerbounds
+.ob_apps/

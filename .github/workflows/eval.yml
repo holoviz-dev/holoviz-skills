@@ -1,0 +1,335 @@
+name: Eval Command
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*.*.*a*"
+      - "v*.*.*b*"
+      - "v*.*.*rc*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref (branch, tag, or SHA) to evaluate
+        required: false
+        type: string
+      pull_number:
+        description: Optional PR number to post a result comment to
+        required: false
+        type: string
+      deploy_dashboard:
+        description: Deploy the historical dashboard to Outerbounds after eval
+        required: false
+        type: boolean
+        default: false
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: eval-command-${{ github.event.issue.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Validate trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.decide.outputs.should_run }}
+      reason: ${{ steps.decide.outputs.reason }}
+      checkout_ref: ${{ steps.decide.outputs.checkout_ref }}
+      pr_number: ${{ steps.decide.outputs.pr_number }}
+      trigger_source: ${{ steps.decide.outputs.trigger_source }}
+      deploy_dashboard: ${{ steps.decide.outputs.deploy_dashboard }}
+    steps:
+      - name: Decide whether to run
+        id: decide
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const fullName = `${owner}/${repo}`;
+
+            let shouldRun = false;
+            let reason = "";
+            let checkoutRef = "";
+            let prNumber = "";
+            let triggerSource = context.eventName;
+            let deployDashboard = false;
+
+            if (context.eventName === "workflow_dispatch") {
+              const inputs = context.payload.inputs || {};
+              checkoutRef = inputs.ref || context.ref;
+              deployDashboard = String(inputs.deploy_dashboard || "false").toLowerCase() === "true";
+              const inputPullNumber = (inputs.pull_number || "").trim();
+              if (inputPullNumber === "") {
+                shouldRun = true;
+                prNumber = "";
+                reason = "Manual dispatch";
+              } else if (!/^\d+$/.test(inputPullNumber)) {
+                shouldRun = false;
+                prNumber = "";
+                reason = `Invalid pull_number input '${inputPullNumber}': expected an integer`;
+              } else {
+                shouldRun = true;
+                prNumber = String(Number(inputPullNumber));
+                reason = "Manual dispatch";
+              }
+            } else if (context.eventName === "push" && context.ref.startsWith("refs/tags/")) {
+              shouldRun = true;
+              checkoutRef = context.ref;
+              reason = "Tag push";
+              triggerSource = "tag_push";
+              deployDashboard = true;
+            } else if (context.eventName === "issue_comment") {
+              const issue = context.payload.issue;
+              const comment = context.payload.comment;
+
+              if (!issue?.pull_request) {
+                reason = "Comment is not on a pull request";
+              } else if (!comment?.body?.trim().toLowerCase().startsWith("@run-eval")) {
+                reason = "Comment does not start with @run-eval";
+              } else {
+                const trusted = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+                const association = comment.author_association || "";
+                if (!trusted.has(association)) {
+                  reason = `Commenter association '${association}' is not allowed`;
+                } else {
+                  prNumber = String(issue.number);
+                  const pr = await github.rest.pulls.get({
+                    owner,
+                    repo,
+                    pull_number: issue.number,
+                  });
+
+                  const headRepoFullName = pr.data.head?.repo?.full_name || "";
+                  if (headRepoFullName !== fullName) {
+                    reason = "Fork pull requests are not allowed for @run-eval";
+                  } else {
+                    shouldRun = true;
+                    checkoutRef = pr.data.head.sha;
+                    reason = "Maintainer-triggered @run-eval command";
+                  }
+                }
+              }
+            } else {
+              reason = `Unsupported event: ${context.eventName}`;
+            }
+
+            core.setOutput("should_run", shouldRun ? "true" : "false");
+            core.setOutput("reason", reason);
+            core.setOutput("checkout_ref", checkoutRef);
+            core.setOutput("pr_number", prNumber);
+            core.setOutput("trigger_source", triggerSource);
+            core.setOutput("deploy_dashboard", deployDashboard ? "true" : "false");
+
+      - name: Show gate decision
+        run: |
+          echo "should_run=${{ steps.decide.outputs.should_run }}"
+          echo "reason=${{ steps.decide.outputs.reason }}"
+          echo "checkout_ref=${{ steps.decide.outputs.checkout_ref }}"
+          echo "pr_number=${{ steps.decide.outputs.pr_number }}"
+
+  eval:
+    name: Run evaluation pipeline
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.checkout_ref }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install Kilo Code CLI
+        run: npm install -g @kilocode/cli
+
+      - name: Configure Kilo Code
+        env:
+          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          cfg_dir = Path.home() / ".config" / "kilo"
+          cfg_dir.mkdir(parents=True, exist_ok=True)
+          cfg = {
+              "$schema": "https://app.kilo.ai/config.json",
+              "model": "kilo/kilo-auto/free",
+              "small_model": "kilo/kilo-auto/free",
+              "experimental": {"openTelemetry": False},
+          }
+          if os.environ.get("KILO_API_KEY"):
+              cfg["provider"] = {
+                  "kilo": {"options": {"apiKey": "{env:KILO_API_KEY}"}},
+              }
+          else:
+              print("::warning::KILO_API_KEY is not set; Kilo runs anonymously (free tier, 200 req/h per IP)")
+          (cfg_dir / "kilo.jsonc").write_text(json.dumps(cfg, indent=2) + "\n")
+          PY
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
+        with:
+          environments: eval
+
+      - name: Preflight checks
+        env:
+          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
+        run: pixi run -e eval eval-check
+
+      - name: Compute run metadata
+        id: runmeta
+        env:
+          CHECKOUT_REF: ${{ needs.gate.outputs.checkout_ref }}
+        run: |
+          # issue_comment runs check out the PR head SHA, which differs from GITHUB_SHA
+          SHA="$GITHUB_SHA"
+          if [[ "$CHECKOUT_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            SHA="$CHECKOUT_REF"
+          fi
+          echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Run eval pipeline
+        env:
+          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
+        # Some kilo auth accounts doesn't have ``kilo-auto/free``. Need to anonymize the request for this
+        run: XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals --models kilo/kilo-auto/free --run-id "${{ steps.runmeta.outputs.run_id }}"
+
+      - name: Push eval history to eval-data
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          pixi run -e eval eval-sync --upload --run-id "${{ steps.runmeta.outputs.run_id }}"
+
+      - name: Deploy historical dashboard
+        if: needs.gate.outputs.deploy_dashboard == 'true'
+        run: pixi run -e eval eval-deploy-dashboard
+
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-results-${{ github.run_id }}
+          path: eval_results/
+          if-no-files-found: ignore
+
+      - name: Post PR summary comment
+        if: always() && needs.gate.outputs.pr_number != ''
+        uses: actions/github-script@v9
+        env:
+          JOB_STATUS: ${{ job.status }}
+          PR_NUMBER: ${{ needs.gate.outputs.pr_number }}
+          RUN_ID: ${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+          SUMMARY_PATH: eval_results/evaluation_results.json
+          SUMMARY_MD_PATH: ${{ runner.temp }}/eval-summary.md
+        with:
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+
+            const prNumber = Number(process.env.PR_NUMBER);
+            const rawStatus = process.env.JOB_STATUS || "unknown";
+            const statusMap = {
+              success:   { label: "success",   icon: ":white_check_mark:" },
+              failure:   { label: "failure",   icon: ":x:" },
+              cancelled: { label: "cancelled", icon: ":warning:" },
+              skipped:   { label: "skipped",   icon: ":fast_forward:" },
+            };
+            const { label: status, icon } = statusMap[rawStatus] || { label: rawStatus, icon: ":grey_question:" };
+            const runUrl = `https://github.com/${process.env.REPOSITORY}/actions/runs/${process.env.RUN_ID}`;
+
+            let summaryText = "No evaluation summary file was generated.";
+            if (fs.existsSync(process.env.SUMMARY_PATH)) {
+              const payload = JSON.parse(fs.readFileSync(process.env.SUMMARY_PATH, "utf8"));
+              const lines = [];
+              lines.push("# Evaluation Summary");
+              lines.push("");
+              lines.push("| Field | Value |");
+              lines.push("|---|---:|");
+              lines.push(`| Total queries | ${payload.total_queries ?? "n/a"} |`);
+              lines.push(`| Models | ${(payload.models || []).join(", ") || "n/a"} |`);
+              lines.push(`| Aggregate models | ${Object.keys(payload.aggregate || {}).length} |`);
+              lines.push("");
+
+              const aggregate = payload.aggregate || {};
+              const aggregateRows = Object.entries(aggregate).map(([model, agg]) => ({
+                model,
+                codeWith: agg.code_generation_rate_with,
+                codeWithout: agg.code_generation_rate_without,
+                execWith: agg.execution_success_rate_with,
+                execWithout: agg.execution_success_rate_without,
+                tokenDelta: agg.avg_token_difference,
+                timeDelta: agg.avg_time_difference,
+              }));
+
+              if (aggregateRows.length) {
+                lines.push("## Aggregate Statistics");
+                lines.push("");
+                lines.push("| Model | Code Gen w/ | Code Gen w/o | Exec w/ | Exec w/o | Avg Token Δ | Avg Time Δ |");
+                lines.push("|---|---:|---:|---:|---:|---:|---:|");
+                for (const row of aggregateRows) {
+                  const fmtPct = (v) => (typeof v === "number" ? `${(v * 100).toFixed(1)}%` : "—");
+                  const fmtDelta = (v, suffix = "") => (typeof v === "number" ? `${v >= 0 ? "+" : ""}${v.toFixed(suffix ? 2 : 0)}${suffix}` : "—");
+                  lines.push(
+                    `| \`${row.model}\` | ${fmtPct(row.codeWith)} | ${fmtPct(row.codeWithout)} | ${fmtPct(row.execWith)} | ${fmtPct(row.execWithout)} | ${fmtDelta(row.tokenDelta)} | ${fmtDelta(row.timeDelta, "s")} |`
+                  );
+                }
+                lines.push("");
+              }
+
+              lines.push("## Notes");
+              lines.push("");
+              lines.push("- Download the `eval-results-*` artifact for the full JSON output.");
+              lines.push("- Historical trends are available from the separate dashboard.");
+              summaryText = lines.join("\n");
+              fs.writeFileSync(process.env.SUMMARY_MD_PATH, summaryText);
+            }
+
+            if (summaryText.length > 60000) {
+              summaryText = `${summaryText.slice(0, 60000)}\n\n... (truncated)`;
+            }
+
+            const body = [
+              "## Eval Command",
+              `${icon} Status: **${status}**`,
+              `Run: ${runUrl}`,
+              "Artifacts: Download the `eval-results-*` artifact from the run page.",
+              "",
+              "## Evaluation summary",
+              "",
+              summaryText,
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body,
+            });
+
+  skipped:
+    name: Skip report
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.should_run != 'true'
+    steps:
+      - name: Show skip reason
+        run: |
+          echo "Skipping eval workflow: ${{ needs.gate.outputs.reason }}"

@@ -1,0 +1,127 @@
+[workspace]
+name = "holoviz-skills"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64", "win-64"]
+
+[environments]
+default = ["docs", "lint", "dev"]
+docs = ["docs"]
+lint = ["lint"]
+eval = ["eval"]
+build = ["build"]
+
+# =================== BASE ===================
+
+[dependencies]
+python = ">=3.12"
+pip = "*"
+
+[tasks]
+setup-dev = { depends-on = [
+    "lint-install",
+], description = "Set up development environment" }
+build-plugin = { cmd = "python scripts/build_plugin.py", description = "Build the Claude Cowork plugins (per-category plus a combined holoviz-skills.plugin) and per-skill zips (artifacts/) — run on release" }
+
+# =================== BUILD ===================
+
+[feature.build.dependencies]
+python-build = "*"
+hatchling = "*"
+hatch-vcs = "*"
+# Hatchling emits core metadata 2.5 by default; twine only learned to validate
+# and upload that in 7.0.0. An older twine fails with
+# "InvalidDistribution: '2.5' is not a valid metadata version" on a wheel that
+# is actually fine, so pin the floor rather than downgrade the build backend.
+twine = ">=7"
+
+[feature.build.tasks]
+build-pip = 'python -m build --wheel .'
+check-pip = { cmd = 'twine check dist/*', depends-on = [
+    "build-pip",
+], description = "Validate the built wheel's metadata the way PyPI upload will" }
+
+# =================== DOCS ====================
+
+[feature.docs.dependencies]
+zensical = "*"
+panel = "*"
+panel-material-ui = "*"
+holoviews = "*"
+hvplot = "*"
+bokeh = "*"
+pandas = "*"
+numpy = "*"
+
+[feature.docs.pypi-dependencies]
+playwright = "*"
+
+[feature.docs.tasks]
+_docs-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }
+build-stubs = { cmd = "python scripts/build_stubs.py", depends-on = ["_docs-setup"], description = "Generate docs/<category>/*.md pages from SKILL.md files" }
+docs = { cmd = "zensical serve", depends-on = [
+    "docs-build",
+], description = "Serve documentation locally" }
+docs-build = { cmd = "zensical build", depends-on = [
+    "build-stubs",
+], description = "Build static documentation" }
+
+# =================== DEV ===================
+
+[feature.dev.dependencies]
+jupyterlab = "*"
+
+[feature.dev.tasks]
+lab = { cmd = "jupyter lab", description = "Launch JupyterLab" }
+
+# =================== LINT ====================
+
+[feature.lint.dependencies]
+pre-commit = "*"
+ruff = "*"
+codespell = "*"
+tomli = "*"
+
+[feature.lint.tasks]
+lint = { cmd = "pre-commit run --all-files", description = "Run all pre-commit hooks" }
+lint-install = { cmd = "pre-commit install", description = "Install pre-commit hooks" }
+format = { cmd = "ruff format .", description = "Format code with ruff" }
+check = { cmd = "ruff check .", description = "Lint code with ruff" }
+
+# =================== EVAL ====================
+
+[feature.eval.dependencies]
+pyyaml = "*"
+holoviews = "*"
+hvplot = "*"
+bokeh = "*"
+pandas = "*"
+matplotlib = "*"
+geoviews = "*"
+hvsampledata = "*"
+panel = "*"
+panel-material-ui = "*"
+
+[feature.eval.pypi-dependencies]
+playwright = "*"
+outerbounds = "*"
+
+[feature.eval.tasks]
+_eval-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }
+_eval-check-no-screenshots = { cmd = "python scripts/test_setup.py --skip-screenshots", cwd = ".", description = "Verify evaluation system (without Playwright check)" }
+eval-check = { cmd = "python scripts/test_setup.py", cwd = ".", depends-on = [
+    "_eval-setup",
+], description = "Verify evaluation system is set up correctly" }
+evals = { cmd = "python scripts/eval.py", cwd = ".", depends-on = [
+    "_eval-setup",
+    "eval-check",
+], description = "Run full evaluation pipeline" }
+eval-no-screenshots = { cmd = "python scripts/eval.py --skip-screenshots", cwd = ".", depends-on = [
+    "_eval-check-no-screenshots",
+], description = "Run evaluation without screenshots (faster, no Playwright needed)" }
+eval-multi = { cmd = "python scripts/eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free", cwd = ".", depends-on = [
+    "_eval-setup",
+    "eval-check",
+], description = "Compare the frontier (paid) and free Kilo auto tiers" }
+eval-history-dashboard = { cmd = "panel serve scripts/compare_history.py --show --args eval_results/", cwd = ".", description = "Open the historical run dashboard in the browser" }
+eval-deploy-dashboard = { cmd = "python scripts/eval_publish.py", cwd = ".", description = "Deploy the historical dashboard from the shared eval-data branch" }
+eval-sync = { cmd = "python scripts/eval_sync.py", cwd = ".", description = "Pull eval history, snapshots and screenshots from the shared eval-data branch" }
