@@ -1,7 +1,33 @@
 {
   "schema_version": 1,
-  "run_count": 1,
+  "run_count": 2,
   "runs": [
+    {
+      "run_id": "ci-35-1-ad60a06",
+      "created_at": "2026-09-21T14:19:34+00:00",
+      "status": "success",
+      "results_relpath": "runs/ci-35-1-ad60a06",
+      "total_queries": 2,
+      "models": [
+        "kilo_kilo-auto_free"
+      ],
+      "run_trigger": "ci_dispatch",
+      "publish_target": "eval-data",
+      "models_requested": [
+        "kilo/kilo-auto/free"
+      ],
+      "query_ids": [
+        "hvplot_interactive_scatter",
+        "hvplot_earthquake_plot"
+      ],
+      "skip_generation": false,
+      "skip_execution": false,
+      "skip_aggregation": false,
+      "git_commit": "ad60a06de9d88997a1172843d8e818c16ca7921d",
+      "git_branch": "switch-model",
+      "python_version": "3.12.14",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39"
+    },
     {
       "run_id": "ci-34-1-8d17612",
       "created_at": "2026-09-18T18:04:26+00:00",

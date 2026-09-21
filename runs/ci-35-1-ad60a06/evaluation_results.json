@@ -1,0 +1,94 @@
+{
+  "total_queries": 2,
+  "models": [
+    "kilo_kilo-auto_free"
+  ],
+  "queries": {
+    "hvplot_interactive_scatter": {
+      "models": {
+        "kilo_kilo-auto_free": {
+          "with_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 61.65069603919983,
+            "tokens_input": 41190,
+            "tokens_output": 500,
+            "tokens_total": 41690,
+            "tokens_cached": 19776,
+            "tokens_reasoning": 638,
+            "execution_success": true,
+            "execution_duration": 1.6305136680603027
+          },
+          "without_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 16.627901315689087,
+            "tokens_input": 20063,
+            "tokens_output": 292,
+            "tokens_total": 20355,
+            "tokens_cached": 4096,
+            "tokens_reasoning": 93,
+            "execution_success": true,
+            "execution_duration": 1.622361660003662
+          },
+          "comparison": {
+            "both_have_code": true,
+            "token_difference": 208,
+            "time_difference": 45.02279472351074,
+            "both_executed": true,
+            "execution_improvement": false,
+            "execution_regression": false
+          }
+        }
+      }
+    },
+    "hvplot_earthquake_plot": {
+      "models": {
+        "kilo_kilo-auto_free": {
+          "with_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 251.23706793785095,
+            "tokens_input": 121261,
+            "tokens_output": 872,
+            "tokens_total": 122133,
+            "tokens_cached": 60480,
+            "tokens_reasoning": 355,
+            "execution_success": false,
+            "execution_duration": 2.872009038925171
+          },
+          "without_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 23.487814903259277,
+            "tokens_input": 31111,
+            "tokens_output": 208,
+            "tokens_total": 31319,
+            "tokens_cached": 6144,
+            "tokens_reasoning": 875,
+            "execution_success": false,
+            "execution_duration": 1.5582010746002197
+          },
+          "comparison": {
+            "both_have_code": true,
+            "token_difference": 664,
+            "time_difference": 227.74925303459167,
+            "both_executed": true,
+            "execution_improvement": false,
+            "execution_regression": false
+          }
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "kilo_kilo-auto_free": {
+      "code_generation_rate_with": 1.0,
+      "code_generation_rate_without": 1.0,
+      "avg_token_difference": 436.0,
+      "avg_time_difference": 136.3860238790512,
+      "execution_success_rate_with": 0.5,
+      "execution_success_rate_without": 0.5
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "row_count": 4,
+  "row_count": 8,
   "rows": [
     {
       "run_id": "ci-34-1-8d17612",
@@ -51,6 +51,58 @@
       "tokens_input": 122992,
       "tokens_cached": 86400,
       "execution_time": 258.5807592868805,
+      "execution_success": false,
+      "has_code": true
+    },
+    {
+      "run_id": "ci-35-1-ad60a06",
+      "created_at": "2026-09-21T14:19:34+00:00",
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 500,
+      "tokens_input": 41190,
+      "tokens_cached": 19776,
+      "execution_time": 61.65069603919983,
+      "execution_success": true,
+      "has_code": true
+    },
+    {
+      "run_id": "ci-35-1-ad60a06",
+      "created_at": "2026-09-21T14:19:34+00:00",
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 292,
+      "tokens_input": 20063,
+      "tokens_cached": 4096,
+      "execution_time": 16.627901315689087,
+      "execution_success": true,
+      "has_code": true
+    },
+    {
+      "run_id": "ci-35-1-ad60a06",
+      "created_at": "2026-09-21T14:19:34+00:00",
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 872,
+      "tokens_input": 121261,
+      "tokens_cached": 60480,
+      "execution_time": 251.23706793785095,
+      "execution_success": false,
+      "has_code": true
+    },
+    {
+      "run_id": "ci-35-1-ad60a06",
+      "created_at": "2026-09-21T14:19:34+00:00",
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 208,
+      "tokens_input": 31111,
+      "tokens_cached": 6144,
+      "execution_time": 23.487814903259277,
       "execution_success": false,
       "has_code": true
     }
