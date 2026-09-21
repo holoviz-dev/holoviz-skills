@@ -85,7 +85,11 @@ def _data_branch_worktree(repo_root: Path, remote: str, branch: str) -> Iterator
     a unique temporary name when the branch does not exist on `remote` yet.
     """
     _git(["worktree", "prune"], cwd=repo_root, check=False)
-    _git(["fetch", remote, branch], cwd=repo_root, check=False)
+    _git(
+        ["fetch", remote, f"+{branch}:refs/remotes/{remote}/{branch}"],
+        cwd=repo_root,
+        check=False,
+    )
     tmp_dir = Path(tempfile.mkdtemp(prefix="eval-data-worktree-"))
     tmp_ref = f"{branch}-tmp-{uuid4().hex[:8]}"
     try:

@@ -479,7 +479,7 @@ Examples:
     )
     parser.add_argument(
         "--run-trigger",
-        choices=["manual", "ci_comment", "ci_dispatch", "ci_schedule"],
+        choices=["manual", "ci_comment", "ci_dispatch", "ci_schedule", "ci_tag"],
         default="manual",
         help="Source that triggered this run (default: manual)",
     )

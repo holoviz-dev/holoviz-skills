@@ -194,20 +194,31 @@ jobs:
 
       - name: Compute run metadata
         id: runmeta
+        env:
+          TRIGGER_SOURCE: ${{ needs.gate.outputs.trigger_source }}
         run: |
           SHA="$(git rev-parse HEAD)"
           echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+          case "$TRIGGER_SOURCE" in
+            workflow_dispatch) RUN_TRIGGER=ci_dispatch ;;
+            issue_comment) RUN_TRIGGER=ci_comment ;;
+            tag_push) RUN_TRIGGER=ci_tag ;;
+            *) RUN_TRIGGER=manual ;;
+          esac
+          echo "run_trigger=$RUN_TRIGGER" >> "$GITHUB_OUTPUT"
 
       - name: Run eval pipeline
         env:
           KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
           RUN_ID: ${{ steps.runmeta.outputs.run_id }}
+          RUN_TRIGGER: ${{ steps.runmeta.outputs.run_trigger }}
         # Isolate Kilo's local session/database state. Accounts without
         # free-tier access are retried anonymously below.
         run: |
           run_eval() {
             XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals \
-              --models kilo/kilo-auto/free --run-id "$RUN_ID"
+              --models kilo/kilo-auto/free --run-id "$RUN_ID" \
+              --run-trigger "$RUN_TRIGGER" --publish-target eval-data
           }
           if run_eval; then
             exit 0
@@ -228,7 +239,8 @@ jobs:
           PY
           env -u KILO_API_KEY bash -c 'run_eval() {
             XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals \
-              --models kilo/kilo-auto/free --run-id "$RUN_ID"
+              --models kilo/kilo-auto/free --run-id "$RUN_ID" \
+              --run-trigger "$RUN_TRIGGER" --publish-target eval-data
           }; run_eval'
 
       - name: Push eval history to eval-data

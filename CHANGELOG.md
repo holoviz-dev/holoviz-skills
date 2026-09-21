@@ -38,6 +38,15 @@ in-progress notes so it is skipped by the extraction.
   eval step retries anonymously when the authenticated run cannot access the free tier.
 - **Anonymous retry starts from a clean `eval_results/`** — the workflow removes it before
   retrying, so stale artifacts from the failed authenticated attempt can't be executed.
+- **`eval_results/runs.json` and `history_summary.json` stay untracked** — removed the
+  `.gitignore` negations left over from before these files moved to the `eval-data` branch.
+- **CI run history records accurate provenance** — the workflow now passes `--run-trigger`
+  (mapped from the workflow's trigger source) and `--publish-target eval-data` to `eval.py`
+  instead of leaving every CI run recorded as `manual`/`local`.
+- **`eval_sync.py` fetches into the tracking ref explicitly** — `git fetch origin <branch>`
+  only updates `refs/remotes/origin/<branch>` when the remote has a matching configured
+  refspec; fetching with an explicit destination refspec makes pull and upload work
+  regardless of how the local clone is configured.
 
 ### Changed
 
