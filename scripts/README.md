@@ -213,6 +213,8 @@ layout:
 - `runs.json`, `history_summary.json`
 - `runs/<run_id>/` snapshots
 - `{model}/{condition}/{query_id}/plot_output.html` and `screenshot.png` (latest-wins)
+- `visuals.json` — manifest of each query's current visual filenames, so a pull can remove
+  a local visual whose query no longer has one on the branch
 
 ```bash
 # Pull the shared subset into local eval_results/

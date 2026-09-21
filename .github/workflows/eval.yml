@@ -172,6 +172,15 @@ jobs:
               "model": "kilo/kilo-auto/free",
               "small_model": "kilo/kilo-auto/free",
               "experimental": {"openTelemetry": False},
+              "permission": {
+                  "bash": {"*": "deny"},
+                  "background_process": {"*": "deny"},
+                  "edit": {"*": "deny"},
+                  "write": {"*": "deny"},
+                  "task": {"*": "deny"},
+                  "kilo_local_recall": {"*": "deny"},
+                  "external_directory": {"*": "deny"},
+              },
           }
           if os.environ.get("KILO_API_KEY"):
               cfg["provider"] = {

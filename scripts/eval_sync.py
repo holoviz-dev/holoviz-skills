@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -42,6 +43,7 @@ REPO_ROOT = SCRIPTS_DIR.parent
 DEFAULT_BRANCH = "eval-data"
 DEFAULT_REMOTE = "origin"
 VISUAL_FILENAMES = ("plot_output.html", "screenshot.png")
+VISUALS_MANIFEST_FILE = "visuals.json"
 MAX_UPLOAD_ATTEMPTS = 3
 README_TEXT = """\
 # eval-data
@@ -58,6 +60,9 @@ Layout mirrors `eval_results/`:
   `run_metadata.json`)
 - `<model>/<condition>/<query_id>/plot_output.html`, `screenshot.png` —
   latest-wins visuals, overwritten by whichever run touched that query last
+- `visuals.json` — manifest of every query's current visual filenames (an
+  empty list marks a query whose latest run produced no visual, so pulls can
+  remove a stale local copy that the branch no longer has)
 """
 
 
@@ -119,24 +124,71 @@ def _iter_query_dirs(eval_results_dir: Path) -> Iterator[tuple[str, str, Path]]:
                     yield model_dir.name, condition_dir.name, query_dir
 
 
-def _copy_visuals(source_root: Path, dest_root: Path) -> int:
-    """Copy plot_output.html/screenshot.png for every query dir, latest-wins.
+def _load_visuals_manifest(root: Path) -> dict[str, list[str]]:
+    payload = _load_json(root / VISUALS_MANIFEST_FILE, {"schema_version": 1, "visuals": {}})
+    return payload.get("visuals", {})
 
-    The destination pair is cleared per query dir so both filenames stay in
-    sync with the source run.
+
+def _write_visuals_manifest(root: Path, visuals: dict[str, list[str]]) -> None:
+    payload = {"schema_version": 1, "visuals": dict(sorted(visuals.items()))}
+    (root / VISUALS_MANIFEST_FILE).write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def _reconcile_visual_files(
+    dest_root: Path, key: str, files: list[str], source_dir: Path | None
+) -> int:
+    """Make dest_root/key hold exactly `files`, copied from source_dir if given.
+
+    Both filenames are cleared first regardless of `files`, so an empty list
+    (a query whose latest run produced no visual) removes a stale copy just
+    as reliably as a non-empty list replaces one.
     """
+    dest_dir = dest_root / key
+    for filename in VISUAL_FILENAMES:
+        (dest_dir / filename).unlink(missing_ok=True)
+    copied = 0
+    for filename in files:
+        if source_dir is None:
+            continue
+        src = source_dir / filename
+        if not src.exists():
+            continue
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest_dir / filename)
+        copied += 1
+    return copied
+
+
+def _push_visuals(source_root: Path, dest_root: Path) -> int:
+    """Upload local visuals to dest_root, latest-wins, updating its manifest.
+
+    Only touches query dirs present in source_root (the local run just
+    produced); the manifest's other entries are left as they were.
+    """
+    manifest = _load_visuals_manifest(dest_root)
     copied = 0
     for model, condition, query_dir in _iter_query_dirs(source_root):
-        dest_dir = dest_root / model / condition / query_dir.name
-        for filename in VISUAL_FILENAMES:
-            (dest_dir / filename).unlink(missing_ok=True)
-        for filename in VISUAL_FILENAMES:
-            src = query_dir / filename
-            if not src.exists():
-                continue
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dest_dir / filename)
-            copied += 1
+        key = f"{model}/{condition}/{query_dir.name}"
+        present = [name for name in VISUAL_FILENAMES if (query_dir / name).exists()]
+        copied += _reconcile_visual_files(dest_root, key, present, query_dir)
+        manifest[key] = present
+    _write_visuals_manifest(dest_root, manifest)
+    return copied
+
+
+def _pull_visuals(source_root: Path, dest_root: Path) -> int:
+    """Mirror source_root's visuals into dest_root, including deletions.
+
+    Reconciles every key the manifest has ever recorded rather than just
+    query dirs that still exist in source_root, so a query whose latest run
+    produced no visual has its local copy removed too — a directory with no
+    tracked files doesn't exist in a git checkout, so it can't be iterated.
+    """
+    manifest = _load_visuals_manifest(source_root)
+    copied = 0
+    for key, files in manifest.items():
+        copied += _reconcile_visual_files(dest_root, key, files, source_root / key)
+    _write_visuals_manifest(dest_root, manifest)
     return copied
 
 
@@ -208,7 +260,7 @@ def cmd_upload(args: argparse.Namespace) -> int:
             snapshots_copied = _copy_run_snapshots(eval_results, worktree_dir, run_ids)
             visuals_copied = 0
             if not args.skip_visuals:
-                visuals_copied = _copy_visuals(eval_results, worktree_dir)
+                visuals_copied = _push_visuals(eval_results, worktree_dir)
             _write_readme_if_missing(worktree_dir)
 
             _git(["add", "-A"], cwd=worktree_dir)
@@ -264,7 +316,7 @@ def cmd_pull(args: argparse.Namespace) -> int:
         snapshots_copied = _copy_run_snapshots(worktree_dir, args.eval_results, run_ids=None)
         visuals_copied = 0
         if not args.skip_visuals:
-            visuals_copied = _copy_visuals(worktree_dir, args.eval_results)
+            visuals_copied = _pull_visuals(worktree_dir, args.eval_results)
 
     print(
         f"Pulled history, {snapshots_copied} snapshot(s), {visuals_copied} visual(s) from "
