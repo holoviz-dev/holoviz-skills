@@ -216,6 +216,7 @@ jobs:
             exit 1
           fi
           echo "::warning::Authenticated eval run failed; retrying anonymously."
+          rm -rf eval_results
           python - <<'PY'
           import json
           from pathlib import Path

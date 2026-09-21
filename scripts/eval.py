@@ -245,7 +245,7 @@ def run_generation(
 ) -> list[str]:
     """Run the generation step, returning the "model/condition/query" labels
     whose Kilo invocation exited nonzero. Failed invocations still write their
-    raw output to disk for debugging."""
+    reconstructed response text and metadata to disk for debugging."""
     failed: list[str] = []
     for model in models:
         model_label = model or DEFAULT_MODEL

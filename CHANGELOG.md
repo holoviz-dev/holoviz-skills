@@ -36,6 +36,8 @@ in-progress notes so it is skipped by the extraction.
   cannot leave a stale file for the dashboard.
 - **CI run IDs match the evaluated commit** — `runmeta` reads `git rev-parse HEAD`, and the
   eval step retries anonymously when the authenticated run cannot access the free tier.
+- **Anonymous retry starts from a clean `eval_results/`** — the workflow removes it before
+  retrying, so stale artifacts from the failed authenticated attempt can't be executed.
 
 ### Changed
 

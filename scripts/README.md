@@ -198,7 +198,7 @@ eval_results/
 │   └── <run_id>/
 │       ├── evaluation_results.json
 │       └── run_metadata.json
-├── runs.json                        # Compact run registry (git-commit friendly)
+├── runs.json                        # Compact run registry
 └── history_summary.json             # Flattened historical trend rows
 ```
 
