@@ -140,50 +140,61 @@ jobs:
     runs-on: ubuntu-latest
     needs: gate
     if: needs.gate.outputs.should_run == 'true'
+    timeout-minutes: 60
+    env:
+      # Project-level kilo.json/.kilo/kilo.json config takes precedence over
+      # the global config below, so a checked-out project file could
+      # otherwise override the deny policy set in "Configure Kilo Code".
+      KILO_DISABLE_PROJECT_CONFIG: "true"
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.gate.outputs.checkout_ref }}
           fetch-depth: 0
+          # Authenticate git only in the push step, after generated code has run.
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 22
 
-      - name: Install Copilot CLI
-        run: npm install -g @github/copilot
+      - name: Install Kilo Code CLI
+        run: npm install -g @kilocode/cli
 
-      - name: Validate Copilot token configuration
+      - name: Configure Kilo Code
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
         run: |
-          if [[ -z "${COPILOT_GITHUB_TOKEN}" ]]; then
-            echo "::error::Missing required secret COPILOT_GITHUB_TOKEN"
-            exit 1
-          fi
-          mkdir -p "$HOME/.copilot"
-          # Copilot CLI requires the workspace directory to be listed in
-          # trustedFolders inside ~/.copilot/config.json before it will run
-          # non-interactively. This inline script adds GITHUB_WORKSPACE to
-          # that list, preserving any existing entries.
           python - <<'PY'
           import json
           import os
           from pathlib import Path
 
-          cfg_dir = Path.home() / ".copilot"
-          cfg_path = cfg_dir / "config.json"
-          cfg = {}
-          if cfg_path.exists():
-              try:
-                  cfg = json.loads(cfg_path.read_text())
-              except Exception:
-                  cfg = {}
-          trusted = set(cfg.get("trustedFolders", []))
-          trusted.add(os.environ["GITHUB_WORKSPACE"])
-          cfg["trustedFolders"] = sorted(trusted)
-          cfg_path.write_text(json.dumps(cfg, indent=2))
+          cfg_dir = Path.home() / ".config" / "kilo"
+          cfg_dir.mkdir(parents=True, exist_ok=True)
+          cfg = {
+              "$schema": "https://app.kilo.ai/config.json",
+              "model": "kilo/kilo-auto/free",
+              "small_model": "kilo/kilo-auto/free",
+              "experimental": {"openTelemetry": False},
+              "permission": {
+                  "bash": {"*": "deny"},
+                  "background_process": {"*": "deny"},
+                  "edit": {"*": "deny"},
+                  "write": {"*": "deny"},
+                  "task": {"*": "deny"},
+                  "kilo_local_recall": {"*": "deny"},
+                  "external_directory": {"*": "deny"},
+              },
+          }
+          if os.environ.get("KILO_API_KEY"):
+              cfg["provider"] = {
+                  "kilo": {"options": {"apiKey": "{env:KILO_API_KEY}"}},
+              }
+          else:
+              print("::warning::KILO_API_KEY is not set; Kilo runs anonymously (free tier, 200 req/h per IP)")
+          (cfg_dir / "kilo.jsonc").write_text(json.dumps(cfg, indent=2) + "\n")
           PY
 
       - name: Set up Pixi
@@ -192,42 +203,83 @@ jobs:
           environments: eval
 
       - name: Preflight checks
-        env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
         run: pixi run -e eval eval-check
 
       - name: Compute run metadata
         id: runmeta
+        env:
+          TRIGGER_SOURCE: ${{ needs.gate.outputs.trigger_source }}
         run: |
-          echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          SHA="$(git rev-parse HEAD)"
+          echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+          case "$TRIGGER_SOURCE" in
+            workflow_dispatch) RUN_TRIGGER=ci_dispatch ;;
+            issue_comment) RUN_TRIGGER=ci_comment ;;
+            tag_push) RUN_TRIGGER=ci_tag ;;
+            *) RUN_TRIGGER=manual ;;
+          esac
+          echo "run_trigger=$RUN_TRIGGER" >> "$GITHUB_OUTPUT"
 
       - name: Run eval pipeline
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-        run: pixi run -e eval evals
+          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
+          RUN_ID: ${{ steps.runmeta.outputs.run_id }}
+          RUN_TRIGGER: ${{ steps.runmeta.outputs.run_trigger }}
+        # Isolate Kilo's local session/database state. Accounts without
+        # free-tier access are retried anonymously below.
+        run: |
+          run_eval() {
+            XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals \
+              --models kilo/kilo-auto/free --run-id "$RUN_ID" \
+              --run-trigger "$RUN_TRIGGER" --publish-target eval-data
+          }
+          if run_eval; then
+            exit 0
+          fi
+          if [ -z "$KILO_API_KEY" ]; then
+            exit 1
+          fi
+          echo "::warning::Authenticated eval run failed; retrying anonymously."
+          rm -rf eval_results
+          python - <<'PY'
+          import json
+          from pathlib import Path
 
-      - name: Deploy historical dashboard
-        if: needs.gate.outputs.deploy_dashboard == 'true'
-        run: pixi run -e eval eval-deploy-dashboard
+          cfg = Path.home() / ".config" / "kilo" / "kilo.jsonc"
+          data = json.loads(cfg.read_text())
+          data.pop("provider", None)
+          cfg.write_text(json.dumps(data, indent=2) + "\n")
+          PY
+          env -u KILO_API_KEY bash -c 'run_eval() {
+            XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals \
+              --models kilo/kilo-auto/free --run-id "$RUN_ID" \
+              --run-trigger "$RUN_TRIGGER" --publish-target eval-data
+          }; run_eval'
 
-      - name: Commit updated eval history
-        if: needs.gate.outputs.deploy_dashboard == 'true' && github.event_name != 'issue_comment' && always()
+      - name: Push eval history to eval-data
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Generated code just ran with full filesystem write access and could
+          # have overwritten scripts/ or pixi.toml; restore the originally
+          # checked-out (committed) versions before this step's GH_TOKEN exists.
+          git checkout HEAD -- scripts/ pixi.toml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add eval_results/runs.json eval_results/history_summary.json
-          if git diff --cached --quiet; then
-            echo "No tracked eval history changes to commit."
-            exit 0
-          fi
-          git commit -m "chore: update eval history"
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            git push origin HEAD:main --no-ff
-          else
-            git push
-          fi
+          # Authenticate via env-only git config (this step's process tree only,
+          # never written to .git/config) instead of `git remote set-url`, so
+          # later steps in this job can't recover the token by reading it back.
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf '%s' "x-access-token:${GH_TOKEN}" | base64 | tr -d '\n')"
+          pixi run -e eval eval-sync --upload --run-id "${{ steps.runmeta.outputs.run_id }}"
+
+      - name: Deploy historical dashboard
+        if: needs.gate.outputs.deploy_dashboard == 'true'
+        run: |
+          git checkout HEAD -- scripts/ pixi.toml
+          pixi run -e eval eval-deploy-dashboard
 
       - name: Upload eval artifacts
         if: always()

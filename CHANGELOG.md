@@ -10,6 +10,31 @@ the top for each release; keep `## Unreleased` (no "Version" prefix) for
 in-progress notes so it is skipped by the extraction.
 -->
 
+## Unreleased
+
+### Added
+
+- **Shared `eval-data` branch for eval history** — CI publishes run history, snapshots, and
+  plot outputs to a dedicated `eval-data` git branch after each eval run.
+  `pixi run eval-sync` pulls that history into a local `eval_results/`,
+  and `eval-deploy-dashboard` deploys the historical dashboard from it
+  by default (`--source local` deploys from a local run instead).
+
+### Changed
+
+- **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline now
+  drives the Kilo Code CLI (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier, with
+  `eval-multi` comparing it against the paid `kilo/kilo-auto/frontier` tier. Configure a
+  `KILO_API_KEY` repository secret for CI; runs fall back to the anonymous, rate-limited
+  free tier if it's missing or the account can't access it.
+- **CI eval runs are sandboxed and can't leak credentials** — generated code runs in a
+  separate, credential-free process, the Kilo agent's tool access is locked down (including
+  against a checked-out project config overriding that policy), and `scripts/`/`pixi.toml`
+  are restored from the git-committed content before any later step that holds a fresh
+  secret, so generated code can't tamper with what those steps load. A crafted query ID can
+  no longer write outside the eval results directory, and a job timeout plus a cap on the
+  per-query timeout bound a run to the eval content defined in `eval_queries.yaml`.
+
 ## Version 2026.08.13
 
 ### Added
