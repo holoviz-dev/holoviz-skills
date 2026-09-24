@@ -154,16 +154,6 @@ jobs:
           # Authenticate git only in the push step, after generated code has run.
           persist-credentials: false
 
-      - name: Restrict orchestration to trusted code
-        # scripts/ and pixi.toml run later with KILO_API_KEY/GH_TOKEN in the
-        # environment, so use the default branch's versions rather than a PR's
-        # own copy. scripts/eval_queries.yaml stays from the PR — it's eval
-        # content under test, not orchestration.
-        run: |
-          git fetch origin "${{ github.event.repository.default_branch }}" --depth=1
-          git checkout "origin/${{ github.event.repository.default_branch }}" -- scripts/ pixi.toml
-          git checkout HEAD -- scripts/eval_queries.yaml
-
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -271,6 +261,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Generated code just ran with full filesystem write access and could
+          # have overwritten scripts/ or pixi.toml; restore the originally
+          # checked-out (committed) versions before this step's GH_TOKEN exists.
+          git checkout HEAD -- scripts/ pixi.toml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Authenticate via env-only git config (this step's process tree only,
@@ -283,7 +277,9 @@ jobs:
 
       - name: Deploy historical dashboard
         if: needs.gate.outputs.deploy_dashboard == 'true'
-        run: pixi run -e eval eval-deploy-dashboard
+        run: |
+          git checkout HEAD -- scripts/ pixi.toml
+          pixi run -e eval eval-deploy-dashboard
 
       - name: Upload eval artifacts
         if: always()

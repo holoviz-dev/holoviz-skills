@@ -29,11 +29,11 @@ in-progress notes so it is skipped by the extraction.
   free tier if it's missing or the account can't access it.
 - **CI eval runs are sandboxed and can't leak credentials** — generated code runs in a
   separate, credential-free process, the Kilo agent's tool access is locked down (including
-  against a checked-out project config overriding that policy), and a pull request can no
-  longer get its own version of the eval scripts executed to reach secrets, overwrite the
-  shared eval history, or write outside the eval results directory via a crafted query ID.
-  A job timeout and a cap on the per-query timeout also bound a run to the eval content
-  defined in `eval_queries.yaml`.
+  against a checked-out project config overriding that policy), and `scripts/`/`pixi.toml`
+  are restored from the git-committed content before any later step that holds a fresh
+  secret, so generated code can't tamper with what those steps load. A crafted query ID can
+  no longer write outside the eval results directory, and a job timeout plus a cap on the
+  per-query timeout bound a run to the eval content defined in `eval_queries.yaml`.
 
 ## Version 2026.08.13
 
