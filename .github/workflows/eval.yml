@@ -148,6 +148,16 @@ jobs:
           # Authenticate git only in the push step, after generated code has run.
           persist-credentials: false
 
+      - name: Restrict orchestration to trusted code
+        # scripts/ and pixi.toml run later with KILO_API_KEY/GH_TOKEN in the
+        # environment, so use the default branch's versions rather than a PR's
+        # own copy. scripts/eval_queries.yaml stays from the PR — it's eval
+        # content under test, not orchestration.
+        run: |
+          git fetch origin "${{ github.event.repository.default_branch }}" --depth=1
+          git checkout "origin/${{ github.event.repository.default_branch }}" -- scripts/ pixi.toml
+          git checkout HEAD -- scripts/eval_queries.yaml
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -197,8 +207,6 @@ jobs:
           environments: eval
 
       - name: Preflight checks
-        env:
-          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
         run: pixi run -e eval eval-check
 
       - name: Compute run metadata
@@ -259,7 +267,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # Authenticate via env-only git config (this step's process tree only,
+          # never written to .git/config) instead of `git remote set-url`, so
+          # later steps in this job can't recover the token by reading it back.
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf '%s' "x-access-token:${GH_TOKEN}" | base64 | tr -d '\n')"
           pixi run -e eval eval-sync --upload --run-id "${{ steps.runmeta.outputs.run_id }}"
 
       - name: Deploy historical dashboard

@@ -86,13 +86,24 @@ def _remote_branch_exists(repo_root: Path, remote: str, branch: str) -> bool:
 def _data_branch_worktree(repo_root: Path, remote: str, branch: str) -> Generator[Path]:
     """Check out `branch` into a fresh, temporary git worktree.
 
-    Yields a detached checkout of the remote branch, or a fresh orphan ref at
-    a unique temporary name when the branch does not exist on `remote` yet.
-    Existence is checked before fetching: fetching first can miss a branch
-    that a concurrent uploader creates in between, leaving the tracking ref
-    unpopulated for the worktree checkout below. If the branch is instead
-    created by someone else after this check, the push in the caller's retry
-    loop is rejected as a non-fast-forward and the next attempt merges it.
+    Existence is checked before fetching, since fetching first can miss a
+    branch a concurrent uploader creates in between. If that happens anyway,
+    the caller's push is rejected and its retry loop picks it up next time.
+
+    Parameters
+    ----------
+    repo_root : Path
+        Local repository to create the worktree from.
+    remote : str
+        Git remote name, e.g. ``"origin"``.
+    branch : str
+        Branch to check out.
+
+    Yields
+    ------
+    Path
+        A detached checkout of `branch`, or a fresh orphan branch if it
+        doesn't exist on `remote` yet. Removed again on exit.
     """
     _git(["worktree", "prune"], cwd=repo_root, check=False)
     tmp_dir = Path(tempfile.mkdtemp(prefix="eval-data-worktree-"))
@@ -128,6 +139,25 @@ def _iter_query_dirs(eval_results_dir: Path) -> Iterator[tuple[str, str, Path]]:
                     yield model_dir.name, condition_dir.name, query_dir
 
 
+def _validate_branch_json(path: Path) -> bool:
+    """Check that `path` is valid JSON if it exists.
+
+    A missing file is fine (there's nothing to merge on top of yet), but a
+    malformed one is not: `_load_json` treats unreadable files as missing, so
+    merging on top of a corrupted history file would silently replace
+    accumulated shared history with just the current run.
+    """
+    if not path.exists():
+        return True
+    try:
+        json.loads(path.read_text())
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
+        print(f"Error: {path.name} on the {DEFAULT_BRANCH} branch is not valid JSON ({e}).")
+        print("Refusing to merge on top of it; fix or restore the file on the branch first.")
+        return False
+    return True
+
+
 def _load_visuals_manifest(root: Path) -> dict[str, list[str]]:
     payload = _load_json(root / VISUALS_MANIFEST_FILE, {"schema_version": 1, "visuals": {}})
     return payload.get("visuals", {})
@@ -141,11 +171,27 @@ def _write_visuals_manifest(root: Path, visuals: dict[str, list[str]]) -> None:
 def _reconcile_visual_files(
     dest_root: Path, key: str, files: list[str], source_dir: Path | None
 ) -> int:
-    """Make dest_root/key hold exactly `files`, copied from source_dir if given.
+    """Make `dest_root/key` hold exactly `files`, copied from `source_dir`.
 
-    Both filenames are cleared first regardless of `files`, so an empty list
-    (a query whose latest run produced no visual) removes a stale copy just
-    as reliably as a non-empty list replaces one.
+    Both possible filenames are removed from the destination first, so an
+    empty `files` list (a query whose latest run produced no visual) clears a
+    stale copy just as reliably as a non-empty list replaces one.
+
+    Parameters
+    ----------
+    dest_root : Path
+        Root directory to update.
+    key : str
+        Query key, ``"{model}/{condition}/{query_id}"``.
+    files : list of str
+        Filenames that should exist at `dest_root/key` afterwards.
+    source_dir : Path or None
+        Directory to copy `files` from. None if there's nothing to copy from.
+
+    Returns
+    -------
+    int
+        Number of files copied.
     """
     dest_dir = dest_root / key
     for filename in VISUAL_FILENAMES:
@@ -164,10 +210,22 @@ def _reconcile_visual_files(
 
 
 def _push_visuals(source_root: Path, dest_root: Path) -> int:
-    """Upload local visuals to dest_root, latest-wins, updating its manifest.
+    """Upload local visuals to `dest_root`, latest-wins, updating its manifest.
 
-    Only touches query dirs present in source_root (the local run just
-    produced); the manifest's other entries are left as they were.
+    Only touches query dirs present in `source_root` (the local run that just
+    finished); the manifest's other entries are left as they were.
+
+    Parameters
+    ----------
+    source_root : Path
+        Local `eval_results/` to read visuals from.
+    dest_root : Path
+        Branch worktree to update.
+
+    Returns
+    -------
+    int
+        Number of files copied.
     """
     manifest = _load_visuals_manifest(dest_root)
     copied = 0
@@ -181,12 +239,25 @@ def _push_visuals(source_root: Path, dest_root: Path) -> int:
 
 
 def _pull_visuals(source_root: Path, dest_root: Path) -> int:
-    """Mirror source_root's visuals into dest_root, including deletions.
+    """Mirror `source_root`'s visuals into `dest_root`, including deletions.
 
     Reconciles every key the manifest has ever recorded rather than just
-    query dirs that still exist in source_root, so a query whose latest run
-    produced no visual has its local copy removed too — a directory with no
-    tracked files doesn't exist in a git checkout, so it can't be iterated.
+    query dirs that still exist in `source_root`, since a directory with no
+    tracked files doesn't exist in a git checkout and so can't be iterated —
+    this is what lets a query whose latest run produced no visual have its
+    local copy removed too.
+
+    Parameters
+    ----------
+    source_root : Path
+        Branch worktree to read visuals from.
+    dest_root : Path
+        Local `eval_results/` to update.
+
+    Returns
+    -------
+    int
+        Number of files copied.
     """
     manifest = _load_visuals_manifest(source_root)
     copied = 0
@@ -197,9 +268,24 @@ def _pull_visuals(source_root: Path, dest_root: Path) -> int:
 
 
 def _copy_run_snapshots(source_root: Path, dest_root: Path, run_ids: set[str] | None) -> int:
-    """Copy runs/<run_id>/ dirs not already present at the destination.
+    """Copy `runs/<run_id>/` dirs from `source_root` to `dest_root`.
 
-    Snapshots are immutable, so an existing destination dir is kept.
+    Snapshots are immutable, so a destination dir that already exists is left
+    as-is rather than overwritten.
+
+    Parameters
+    ----------
+    source_root : Path
+        Directory containing a `runs/` subdirectory to copy from.
+    dest_root : Path
+        Directory to copy `runs/<run_id>/` snapshots into.
+    run_ids : set of str or None
+        Only copy these run IDs, or all of them if None.
+
+    Returns
+    -------
+    int
+        Number of run snapshots copied.
     """
     source_runs_dir = source_root / "runs"
     if not source_runs_dir.is_dir():
@@ -256,6 +342,13 @@ def cmd_upload(args: argparse.Namespace) -> int:
 
     for attempt in range(1, MAX_UPLOAD_ATTEMPTS + 1):
         with _data_branch_worktree(REPO_ROOT, DEFAULT_REMOTE, args.branch) as worktree_dir:
+            manifest_file = None if args.skip_visuals else worktree_dir / VISUALS_MANIFEST_FILE
+            branch_files = [worktree_dir / RUNS_REGISTRY_FILE, worktree_dir / HISTORY_SUMMARY_FILE]
+            if manifest_file is not None:
+                branch_files.append(manifest_file)
+            if not all(_validate_branch_json(path) for path in branch_files):
+                return 1
+
             for run_record in run_records:
                 _update_runs_registry(worktree_dir, run_record)
             if history_rows:
@@ -302,6 +395,7 @@ def cmd_upload(args: argparse.Namespace) -> int:
 
 
 def cmd_pull(args: argparse.Namespace) -> int:
+    """Copy eval history and visuals from the shared branch into local `eval_results/`."""
     if not _remote_branch_exists(REPO_ROOT, DEFAULT_REMOTE, args.branch):
         print(
             f"Error: branch '{args.branch}' not found on {DEFAULT_REMOTE}. "
@@ -320,6 +414,8 @@ def cmd_pull(args: argparse.Namespace) -> int:
         snapshots_copied = _copy_run_snapshots(worktree_dir, args.eval_results, run_ids=None)
         visuals_copied = 0
         if not args.skip_visuals:
+            if not _validate_branch_json(worktree_dir / VISUALS_MANIFEST_FILE):
+                return 1
             visuals_copied = _pull_visuals(worktree_dir, args.eval_results)
 
     print(

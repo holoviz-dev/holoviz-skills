@@ -61,14 +61,15 @@ Security and scope:
 - Comment-triggered runs are limited to trusted users (`OWNER`, `MEMBER`, `COLLABORATOR`)
 - Comment-triggered runs only support same-repository pull requests (fork PRs are rejected)
 - The workflow checks out the PR head SHA and runs the full pipeline by default
+- `scripts/` and `pixi.toml` always run from the default branch, not the PR's own copy —
+  only `scripts/eval_queries.yaml` and the content under test (`AGENTS.md`, skills, etc.)
+  come from the PR
 
 Required repository secret:
 
-- `KILO_API_KEY`: a Kilo account API key (from your profile at app.kilo.ai). It is
-  referenced via `{env:KILO_API_KEY}` in the generated Kilo config and never written to
-  disk. If it is not set, or the account behind it cannot access the free tier, the
-  workflow retries with anonymous free-model access, which is rate-limited (200 requests/h
-  per IP).
+- `KILO_API_KEY`: a Kilo account API key (from your profile at app.kilo.ai). If it's not
+  set, or the account can't access the free tier, the workflow retries anonymously
+  (rate-limited to 200 requests/h per IP).
 
 Workflow outputs:
 
@@ -207,22 +208,13 @@ eval_results/
 
 ## Shared Eval Data (`eval-data` branch)
 
-CI stores eval history on an orphan `eval-data` branch that mirrors the `eval_results/`
-layout:
-
-- `runs.json`, `history_summary.json`
-- `runs/<run_id>/` snapshots
-- `{model}/{condition}/{query_id}/plot_output.html` and `screenshot.png` (latest-wins)
-- `visuals.json` — manifest of each query's current visual filenames, so a pull can remove
-  a local visual whose query no longer has one on the branch
+CI publishes eval run history, snapshots, and plot outputs to a shared `eval-data` git
+branch after each run, so results aren't stuck on whichever machine produced them:
 
 ```bash
-# Pull the shared subset into local eval_results/
+# Pull the shared history into local eval_results/
 pixi run -e eval eval-sync
 ```
-
-CI uploads after every successful eval run. Concurrent uploads re-merge JSON registries
-by key and retry.
 
 ## Eval And Deploy
 
@@ -287,18 +279,14 @@ Fields:
 ## Troubleshooting
 
 **`Model not found: kilo/kilo-auto/free`**
-The free auto tier must be offered by the account behind `KILO_API_KEY`. Some
-organization or paid accounts do not serve `kilo-auto/free` (they expose only the paid
-tiers). The workflow retries such a failed run with anonymous free-model access, which
-always serves the free tier but is rate-limited to 200 requests/h per IP; if that is too
-slow, use a key from an account that offers the free tier.
+Some accounts don't serve the free auto tier. The workflow automatically retries such runs
+anonymously (rate-limited to 200 requests/h per IP); if that's too slow, use a key from an
+account that offers the free tier.
 
 **Tokens and execution time show 0**
-Token and cost usage are read from the JSON event stream that `kilo run --format json`
-emits (summed across the `step_finish` events). If you see zeros, run
-`kilo run --format json -m <model> "<prompt>"` manually and check its stdout contains
-`step_finish` events with a `tokens` field; the raw event stream is not persisted in
-`eval_results/`.
+Token and cost usage come from the JSON event stream `kilo run --format json` emits, which
+isn't persisted in `eval_results/`. Run the CLI manually with `--format json` to inspect a
+query's event stream if this happens.
 
 **Code execution fails**
 Check `execution.log` in the query result directory for the full traceback.

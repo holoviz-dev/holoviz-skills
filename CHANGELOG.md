@@ -14,67 +14,23 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
-- **Shared `eval-data` branch for eval run history, snapshots, and visuals** — `scripts/eval_sync.py`
-  uploads `runs.json`, `history_summary.json`, `runs/<run_id>/` snapshots, and per-query
-  `plot_output.html`/`screenshot.png` to an orphan `eval-data` branch mirroring the
-  `eval_results/` layout. `pixi run eval-sync` pulls that subset into a local `eval_results/`.
-  `scripts/eval_publish.py` deploys the Outerbounds dashboard from this branch by default
-  (`--source local` uses a local `eval_results/` instead).
-
-### Fixed
-
-- **Generated code no longer runs with credentials** — `execute_generated.py` strips
-  credential-like environment variables from the subprocess, and CI checkout no longer
-  persists the git token to `.git/config`.
-- **The Kilo agent itself can no longer exfiltrate `KILO_API_KEY`** — `--auto` mode
-  auto-approves anything not explicitly denied, and the agent's own process (not just the
-  later code-execution step) carries the key. CI's generated config now denies the
-  `bash`, `background_process`, `edit`, `write`, `task`, and `external_directory` tools, so
-  the agent has no command-execution, network-egress, or outside-workspace-file path left
-  to read or send the credential; read/glob/grep/skill stay enabled for skill lookup.
-- **Failed Kilo invocations no longer record "successful" runs** — `scripts/eval.py` checks
-  each invocation's CLI exit code and aborts before aggregation and publishing.
-- **First upload to `eval-data` commits only eval data** — orphan branch creation uses
-  `git switch --orphan` on a temporary ref, and never deletes a contributor's local
-  `eval-data` branch.
-- **Visuals are replaced as a pair** — `eval_sync.py` clears `plot_output.html` and
-  `screenshot.png` together before copying, so a run that no longer produces one of them
-  cannot leave a stale file for the dashboard.
-- **Pull removes visuals deleted from `eval-data`** — a query directory with no tracked
-  files doesn't exist in a git checkout, so a run producing no visual couldn't previously be
-  distinguished from one that was never synced. `eval_sync.py` now maintains a
-  `visuals.json` manifest on the branch (an empty entry marks a deliberate deletion) and
-  reconciles local visuals against it on every pull.
-- **CI run IDs match the evaluated commit** — `runmeta` reads `git rev-parse HEAD`, and the
-  eval step retries anonymously when the authenticated run cannot access the free tier.
-- **Anonymous retry starts from a clean `eval_results/`** — the workflow removes it before
-  retrying, so stale artifacts from the failed authenticated attempt can't be executed.
-- **First-ever concurrent uploads to `eval-data` no longer crash** — `eval_sync.py` checks
-  whether the branch exists before fetching it, instead of after; fetching first could miss
-  a branch a concurrent uploader had just created, leaving the tracking ref unpopulated and
-  raising an unhandled error outside the retry loop.
-- **`eval_results/runs.json` and `history_summary.json` stay untracked** — removed the
-  `.gitignore` negations left over from before these files moved to the `eval-data` branch.
-- **CI run history records accurate provenance** — the workflow now passes `--run-trigger`
-  (mapped from the workflow's trigger source) and `--publish-target eval-data` to `eval.py`
-  instead of leaving every CI run recorded as `manual`/`local`.
-- **`eval_sync.py` fetches into the tracking ref explicitly** — `git fetch origin <branch>`
-  only updates `refs/remotes/origin/<branch>` when the remote has a matching configured
-  refspec; fetching with an explicit destination refspec makes pull and upload work
-  regardless of how the local clone is configured.
+- **Shared `eval-data` branch for eval history** — CI publishes run history, snapshots, and
+  plot outputs to a dedicated `eval-data` git branch after each eval run, instead of leaving
+  them local to whichever machine ran them. `pixi run eval-sync` pulls that history into a
+  local `eval_results/`, and `eval-deploy-dashboard` deploys the historical dashboard from it
+  by default (`--source local` deploys from a local run instead).
 
 ### Changed
 
-- **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline
-  (`.github/workflows/eval.yml` and `scripts/`) now drives the Kilo Code CLI
-  (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier instead of the Copilot CLI.
-  CI reads a `KILO_API_KEY` repository secret, referenced via `{env:KILO_API_KEY}` in the
-  generated Kilo config so it is never written to disk; without the secret the run falls
-  back to anonymous free-model access, which is rate-limited (200 requests/h per IP).
-  Token and cost usage are now parsed from the Kilo CLI's JSON event stream rather than a
-  text footer, and each `metadata.json` additionally records `cost` and the resolved
-  underlying model. `eval-multi` now compares the paid `kilo/kilo-auto/frontier` tier
-  against the free tier so per-run cost can be compared.
+- **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline now
+  drives the Kilo Code CLI (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier, with
+  `eval-multi` comparing it against the paid `kilo/kilo-auto/frontier` tier. Configure a
+  `KILO_API_KEY` repository secret for CI; runs fall back to the anonymous, rate-limited
+  free tier if it's missing or the account can't access it.
+- **CI eval runs are sandboxed and can't leak credentials** — generated code and the Kilo
+  agent run without access to repository secrets, and a pull request can no longer get its
+  own version of the eval scripts executed to reach those secrets or overwrite the shared
+  eval history.
 
 ## Version 2026.08.13
 
