@@ -140,6 +140,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: gate
     if: needs.gate.outputs.should_run == 'true'
+    timeout-minutes: 60
+    env:
+      # Project-level kilo.json/.kilo/kilo.json config takes precedence over
+      # the global config below, so a checked-out project file could
+      # otherwise override the deny policy set in "Configure Kilo Code".
+      KILO_DISABLE_PROJECT_CONFIG: "true"
     steps:
       - uses: actions/checkout@v7
         with:

@@ -95,7 +95,14 @@ _HEADLESS_SAVE_CODE = textwrap.dedent("""
 
 
 # Variable names that hold credentials; excluded from the execution env.
-_CREDENTIAL_NAME = re.compile(r"API_?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL", re.IGNORECASE)
+# This is a defense-in-depth measure, not the isolation boundary: the
+# CI workflow and eval.py additionally keep KILO_API_KEY out of the process
+# that spawns generated code in the first place (see `run_execution`).
+_CREDENTIAL_NAME = re.compile(
+    r"API_?KEY|ACCESS_KEY|SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIAL"
+    r"|DATABASE_URL|CONNECTION_STRING|_DSN$",
+    re.IGNORECASE,
+)
 
 
 def _execution_env() -> dict[str, str]:

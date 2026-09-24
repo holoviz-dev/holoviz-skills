@@ -27,10 +27,13 @@ in-progress notes so it is skipped by the extraction.
   `eval-multi` comparing it against the paid `kilo/kilo-auto/frontier` tier. Configure a
   `KILO_API_KEY` repository secret for CI; runs fall back to the anonymous, rate-limited
   free tier if it's missing or the account can't access it.
-- **CI eval runs are sandboxed and can't leak credentials** — generated code and the Kilo
-  agent run without access to repository secrets, and a pull request can no longer get its
-  own version of the eval scripts executed to reach those secrets or overwrite the shared
-  eval history.
+- **CI eval runs are sandboxed and can't leak credentials** — generated code runs in a
+  separate, credential-free process, the Kilo agent's tool access is locked down (including
+  against a checked-out project config overriding that policy), and a pull request can no
+  longer get its own version of the eval scripts executed to reach secrets, overwrite the
+  shared eval history, or write outside the eval results directory via a crafted query ID.
+  A job timeout and a cap on the per-query timeout also bound a run to the eval content
+  defined in `eval_queries.yaml`.
 
 ## Version 2026.08.13
 

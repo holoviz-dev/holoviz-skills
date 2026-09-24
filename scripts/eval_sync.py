@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -158,9 +159,41 @@ def _validate_branch_json(path: Path) -> bool:
     return True
 
 
+_SAFE_PATH_COMPONENT = re.compile(r"^[A-Za-z0-9_.\-]+$")
+
+
+def _is_safe_manifest_key(key: str) -> bool:
+    """Check that `key` is a plain `"{model}/{condition}/{query_id}"` path.
+
+    Manifest keys are used directly as relative filesystem paths, so this
+    rejects anything else (e.g. containing `..` or `/`) to prevent a
+    malformed or tampered entry from reading or writing outside the eval
+    results / worktree roots.
+    """
+    parts = key.split("/")
+    if len(parts) != 3:
+        return False
+    model, condition, query_id = parts
+    if condition not in CONDITIONS:
+        return False
+    return all(
+        part not in (".", "..") and _SAFE_PATH_COMPONENT.match(part) for part in (model, query_id)
+    )
+
+
 def _load_visuals_manifest(root: Path) -> dict[str, list[str]]:
+    """Load the `{model}/{condition}/{query_id}: [filenames]` visuals manifest.
+
+    Unsafe keys and filenames are dropped (see `_is_safe_manifest_key`).
+    """
     payload = _load_json(root / VISUALS_MANIFEST_FILE, {"schema_version": 1, "visuals": {}})
-    return payload.get("visuals", {})
+    visuals = {}
+    for key, files in payload.get("visuals", {}).items():
+        if not _is_safe_manifest_key(key):
+            print(f"Warning: dropping unsafe visuals manifest key {key!r}.")
+            continue
+        visuals[key] = [f for f in files if f in VISUAL_FILENAMES]
+    return visuals
 
 
 def _write_visuals_manifest(root: Path, visuals: dict[str, list[str]]) -> None:
@@ -231,6 +264,9 @@ def _push_visuals(source_root: Path, dest_root: Path) -> int:
     copied = 0
     for model, condition, query_dir in _iter_query_dirs(source_root):
         key = f"{model}/{condition}/{query_dir.name}"
+        if not _is_safe_manifest_key(key):
+            print(f"Warning: skipping query with unsafe directory name {query_dir.name!r}.")
+            continue
         present = [name for name in VISUAL_FILENAMES if (query_dir / name).exists()]
         copied += _reconcile_visual_files(dest_root, key, present, query_dir)
         manifest[key] = present

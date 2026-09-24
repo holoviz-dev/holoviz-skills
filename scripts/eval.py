@@ -49,6 +49,7 @@ CODE_OUTPUT_INSTRUCTION = (
 # Sentinel used when no --model flag is passed (Kilo picks its default).
 DEFAULT_MODEL = "default"
 DEFAULT_MODEL_LABEL = "Default (Kilo)"
+MAX_QUERY_TIMEOUT = 900
 
 SCRIPTS_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPTS_DIR.parent
@@ -154,10 +155,27 @@ class KiloResponse:
         }
 
 
+_QUERY_ID_PATTERN = re.compile(r"^[a-z0-9_\-]+$")
+
+
 def load_queries(yaml_path: Path) -> list[dict]:
+    """Load queries from `eval_queries.yaml`, rejecting unsafe `id` values.
+
+    Query IDs become directory names (and later, `eval-data` manifest keys),
+    so they're restricted to the documented slug format rather than left free
+    to contain path separators or `..`.
+    """
     with open(yaml_path) as f:
         data = yaml.safe_load(f)
-    return data.get("queries", [])
+    queries = data.get("queries", [])
+    for query in queries:
+        query_id = query.get("id", "")
+        if not _QUERY_ID_PATTERN.match(query_id):
+            raise ValueError(
+                f"Invalid query id {query_id!r} in {yaml_path}: must contain only "
+                "lowercase letters, numbers, underscores, and hyphens."
+            )
+    return queries
 
 
 def model_to_slug(model: str | None) -> str:
@@ -257,7 +275,7 @@ def run_generation(
         for i, query in enumerate(queries, 1):
             query_id = query["id"]
             prompt = query["prompt"].rstrip() + CODE_OUTPUT_INSTRUCTION
-            timeout = query.get("timeout", 180)
+            timeout = min(query.get("timeout", 180), MAX_QUERY_TIMEOUT)
 
             print(f"[{i}/{len(queries)}] {query_id}")
 
@@ -324,16 +342,33 @@ def run_execution(
     timeout: int,
     skip_screenshots: bool,
 ):
-    # Import here so execute_generated.py remains independently runnable
-    sys.path.insert(0, str(SCRIPTS_DIR))
-    from execute_generated import execute_all_code
+    """Execute generated code in a separate process.
 
-    execute_all_code(
-        eval_results_dir=output_dir,
-        timeout=timeout,
-        query_ids=query_ids,
-        skip_screenshots=skip_screenshots,
-    )
+    Runs `execute_generated.py` as a subprocess rather than importing it, and
+    strips credential-like variables from that subprocess's environment from
+    the moment it's created — not just when it later spawns each generated
+    script — so the process tree that runs untrusted generated code never
+    holds `KILO_API_KEY`.
+    """
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    from execute_generated import _execution_env
+
+    cmd = [
+        sys.executable,
+        str(SCRIPTS_DIR / "execute_generated.py"),
+        "--eval-results",
+        str(output_dir),
+        "--timeout",
+        str(timeout),
+    ]
+    if query_ids:
+        cmd += ["--queries", *query_ids]
+    if skip_screenshots:
+        cmd.append("--skip-screenshots")
+
+    result = subprocess.run(cmd, cwd=REPO_ROOT, env=_execution_env())
+    if result.returncode != 0:
+        print(f"Warning: execute_generated.py exited with code {result.returncode}")
 
 
 def _slugify(value: str) -> str:

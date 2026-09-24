@@ -264,9 +264,9 @@ queries:
 ```
 
 Fields:
-- `id` — unique slug (lowercase, underscores or hyphens)
+- `id` — unique slug; lowercase letters, numbers, underscores, or hyphens only (enforced)
 - `prompt` — the question/task sent to Kilo
-- `timeout` — per-query Kilo timeout in seconds
+- `timeout` — per-query Kilo timeout in seconds (capped at 900)
 - `expected_output` — **not currently read or enforced by `eval.py`**; only
   `static_plot` outputs are actually supported by `execute_generated.py` (it
   can save HoloViews `Dimensioned` objects and Bokeh `Model` objects to
