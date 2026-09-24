@@ -49,6 +49,10 @@ in-progress notes so it is skipped by the extraction.
   eval step retries anonymously when the authenticated run cannot access the free tier.
 - **Anonymous retry starts from a clean `eval_results/`** — the workflow removes it before
   retrying, so stale artifacts from the failed authenticated attempt can't be executed.
+- **First-ever concurrent uploads to `eval-data` no longer crash** — `eval_sync.py` checks
+  whether the branch exists before fetching it, instead of after; fetching first could miss
+  a branch a concurrent uploader had just created, leaving the tracking ref unpopulated and
+  raising an unhandled error outside the retry loop.
 - **`eval_results/runs.json` and `history_summary.json` stay untracked** — removed the
   `.gitignore` negations left over from before these files moved to the `eval-data` branch.
 - **CI run history records accurate provenance** — the workflow now passes `--run-trigger`

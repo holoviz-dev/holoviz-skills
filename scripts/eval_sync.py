@@ -24,7 +24,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
@@ -83,22 +83,26 @@ def _remote_branch_exists(repo_root: Path, remote: str, branch: str) -> bool:
 
 
 @contextmanager
-def _data_branch_worktree(repo_root: Path, remote: str, branch: str) -> Iterator[Path]:
+def _data_branch_worktree(repo_root: Path, remote: str, branch: str) -> Generator[Path]:
     """Check out `branch` into a fresh, temporary git worktree.
 
     Yields a detached checkout of the remote branch, or a fresh orphan ref at
     a unique temporary name when the branch does not exist on `remote` yet.
+    Existence is checked before fetching: fetching first can miss a branch
+    that a concurrent uploader creates in between, leaving the tracking ref
+    unpopulated for the worktree checkout below. If the branch is instead
+    created by someone else after this check, the push in the caller's retry
+    loop is rejected as a non-fast-forward and the next attempt merges it.
     """
     _git(["worktree", "prune"], cwd=repo_root, check=False)
-    _git(
-        ["fetch", remote, f"+{branch}:refs/remotes/{remote}/{branch}"],
-        cwd=repo_root,
-        check=False,
-    )
     tmp_dir = Path(tempfile.mkdtemp(prefix="eval-data-worktree-"))
     tmp_ref = f"{branch}-tmp-{uuid4().hex[:8]}"
     try:
         if _remote_branch_exists(repo_root, remote, branch):
+            _git(
+                ["fetch", remote, f"+{branch}:refs/remotes/{remote}/{branch}"],
+                cwd=repo_root,
+            )
             _git(["worktree", "add", "--detach", str(tmp_dir), f"{remote}/{branch}"], cwd=repo_root)
         else:
             _git(["worktree", "add", "--no-checkout", "--detach", str(tmp_dir)], cwd=repo_root)

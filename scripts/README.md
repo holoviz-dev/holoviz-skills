@@ -226,10 +226,20 @@ by key and retry.
 
 ## Eval And Deploy
 
+Run eval and view or deploy your own local results:
+
 ```bash
 pixi run -e eval evals
-pixi run -e eval eval-sync
-pixi run -e eval eval-deploy-dashboard
+pixi run -e eval eval-history-dashboard
+python scripts/eval_publish.py --source local
+```
+
+View or deploy what's already on the shared `eval-data` branch instead:
+
+```bash
+pixi run -e eval eval-sync              # pull it into local eval_results/ to view locally
+pixi run -e eval eval-history-dashboard
+pixi run -e eval eval-deploy-dashboard  # deploys from eval-data directly
 ```
 
 Useful environment variables:
@@ -246,12 +256,6 @@ The deploy command stages:
 - `eval_results/**/plot_output.html` (or `screenshot.png` if no plot) for the Plot Outputs tab
 
 and deploys that bundle to Outerbounds.
-
-To deploy the dashboard without rerunning eval:
-
-```bash
-pixi run -e eval eval-deploy-dashboard
-```
 
 ## Adding Queries
 
