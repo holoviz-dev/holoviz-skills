@@ -303,7 +303,7 @@ def run_generation(
                     save_results(query_id, response, output_dir, skills_enabled=False)
                     if returncode != 0:
                         failed.append(f"{model_label}/without_skills/{query_id}")
-                        print(f"  ✗ Kilo CLI exited with code {returncode}")
+                        print(f"  Kilo CLI exited with code {returncode}")
                 finally:
                     enable_skills(REPO_ROOT)
 
@@ -329,7 +329,7 @@ def run_generation(
                 save_results(query_id, response, output_dir, skills_enabled=True)
                 if returncode != 0:
                     failed.append(f"{model_label}/with_skills/{query_id}")
-                    print(f"  ✗ Kilo CLI exited with code {returncode}")
+                    print(f"  Kilo CLI exited with code {returncode}")
 
             print(f"{'─' * 60}")
 
@@ -346,9 +346,8 @@ def run_execution(
 
     Runs `execute_generated.py` as a subprocess rather than importing it, and
     strips credential-like variables from that subprocess's environment from
-    the moment it's created — not just when it later spawns each generated
-    script — so the process tree that runs untrusted generated code never
-    holds `KILO_API_KEY`.
+    the moment it's created so the process tree that runs untrusted generated
+    code never holds `KILO_API_KEY`.
     """
     sys.path.insert(0, str(SCRIPTS_DIR))
     from execute_generated import _execution_env

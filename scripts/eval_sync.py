@@ -51,7 +51,7 @@ README_TEXT = """\
 
 Shared storage for HoloViz skills eval run history, snapshots, and per-query
 visuals. Written by CI via `scripts/eval_sync.py` after every successful eval
-run. Data branch — do not merge into `main`.
+run. Data branch — DO NOT merge into `main`.
 
 Layout mirrors `eval_results/`:
 

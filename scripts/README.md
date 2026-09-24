@@ -60,12 +60,8 @@ Security and scope:
 
 - Comment-triggered runs are limited to trusted users (`OWNER`, `MEMBER`, `COLLABORATOR`)
 - Comment-triggered runs only support same-repository pull requests (fork PRs are rejected)
-- The workflow checks out the PR head SHA and runs the full pipeline, including the PR's
-  own `scripts/`/`pixi.toml` — a maintainer triggering `@run-eval` is trusted to have
-  reviewed the diff, including any changes to the eval harness itself
-- Generated code executes with `KILO_API_KEY` kept out of its process, and `scripts/`/
-  `pixi.toml` are restored from the git-committed content before any later step that holds
-  a fresh secret, so generated code can't tamper with what those steps load
+- The workflow checks out the PR head SHA and runs its full pipeline, including the PR's
+  own `scripts/`/`pixi.toml`
 
 Required repository secret:
 
@@ -266,7 +262,7 @@ queries:
 ```
 
 Fields:
-- `id` — unique slug; lowercase letters, numbers, underscores, or hyphens only (enforced)
+- `id` — unique slug; lowercase letters, numbers, underscores, or hyphens only
 - `prompt` — the question/task sent to Kilo
 - `timeout` — per-query Kilo timeout in seconds (capped at 900)
 - `expected_output` — **not currently read or enforced by `eval.py`**; only

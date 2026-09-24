@@ -15,9 +15,9 @@ in-progress notes so it is skipped by the extraction.
 ### Added
 
 - **Shared `eval-data` branch for eval history** — CI publishes run history, snapshots, and
-  plot outputs to a dedicated `eval-data` git branch after each eval run, instead of leaving
-  them local to whichever machine ran them. `pixi run eval-sync` pulls that history into a
-  local `eval_results/`, and `eval-deploy-dashboard` deploys the historical dashboard from it
+  plot outputs to a dedicated `eval-data` git branch after each eval run.
+  `pixi run eval-sync` pulls that history into a local `eval_results/`,
+  and `eval-deploy-dashboard` deploys the historical dashboard from it
   by default (`--source local` deploys from a local run instead).
 
 ### Changed
