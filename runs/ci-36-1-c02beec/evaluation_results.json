@@ -1,0 +1,94 @@
+{
+  "total_queries": 2,
+  "models": [
+    "kilo_kilo-auto_free"
+  ],
+  "queries": {
+    "hvplot_interactive_scatter": {
+      "models": {
+        "kilo_kilo-auto_free": {
+          "with_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 23.52214503288269,
+            "tokens_input": 6986,
+            "tokens_output": 133,
+            "tokens_total": 7119,
+            "tokens_cached": 2272,
+            "tokens_reasoning": 84,
+            "execution_success": false,
+            "execution_duration": 30.046030282974243
+          },
+          "without_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 28.44632315635681,
+            "tokens_input": 9865,
+            "tokens_output": 244,
+            "tokens_total": 10109,
+            "tokens_cached": 0,
+            "tokens_reasoning": 129,
+            "execution_success": true,
+            "execution_duration": 1.7176637649536133
+          },
+          "comparison": {
+            "both_have_code": true,
+            "token_difference": -111,
+            "time_difference": -4.924178123474121,
+            "both_executed": true,
+            "execution_improvement": false,
+            "execution_regression": true
+          }
+        }
+      }
+    },
+    "hvplot_earthquake_plot": {
+      "models": {
+        "kilo_kilo-auto_free": {
+          "with_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 91.83988666534424,
+            "tokens_input": 57803,
+            "tokens_output": 463,
+            "tokens_total": 58266,
+            "tokens_cached": 34272,
+            "tokens_reasoning": 1462,
+            "execution_success": true,
+            "execution_duration": 3.7885236740112305
+          },
+          "without_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 75.39291977882385,
+            "tokens_input": 54718,
+            "tokens_output": 912,
+            "tokens_total": 55630,
+            "tokens_cached": 45312,
+            "tokens_reasoning": 453,
+            "execution_success": true,
+            "execution_duration": 2.572230577468872
+          },
+          "comparison": {
+            "both_have_code": true,
+            "token_difference": -449,
+            "time_difference": 16.446966886520386,
+            "both_executed": true,
+            "execution_improvement": false,
+            "execution_regression": false
+          }
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "kilo_kilo-auto_free": {
+      "code_generation_rate_with": 1.0,
+      "code_generation_rate_without": 1.0,
+      "avg_token_difference": -280.0,
+      "avg_time_difference": 5.761394381523132,
+      "execution_success_rate_with": 0.5,
+      "execution_success_rate_without": 1.0
+    }
+  }
+}

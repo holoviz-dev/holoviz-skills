@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "visuals": {
+    "kilo_kilo-auto_free/with_skills/hvplot_earthquake_plot": [],
+    "kilo_kilo-auto_free/with_skills/hvplot_interactive_scatter": [],
+    "kilo_kilo-auto_free/without_skills/hvplot_earthquake_plot": [],
+    "kilo_kilo-auto_free/without_skills/hvplot_interactive_scatter": [
+      "plot_output.html",
+      "screenshot.png"
+    ]
+  }
+}
