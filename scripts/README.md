@@ -286,6 +286,10 @@ tiers). If you hit this, use a key from an account that offers the free tier, or
 the `KILO_API_KEY` secret so the workflow falls back to anonymous free-model access
 (which always serves the free tier, but is rate-limited to 200 requests/h per IP).
 
+Note that `eval-multi` always runs the free tier anonymously (via
+`eval.py --anonymous-models`), so it works regardless of your account, and the
+corresponding queries' `metadata.json` records `"anonymous": true`.
+
 **Tokens and execution time show 0**
 Token and cost usage are read from the JSON event stream that `kilo run --format json`
 emits (summed across the `step_finish` events). If you see zeros, run

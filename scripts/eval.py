@@ -26,13 +26,21 @@ Usage:
 
   # Compare two models, with-skills condition only
   python eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free --skills with
+
+  # Compare two models when the authenticated account doesn't serve the free
+  # tier: the free model's CLI invocations run anonymously instead
+  python eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free \\
+      --anonymous-models kilo/kilo-auto/free
 """
 
 import argparse
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -172,9 +180,18 @@ def model_to_slug(model: str | None) -> str:
 
 
 def run_kilo_query(
-    query: str, model: str | None = None, timeout: int = 180
+    query: str,
+    model: str | None = None,
+    timeout: int = 180,
+    data_home: str | None = None,
 ) -> tuple[str, float, list[dict], int]:
     """Run one query through the Kilo Code CLI in autonomous mode.
+
+    When `data_home` is set, the CLI subprocess gets that directory as
+    ``XDG_DATA_HOME`` so it has no stored credentials and runs anonymously
+    (free tier, 200 requests/h per IP). This is how a model the authenticated
+    account doesn't serve — e.g. ``kilo/kilo-auto/free`` — can still be
+    evaluated.
 
     Returns the reconstructed assistant text, wall-clock time, the parsed
     JSON events (token/cost usage comes from the events, not text), and the
@@ -188,12 +205,16 @@ def run_kilo_query(
             cmd += ["-m", model]
         cmd += [query]
 
+        env = None
+        if data_home is not None:
+            env = {**os.environ, "XDG_DATA_HOME": data_home}
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
             cwd=REPO_ROOT,
+            env=env,
         )
         execution_time = time.time() - start_time
         events = _parse_kilo_events(result.stdout)
@@ -212,6 +233,7 @@ def save_results(
     response: KiloResponse,
     output_dir: Path,
     skills_enabled: bool,
+    anonymous: bool = False,
 ):
     model_slug = model_to_slug(response.model if response.model != DEFAULT_MODEL_LABEL else None)
     condition = "with_skills" if skills_enabled else "without_skills"
@@ -222,6 +244,8 @@ def save_results(
 
     metadata = response.to_dict()
     metadata["skills_enabled"] = skills_enabled
+    if anonymous:
+        metadata["anonymous"] = True
     with open(query_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
 
@@ -243,17 +267,30 @@ def run_generation(
     models: list[str | None],
     skip_without_skills: bool = False,
     skip_with_skills: bool = False,
+    anonymous_models: frozenset[str] | None = None,
 ) -> list[str]:
     """Run the generation step, returning the query IDs whose Kilo invocation
     failed (nonzero CLI exit). Failed invocations still write their raw
     output to disk for debugging, but the caller must not aggregate or
-    publish a run that contains them."""
+    publish a run that contains them.
+
+    Models listed in `anonymous_models` run each CLI invocation with a fresh
+    ``XDG_DATA_HOME``, i.e. without credentials, so models the authenticated
+    account doesn't serve (``kilo/kilo-auto/free``) still work. The paid
+    models keep the inherited logged-in environment.
+    """
     failed: list[str] = []
+    anonymous_models = anonymous_models or frozenset()
     for model in models:
         model_label = model or DEFAULT_MODEL
+        anonymous = model in anonymous_models
+        # One throwaway session/data dir per anonymous model pass; the CLI
+        # stores credentials and session state under XDG_DATA_HOME, and a
+        # fresh empty one makes every invocation in this pass anonymous.
+        data_home = tempfile.mkdtemp(prefix="kilo-anon-") if anonymous else None
         if len(models) > 1:
             print(f"\n{'═' * 60}")
-            print(f"Model: {model_label}")
+            print(f"Model: {model_label}" + (" (anonymous)" if anonymous else ""))
             print(f"{'═' * 60}")
 
         for i, query in enumerate(queries, 1):
@@ -268,7 +305,7 @@ def run_generation(
                 disable_skills(REPO_ROOT)
                 try:
                     raw_output, exec_time, events, returncode = run_kilo_query(
-                        prompt, model=model, timeout=timeout
+                        prompt, model=model, timeout=timeout, data_home=data_home
                     )
                     response = KiloResponse(
                         raw_output,
@@ -284,14 +321,16 @@ def run_generation(
                         f"Tokens: ↑{tok['input']} ↓{tok['output']}"
                         + (f" ({tok['cached']} cached)" if tok["cached"] else "")
                     )
-                    save_results(query_id, response, output_dir, skills_enabled=False)
+                    save_results(
+                        query_id, response, output_dir, skills_enabled=False, anonymous=anonymous
+                    )
                 finally:
                     enable_skills(REPO_ROOT)
 
             if not skip_with_skills:
                 print("  Running WITH skills...")
                 raw_output, exec_time, events, returncode = run_kilo_query(
-                    prompt, model=model, timeout=timeout
+                    prompt, model=model, timeout=timeout, data_home=data_home
                 )
                 response = KiloResponse(
                     raw_output,
@@ -307,13 +346,18 @@ def run_generation(
                     f"Tokens: ↑{tok['input']} ↓{tok['output']}"
                     + (f" ({tok['cached']} cached)" if tok["cached"] else "")
                 )
-                save_results(query_id, response, output_dir, skills_enabled=True)
+                save_results(
+                    query_id, response, output_dir, skills_enabled=True, anonymous=anonymous
+                )
 
             if returncode != 0:
                 failed.append(query_id)
                 print(f"  ✗ Kilo CLI exited with code {returncode}")
 
             print(f"{'─' * 60}")
+
+        if data_home is not None:
+            shutil.rmtree(data_home, ignore_errors=True)
 
     return failed
 
@@ -484,6 +528,15 @@ Examples:
         help="Source that triggered this run (default: manual)",
     )
     parser.add_argument(
+        "--anonymous-models",
+        nargs="*",
+        default=[],
+        metavar="MODEL",
+        help="Model(s) whose CLI invocations run anonymously via a fresh "
+        "XDG_DATA_HOME (free tier, 200 requests/h per IP). Use for models the "
+        "authenticated account doesn't serve, e.g. kilo/kilo-auto/free.",
+    )
+    parser.add_argument(
         "--publish-target",
         default="local",
         help="Publish target hint recorded in run metadata (default: local)",
@@ -515,6 +568,7 @@ Examples:
         "run_trigger": args.run_trigger,
         "publish_target": args.publish_target,
         "models_requested": models_requested,
+        "anonymous_models": args.anonymous_models,
         "query_ids": [q["id"] for q in queries],
         "skip_generation": args.skip_generation,
         "skip_execution": args.skip_execution,
@@ -532,6 +586,7 @@ Examples:
             models=models,
             skip_without_skills=args.skills == "with",
             skip_with_skills=args.skills == "without",
+            anonymous_models=frozenset(args.anonymous_models),
         )
         print("\nGeneration complete.")
         if failed_queries:

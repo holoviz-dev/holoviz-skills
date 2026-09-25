@@ -118,10 +118,10 @@ evals = { cmd = "python scripts/eval.py", cwd = ".", depends-on = [
 eval-no-screenshots = { cmd = "python scripts/eval.py --skip-screenshots", cwd = ".", depends-on = [
     "_eval-check-no-screenshots",
 ], description = "Run evaluation without screenshots (faster, no Playwright needed)" }
-eval-multi = { cmd = "python scripts/eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free", cwd = ".", depends-on = [
+eval-multi = { cmd = "python scripts/eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free --anonymous-models kilo/kilo-auto/free", cwd = ".", depends-on = [
     "_eval-setup",
     "eval-check",
-], description = "Compare the frontier (paid) and free Kilo auto tiers" }
+], description = "Compare the frontier (paid, authenticated) and free (anonymous) Kilo auto tiers" }
 eval-history-dashboard = { cmd = "panel serve scripts/compare_history.py --show --args eval_results/", cwd = ".", description = "Open the historical run dashboard in the browser" }
 eval-deploy-dashboard = { cmd = "python scripts/eval_publish.py", cwd = ".", description = "Deploy the historical dashboard from the shared eval-data branch" }
 eval-sync = { cmd = "python scripts/eval_sync.py", cwd = ".", description = "Pull eval history, snapshots and screenshots from the shared eval-data branch" }
