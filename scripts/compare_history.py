@@ -24,18 +24,20 @@ pn.extension("tabulator", "echarts", throttled=True, sizing_mode="stretch_width"
 _DEFAULT_RESULTS_DIR = Path(__file__).parent.parent / "eval_results"
 _RESULTS_DIR = next((Path(a) for a in sys.argv[1:] if Path(a).is_dir()), _DEFAULT_RESULTS_DIR)
 
-_METRICS = ("tokens_output", "tokens_input", "execution_time")
+_METRICS = ("tokens_output", "tokens_input", "execution_time", "cost")
 _LABELS = {
     "execution_success": "Execution success",
     "tokens_output": "Tokens (output)",
     "tokens_input": "Tokens (input)",
     "execution_time": "Response Time (s)",
+    "cost": "Cost (USD)",
 }
 _HEATMAP = {
     "execution_success": ("{:.0%}", "RdYlGn"),
     "tokens_output": ("{:,.0f}", "RdYlGn_r"),
     "tokens_input": ("{:,.0f}", "RdYlGn_r"),
     "execution_time": ("{:.1f}", "RdYlGn_r"),
+    "cost": ("${:.4f}", "RdYlGn_r"),
 }
 _CONDITIONS = ("with_skills", "without_skills")
 _CONDITION_ABBR = {"with_skills": "on", "without_skills": "off"}
@@ -188,6 +190,11 @@ class HistoricalDashboard(pn.viewable.Viewer):
         if not rows:
             return pd.DataFrame()
         df = pd.DataFrame(rows)
+        # Rows recorded before cost tracking have no cost field; default them to 0.
+        if "cost" not in df.columns:
+            df["cost"] = 0.0
+        else:
+            df["cost"] = df["cost"].fillna(0.0)
         df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
         return df.sort_values(["created_at", "run_id", "model", "condition", "query_id"])
 
@@ -246,6 +253,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             ("pass-rate lift", lift, "{value:+.0%}"),
             ("avg response time", df["execution_time"].mean(), "{value:.1f} s"),
             ("avg tokens", df["tokens_output"].mean(), "{value:,.0f}"),
+            ("total cost", df["cost"].sum(), "${value:.4f}"),
         ]
         kpis = pn.FlexBox(
             *[
@@ -515,6 +523,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 "tokens_output",
                 "tokens_input",
                 "execution_time",
+                "cost",
                 "execution_success",
             ]
         ]
@@ -529,6 +538,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             theme="materialize",
             header_filters=True,
             selectable=False,
+            formatters={"cost": {"type": "money", "symbol": "$", "precision": 4}},
             titles={
                 "run_id": "Run",
                 "created_at": "Created",
@@ -538,6 +548,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 "tokens_output": "Tokens (out)",
                 "tokens_input": "Tokens (in)",
                 "execution_time": "Response time (s)",
+                "cost": "Cost (USD)",
                 "execution_success": "Status",
             },
         )

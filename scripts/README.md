@@ -185,7 +185,7 @@ eval_results/
 │   ├── with_skills/
 │   │   └── [query_id]/
 │   │       ├── response.txt        # Kilo response text
-│   │       ├── metadata.json       # Model, tokens, timing, execution result
+│   │       ├── metadata.json       # Model, tokens, cost, timing, execution result
 │   │       ├── generated_code.py   # Extracted code block
 │   │       ├── execution.log       # stdout/stderr from code run
 │   │       ├── plot_output.html    # Saved plot (if generated)

@@ -74,6 +74,7 @@ def _flatten_history_rows(summary: dict, run_id: str, created_at: str) -> list[d
                         "tokens_input": metrics.get("tokens_input"),
                         "tokens_cached": metrics.get("tokens_cached"),
                         "execution_time": metrics.get("execution_time"),
+                        "cost": metrics.get("cost", 0.0),
                         "execution_success": metrics.get("execution_success"),
                         "has_code": metrics.get("has_code"),
                     }
@@ -189,6 +190,7 @@ def _extract_metrics(metadata: dict) -> dict:
         "has_code": metadata.get("has_code", False),
         "code_blocks_count": metadata.get("code_blocks_count", 0),
         "execution_time": metadata.get("execution_time", 0),
+        "cost": metadata.get("cost", 0.0),
         "tokens_input": metadata.get("tokens", {}).get("input", 0),
         "tokens_output": metadata.get("tokens", {}).get("output", 0),
         "tokens_total": (
@@ -252,6 +254,7 @@ def _condition_comparison(with_skills: dict, without_skills: dict) -> dict:
     if with_skills and without_skills:
         comp["token_difference"] = with_skills["tokens_output"] - without_skills["tokens_output"]
         comp["time_difference"] = with_skills["execution_time"] - without_skills["execution_time"]
+        comp["cost_difference"] = with_skills["cost"] - without_skills["cost"]
 
     ws_exec = with_skills.get("execution_success")
     wos_exec = without_skills.get("execution_success")
@@ -322,6 +325,9 @@ def generate_comparison_summary(metrics: dict) -> dict:
             ) / len(comparisons)
             agg["avg_time_difference"] = sum(
                 c.get("time_difference", 0) for c in comparisons
+            ) / len(comparisons)
+            agg["avg_cost_difference"] = sum(
+                c.get("cost_difference", 0) for c in comparisons
             ) / len(comparisons)
 
         ws_executed = [e for e in ws_list if e.get("execution_success") is not None]
