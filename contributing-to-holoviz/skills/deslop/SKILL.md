@@ -2,7 +2,7 @@
 name: deslop
 description: Strip LLM slop from prose — rhetorical tics, false-profundity constructions, AI vocabulary, and boilerplate. Use when writing or reviewing any HoloViz prose (PR descriptions, docs, blog posts, READMEs, commit messages) to remove recognizable LLM patterns.
 metadata:
-  version: "2026.09.14"
+  version: "2026.09.28"
   author: holoviz
 ---
 
@@ -39,7 +39,7 @@ The scanner is a starting point, not the specification. It has false positives (
 
 **4. Rewrite.** Apply `references/patterns.md` hit by hit, then reread the whole thing for the patterns the scanner missed. Use Edit for files. For a conversation draft, output the rewritten text.
 
-**5. Verify.** Re-run the scanner on the result. Every remaining hit needs a reason: quoted material, a false positive, or an intentional choice you flag to the user.
+**5. Verify, and repeat.** Re-run the scanner on the result and reread the whole piece again, because one pass is never enough: rewrites introduce their own tics (a merged sentence becomes a new "not X but Y", a cut announcement leaves two choppy beats behind), and the patterns no regex catches only show up on a fresh read. Cuts also break references, so reread the sentences around each deletion for a pronoun, "this" or "that" left pointing at something that's gone. Keep alternating scan and reread until a pass turns up nothing new. Every remaining hit needs a reason: quoted material, a false positive, or an intentional choice you flag to the user.
 
 **6. Report.** Say what you cut and, briefly, what you deliberately left. Do not paste the scanner output at the user.
 

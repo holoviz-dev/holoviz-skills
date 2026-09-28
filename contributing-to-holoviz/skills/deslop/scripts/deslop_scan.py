@@ -439,6 +439,12 @@ RULES: list[Rule] = [
         r"industry[\s-]leading|battle[\s-]tested|future[\s-]proof(?:ed|ing)?)\b",
     ),
     Rule(
+        "tidy-closer",
+        "Tidy closing sentence",
+        r"(?:^|(?<=\n)|(?<=[.!?]\s))(?:ultimately|in the end|at the end of the day|"
+        r"in conclusion|all in all)\b",
+    ),
+    Rule(
         "promotional",
         "Promotional boilerplate",
         r"\bnestled\s+(?:in|among|between)\b|\bin\s+the\s+heart\s+of\b"
@@ -475,6 +481,7 @@ STRUCTURAL_RULES: list[Rule] = [
     Rule("bold-lead-bullets", "Bold-label bullet run", "", min_count=1),
     Rule("bold-lead-paragraph", "Bold-label paragraph slot", "", min_count=3),
     Rule("emoji-decoration", "Emoji in heading or bullet", ""),
+    Rule("short-section", "Heading over a very short section", "", min_count=2),
 ]
 
 SENTENCE_RULES: list[Rule] = [
@@ -483,6 +490,7 @@ SENTENCE_RULES: list[Rule] = [
     Rule("echoing-run", "Echoing sentence run", ""),
     Rule("repeated-frame", "Repeated sentence frame", ""),
     Rule("fragment-run", "Run of sentence fragments", ""),
+    Rule("choppy-run", "Run of short declarative sentences", ""),
 ]
 
 ALL_RULES: list[Rule] = RULES + STRUCTURAL_RULES + SENTENCE_RULES
@@ -876,6 +884,27 @@ def scan_sentences(masked: str) -> list[dict]:
             hits.append(_run_hit("fragment-run", run))
         run = []
 
+    # runs of short declarative sentences in one paragraph, one idea chopped
+    # into beats. A single short sentence is emphasis; two or more in a row
+    # is the staccato rhythm LLM prose uses to sound decisive.
+    def is_short(s: Sentence) -> bool:
+        return (
+            bool(s.text)
+            and not is_structural(s.text)
+            and s.text.endswith(".")
+            and 2 <= len(WORD_RE.findall(s.text)) <= 6
+        )
+
+    run = []
+    for s in sentences + [Sentence("", len(masked))]:
+        same_para = bool(run) and "\n\n" not in masked[run[-1].start : s.start]
+        if is_short(s) and (not run or same_para):
+            run.append(s)
+            continue
+        if len(run) >= 2:
+            hits.append(_run_hit("choppy-run", run))
+        run = [s] if is_short(s) else []
+
     return hits
 
 
@@ -969,6 +998,9 @@ BOLD_LEAD_RE = re.compile(r"^\s*[-*+]\s+\*\*[^*\n]{2,60}\*\*\s*[:—–-]?\s+\S"
 BOLD_PARA_RE = re.compile(r"^\*\*[^*\n]{2,80}[^*\s.]\.\*\*")
 
 
+SHORT_SECTION_WORDS = 40
+
+
 def scan_structure(masked: str) -> list[dict]:
     """Markdown shapes LLMs reach for: every bullet a bold label, emoji in
     headings. Runs of bold-label bullets are one hit, not one per bullet."""
@@ -987,8 +1019,26 @@ def scan_structure(masked: str) -> list[dict]:
                 }
             )
 
+    # headings over sections too short to need one. A heading followed directly
+    # by a deeper subheading is a parent, not a short section.
+    section: list | None = None  # [start, level, text, words]
+
+    def close_section(next_level: int | None) -> None:
+        if section is None:
+            return
+        start, level, text, words = section
+        if (next_level is None or next_level <= level) and words < SHORT_SECTION_WORDS:
+            hits.append({"rule": "short-section", "start": start, "match": text, "count": 0})
+
     for line in masked.split("\n"):
         stripped = line.strip()
+        heading = HEADING_RE.match(line)
+        if heading:
+            level = len(stripped) - len(stripped.lstrip("#"))
+            close_section(level)
+            section = [offset, level, stripped, 0]
+        elif section is not None and stripped:
+            section[3] += len(WORD_RE.findall(stripped))
         if BOLD_LEAD_RE.match(line):
             run.append((offset, line))
         elif stripped:
@@ -1014,6 +1064,7 @@ def scan_structure(masked: str) -> list[dict]:
             )
         offset += len(line) + 1
     flush(run)
+    close_section(None)
     return hits
 
 
