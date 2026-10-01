@@ -2,7 +2,7 @@
 name: deslop
 description: Strip LLM slop from prose — rhetorical tics, false-profundity constructions, AI vocabulary, and boilerplate. Use when writing or reviewing any HoloViz prose (PR descriptions, docs, blog posts, READMEs, commit messages) to remove recognizable LLM patterns.
 metadata:
-  version: "2026.09.28"
+  version: "2026.10.01"
   author: holoviz
 ---
 
@@ -27,7 +27,7 @@ Two failure modes to avoid, in order of severity:
 python3 scripts/deslop_scan.py <file>
 ```
 
-Flags: `--colon-triple` and `--em-dash` enable two patterns that are off by default because they are noisy in technical writing. `--json` for machine-readable output. Pass `-` to read stdin, which is how you scan a draft that only exists in the conversation:
+Flags: `--colon-triple` and `--em-dash` enable two patterns that are off by default because they are noisy in technical writing. `--json` for machine-readable output. A `.py` file is scanned for its comments and docstrings only, and `--comments` adds `.py` files to a directory walk (`deslop_scan.py --comments src/`), which is how you deslop the comments in a code change. Pass `-` to read stdin, which is how you scan a draft that only exists in the conversation:
 
 ```bash
 python3 scripts/deslop_scan.py - <<'EOF'

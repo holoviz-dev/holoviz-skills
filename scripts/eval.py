@@ -38,6 +38,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import yaml
+from aggregate_metrics import aggregate_metrics, git_value
+from execute_generated import _execution_env
 from toggle_skills import disable_skills, enable_skills
 
 # Appended to every query prompt so the model always wraps code in a fenced
@@ -246,8 +248,8 @@ def run_kilo_query(
         return output, execution_time, events, result.returncode
     except subprocess.TimeoutExpired:
         return f"[TIMEOUT after {timeout}s]", time.time() - start_time, [], TIMEOUT_RETURNCODE
-    except Exception as e:
-        return f"[ERROR: {str(e)}]", time.time() - start_time, [], 1
+    except OSError as e:
+        return f"[ERROR: {e}]", time.time() - start_time, [], 1
 
 
 def save_results(
@@ -392,9 +394,6 @@ def run_execution(
     the moment it's created so the process tree that runs untrusted generated
     code never holds `KILO_API_KEY`.
     """
-    sys.path.insert(0, str(SCRIPTS_DIR))
-    from execute_generated import _execution_env
-
     cmd = [
         sys.executable,
         str(SCRIPTS_DIR / "execute_generated.py"),
@@ -418,25 +417,10 @@ def _slugify(value: str) -> str:
     return cleaned or "run"
 
 
-def _safe_git_short_sha() -> str | None:
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=True,
-            cwd=REPO_ROOT,
-        )
-    except Exception:
-        return None
-    sha = result.stdout.strip()
-    return sha or None
-
-
 def _default_run_id(run_trigger: str, models_requested: list[str], query_count: int) -> str:
     """Return a short readable run ID that is distinct from created_at."""
     model_tag = _slugify(models_requested[0]) if len(models_requested) == 1 else "multi-model"
-    sha = _safe_git_short_sha() or "local"
+    sha = git_value("rev-parse", "--short", "HEAD") or "local"
     nonce = uuid4().hex[:4]
     return f"{_slugify(run_trigger)}-{model_tag}-q{query_count}-{sha}-{nonce}"
 
@@ -447,9 +431,6 @@ def run_aggregation(
     run_id: str,
     run_metadata: dict,
 ):
-    sys.path.insert(0, str(SCRIPTS_DIR))
-    from aggregate_metrics import aggregate_metrics
-
     aggregate_metrics(
         eval_results_dir=output_dir,
         query_filter=query_ids,
