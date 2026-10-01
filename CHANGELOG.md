@@ -28,6 +28,21 @@ in-progress notes so it is skipped by the extraction.
   if every call fails. Each query also saves `events.jsonl` and the `SKILL.md`/`AGENTS.md`
   files the agent read.
 - **`eval_sync.py` tests** — `pixi run -e eval eval-test`.
+- **`outreach` sub-skill** with the **Writing a Blog Post** reference — the reader and the
+  point, structure, voice, code snippets, figures, people and sources, and the review loop —
+  routed from a new "Write or review a blog post" Loading Table row.
+- **`deslop_scan.py` reads comments and docstrings in `.py` files** — a `.py` file is now scanned
+  for its comments and docstrings only, with doctest examples skipped, and `--comments` adds
+  `.py` files to a directory walk. Before, a `.py` file was scanned as if the code were prose,
+  and a directory walk skipped Python entirely.
+- **`scripts/check_routing.py` pre-commit hook** — fails when a Loading Table path or a relative
+  `.md` link in a skill file doesn't resolve, or when a sub-skill or reference isn't named in its
+  routing skill's Loading Table or its sub-skill's SKILL.md. The link check is the docs build's
+  `build_stubs.find_broken_links`, which only warned before.
+- **`scripts/eval_cleanup.py`** — the first eval for `cleanup`: Kilo cleans up the post's
+  opening snippet inside a fixture package (`scripts/eval_fixtures/cleanup_review/`), with and
+  without skills, and AST checks grade the result on the post's six findings. `pixi run -e eval
+  eval-cleanup`.
 
 ### Changed
 
@@ -47,9 +62,42 @@ in-progress notes so it is skipped by the extraction.
   secret, so generated code can't tamper with what those steps load. A crafted query ID can
   no longer write outside the eval results directory, and a job timeout plus a cap on the
   per-query timeout bound a run to the eval content defined in `eval_queries.yaml`.
-- **`outreach` sub-skill** with the **Writing a Blog Post** reference — the reader and the
-  point, structure, voice, code snippets, figures, people and sources, and the review loop —
-  routed from a new "Write or review a blog post" Loading Table row.
+- **`cleanup` reviews against the whole repo, not just the diff** — the Review section now opens
+  with a five-question checklist (existing helpers, true comments, failable `try` bodies,
+  single-use constants and helpers, root cause vs. symptom), deletes before it fixes, and covers
+  `# noqa` as a review question and PR scope. New **Reuse and Duplication** and **Errors and
+  Guards** sections cover rewritten helpers, knowledge defined in two places, inline single-use
+  values, blind excepts, failures returned as `None`, and `ImportError` guards on required
+  dependencies. Imports now distinguish standard-library and required imports (always at the top)
+  from optional ones and circular-import breaks, and every Code Style bullet carries its reason.
+  Comments moved to their own section, with checks that docstrings don't repeat the name and that
+  comments are still true, plus how to point the deslop scanner at `.py` files. From "Deslop AI
+  Slop Part 2: Code".
+- **`testing` asks for tests written from expected behavior** — not from what the new code does —
+  and rules out editing an expected value just to make a test pass.
+- **`deslop` pattern catalogue covers every scanner rule** — 26 rules the scanner reported but
+  `references/patterns.md` never described, including `justification-tail`, `antithesis`,
+  `vague-quantifier`, `hype`, `fragment-run` and the bold-label rules, now have entries.
+  `ai-vocab-soft` is explained alongside `ai-vocab`.
+- **`creating-custom-holoviz-skills` documents CalVer** — the Versioning section still described
+  the semver patch/minor scheme that `bump_skill_version.py` replaced; it now matches the hook.
+- **Ruff selects `BLE001`** (blind `except Exception`), and the repo's own scripts now catch what
+  their code can raise. Two of these were hiding real failures:
+  `aggregate_metrics.py` read a corrupt `runs.json` or `history_summary.json` as empty and then
+  wrote it back, wiping the eval history, and `holoviz-skills install` reported a tool as "not
+  detected" when checking its config directory raised. Both now surface the error.
+- **`eval.py` reuses `aggregate_metrics.git_value`** instead of its own copy, and imports its
+  sibling scripts at the top of the file.
+
+### Removed
+
+- **`scripts/migrate_to_calver.py`** — the one-off migration has run, and its docstring asked
+  for it to be deleted afterwards.
+
+### Fixed
+
+- **`zensical.toml` nav** adds the `deslop` section that `build_stubs.py` produces but the
+  committed nav was missing.
 
 ## Version 2026.08.13
 

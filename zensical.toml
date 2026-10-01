@@ -49,6 +49,12 @@ nav = [
   { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",
     { "Cleanup" = "contributing-to-holoviz/cleanup.md" },
+    { "Deslop" = [
+      "contributing-to-holoviz/deslop/index.md",
+      { "Scripts" = [
+        { "Deslop Scan" = "contributing-to-holoviz/deslop/deslop_scan.md" },
+      ] },
+    ] },
     { "Documentation" = "contributing-to-holoviz/documentation.md" },
     { "Minimal Examples" = "contributing-to-holoviz/minimal-example.md" },
     { "Outreach" = [

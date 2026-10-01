@@ -10,6 +10,7 @@ SKILL.md files are also renamed to .SKILL.md.disabled when disabling, for
 runtimes (e.g. Kilo Code) that discover skills by that filename.
 """
 
+import argparse
 from pathlib import Path
 
 AGENTS_MD = "AGENTS.md"
@@ -136,8 +137,6 @@ def get_skill_status(root_dir: Path) -> dict:
 
 def main():
     """Command-line interface for toggling skills."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Toggle SKILL.md files for evaluation")
     parser.add_argument("action", choices=["disable", "enable", "status"], help="Action to perform")
     parser.add_argument(

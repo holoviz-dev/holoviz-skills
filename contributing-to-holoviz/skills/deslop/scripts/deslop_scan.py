@@ -4,6 +4,7 @@
 Usage:
     deslop_scan.py FILE [FILE ...]     scan files (directories are walked)
     deslop_scan.py -                   scan stdin
+    deslop_scan.py --comments src/     also scan comments and docstrings in .py files
 
 Options:
     --colon-triple   enable the colon-into-a-triple check (noisy in docs)
@@ -17,6 +18,10 @@ Options:
     --quiet          omit files with no hits
     --json           emit JSON instead of a text report
     --context N      characters of match text to show (default 90)
+    --comments       include .py files when walking directories
+
+A .py file is scanned for its comments and docstrings only, whether it is named
+on the command line or found with --comments; the code itself is skipped.
 
 Fenced code blocks, indented code blocks, inline code, blockquotes, RST
 directives and section underlines are skipped.
@@ -30,10 +35,13 @@ Exit status: 0 clean, 1 hits found, 2 no file could be read.
 from __future__ import annotations
 
 import argparse
+import ast
+import io
 import json
 import os
 import re
 import sys
+import tokenize
 from dataclasses import dataclass, field
 
 I = re.IGNORECASE  # noqa: E741
@@ -516,6 +524,80 @@ LIST_ITEM_RE = re.compile(r"^(?:[-*+]|\d+[.)])\s")
 
 def _blank(line: str) -> str:
     return " " * len(line)
+
+
+def _docstring_lines(tree: ast.AST) -> set[int]:
+    lines = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            first = node.body[0] if node.body else None
+            if (
+                isinstance(first, ast.Expr)
+                and isinstance(first.value, ast.Constant)
+                and isinstance(first.value.value, str)
+            ):
+                lines.add(first.lineno)
+    return lines
+
+
+def python_prose(source: str) -> str:
+    """Keep only the comments and docstrings of Python source.
+
+    Line numbers and the columns of kept text match the source. Lines with no
+    prose come back empty. The sentence splitter then treats two comments with
+    code between them as two paragraphs. Raises SyntaxError or
+    tokenize.TokenError if the source doesn't parse.
+    """
+    docstring_lines = _docstring_lines(ast.parse(source))
+    lines = source.split("\n")
+    keep = [[False] * len(line) for line in lines]
+    in_docstring = [False] * len(lines)
+
+    def mark(row: int, start: int, end_row: int, end: int) -> None:
+        for r in range(row, end_row + 1):
+            lo = start if r == row else 0
+            hi = end if r == end_row else len(lines[r])
+            for c in range(lo, hi):
+                keep[r][c] = True
+
+    seen_docstring_rows = set()
+    for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+        (row, col), (end_row, end_col) = tok.start, tok.end
+        if tok.type == tokenize.COMMENT and not (row == 1 and tok.string.startswith("#!")):
+            mark(row - 1, col + 1, end_row - 1, end_col)
+        elif (
+            tok.type == tokenize.STRING
+            and row in docstring_lines
+            and row not in seen_docstring_rows
+        ):
+            seen_docstring_rows.add(row)
+            body = tok.string.lstrip("rRuUbBfF")
+            quote = body[:3] if body[:3] in ('"""', "'''") else body[0]
+            prefix = len(tok.string) - len(body) + len(quote)
+            mark(row - 1, col + prefix, end_row - 1, end_col - len(quote))
+            for r in range(row - 1, end_row):
+                in_docstring[r] = True
+
+    out = []
+    in_doctest = False  # a doctest's expected output runs until the next blank line
+    for r, line in enumerate(lines):
+        text = "".join(ch if keep[r][c] else " " for c, ch in enumerate(line))
+        stripped = text.strip()
+        in_doctest = (
+            in_docstring[r] and bool(stripped) and (in_doctest or stripped.startswith(">>>"))
+        )
+        if not stripped or in_doctest or RST_UNDERLINE_RE.match(text):
+            text = ""
+        out.append(text)
+    return "\n".join(out)
+
+
+def mask_python_prose(prose: str, keep_urls: bool = False) -> str:
+    """Blank out inline code and URLs in the output of ``python_prose``."""
+    masked = INLINE_CODE_RE.sub(lambda m: _blank(m.group(0)), prose)
+    if not keep_urls:
+        masked = URL_RE.sub(lambda m: _blank(m.group(0)), masked)
+    return masked
 
 
 def mask_non_prose(text: str, keep_urls: bool = False) -> str:
@@ -1131,9 +1213,17 @@ def scan_text(
     rules: list[Rule],
     context: int,
     all_hits: bool = False,
+    python: bool = False,
 ) -> FileReport:
-    masked = mask_non_prose(text)
-    masked_with_urls = mask_non_prose(text, keep_urls=True)
+    if python:
+        # Hits report positions in `text`, so swap the source for its prose,
+        # which keeps the same line numbers and columns.
+        text = python_prose(text)
+        mask = mask_python_prose
+    else:
+        mask = mask_non_prose
+    masked = mask(text)
+    masked_with_urls = mask(text, keep_urls=True)
     report = FileReport(path=path, words=len(WORD_RE.findall(masked)))
     active = {r.id for r in rules}
 
@@ -1255,7 +1345,8 @@ def print_rules(optional: set[str]) -> None:
     print()
 
 
-def collect_paths(paths: list[str]) -> list[str]:
+def collect_paths(paths: list[str], python: bool = False) -> list[str]:
+    suffixes = TEXT_SUFFIXES | {".py"} if python else TEXT_SUFFIXES
     found: list[str] = []
     for path in paths:
         if path == "-" or not os.path.isdir(path):
@@ -1264,7 +1355,7 @@ def collect_paths(paths: list[str]) -> list[str]:
         for root, dirs, files in os.walk(path):
             dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d != "node_modules")
             for name in sorted(files):
-                if os.path.splitext(name)[1].lower() in TEXT_SUFFIXES:
+                if os.path.splitext(name)[1].lower() in suffixes:
                     found.append(os.path.join(root, name))
     return found
 
@@ -1285,6 +1376,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--context", type=int, default=90)
+    ap.add_argument("--comments", action="store_true")
     args = ap.parse_args(argv)
 
     optional = {r.id for r in RULES if r.optional} if args.all else set()
@@ -1307,7 +1399,7 @@ def main(argv: list[str]) -> int:
     rules = select_rules(only, skip, optional)
 
     reports: list[FileReport] = []
-    for path in collect_paths(args.paths):
+    for path in collect_paths(args.paths, python=args.comments):
         if path == "-":
             text, label = sys.stdin.read(), "<stdin>"
         else:
@@ -1319,8 +1411,11 @@ def main(argv: list[str]) -> int:
                 reports.append(FileReport(path=label, words=0, error=str(exc)))
                 continue
         try:
-            reports.append(scan_text(text, label, rules, args.context, args.all_hits))
-        except Exception as exc:  # a broken rule must not lose the other files
+            is_python = path.endswith(".py")
+            reports.append(
+                scan_text(text, label, rules, args.context, args.all_hits, python=is_python)
+            )
+        except Exception as exc:  # noqa: BLE001 - a broken rule must not lose the other files
             reports.append(FileReport(path=label, words=0, error=f"{type(exc).__name__}: {exc}"))
 
     if args.json:

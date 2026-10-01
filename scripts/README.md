@@ -5,11 +5,32 @@ Automated system to measure whether SKILL.md files improve Kilo Code's responses
 ## Coverage
 
 `scripts/eval_queries.yaml` currently defines only 2 queries (`hvplot_earthquake_plot`,
-`hvplot_interactive_scatter`), both testing the `hvplot` skill. None of the other 11
-skills (both routing skills, `param`, `panel` and its references, `holoviews` and its
-references, `cleanup`, `documentation`, `minimal-example`, `pr-description`,
-`testing`, `creating-custom-holoviz-skills`) have any eval coverage yet. Contributions
-adding queries for other skills are welcome — see "Adding Queries" below.
+`hvplot_interactive_scatter`), both testing the `hvplot` skill. `cleanup` has its own
+eval, `eval_cleanup.py` (see below), because `eval.py` executes generated plots and a
+code review has nothing to execute. None of the other skills (both routing skills,
+`param`, `panel` and its references, `holoviews` and its references, `documentation`,
+`minimal-example`, `outreach`, `pr-description`, `testing`,
+`creating-custom-holoviz-skills`) have any eval coverage yet. Contributions adding
+queries for other skills are welcome — see "Adding Queries" below.
+
+## Cleanup Eval
+
+`eval_cleanup.py` asks Copilot, with and without skills, to clean up
+`eval_fixtures/cleanup_review/pkg/query.py`: the opening snippet of "Deslop AI Slop
+Part 2: Code" inside a tiny package that already has a `with_timeout` helper and a
+parser for the same error message. It grades the returned file on the post's six
+findings (restating comments, a single-use constant, an inline import and class
+order, guards that hide failures, and the two reinvented helpers) and prints a score
+per model and condition.
+
+```bash
+pixi run -e eval eval-cleanup                                  # default model, both conditions
+python scripts/eval_cleanup.py --models claude-sonnet-4.6 --skills with
+python scripts/eval_cleanup.py --grade eval_results/cleanup_review/default/with_skills/query.py
+```
+
+Rerun it after a model release to check the skill still earns its place: if the
+without-skills score catches up, the rules the model now follows on its own can go.
 
 ## Requirements
 

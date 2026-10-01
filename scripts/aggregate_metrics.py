@@ -31,27 +31,27 @@ def _utc_now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
-def _safe_git_value(*args: str) -> str | None:
+def git_value(*args: str) -> str | None:
+    """Return the output of ``git *args`` in this repo, or None outside a git checkout."""
     try:
         result = subprocess.run(
             ["git", *args],
             capture_output=True,
             text=True,
             check=True,
+            cwd=Path(__file__).parent,
         )
-    except Exception:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return None
-    value = result.stdout.strip()
-    return value or None
+    return result.stdout.strip() or None
 
 
 def _load_json(path: Path, default: dict) -> dict:
+    # A corrupt file raises instead of falling back to the default, since the
+    # caller writes the result back and would wipe the existing history.
     if not path.exists():
         return default
-    try:
-        return json.loads(path.read_text())
-    except Exception:
-        return default
+    return json.loads(path.read_text())
 
 
 def _flatten_history_rows(
@@ -171,8 +171,8 @@ def _build_run_record(
         "skip_generation": bool(metadata.get("skip_generation", False)),
         "skip_execution": bool(metadata.get("skip_execution", False)),
         "skip_aggregation": bool(metadata.get("skip_aggregation", False)),
-        "git_commit": _safe_git_value("rev-parse", "HEAD"),
-        "git_branch": _safe_git_value("rev-parse", "--abbrev-ref", "HEAD"),
+        "git_commit": git_value("rev-parse", "HEAD"),
+        "git_branch": git_value("rev-parse", "--abbrev-ref", "HEAD"),
         "python_version": sys.version.split()[0],
         "platform": platform.platform(),
     }

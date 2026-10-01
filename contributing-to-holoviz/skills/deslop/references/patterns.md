@@ -216,15 +216,165 @@ A heading over fewer than about 40 words, reported once two or more turn up. Usu
 
 Headings are for navigating a long piece, and a reader doesn't need one to find two sentences. Fold short sections into one section as paragraphs, starting each with a plain sentence that names the point. (A heading followed directly by a subheading is a parent and isn't counted.)
 
+### "At the end of the day" `[end-of-day]`
+
+*At the end of the day ... when all is said and done ...*
+
+A clause opener that promises a bottom line and usually restates the one already given. Cut it and keep the claim. `[tidy-closer]` catches it as a closing sentence; this catches it anywhere.
+
+### "In conclusion" `[in-conclusion]`
+
+*In conclusion ... In summary ... To sum up ... All in all ... In closing ...*
+
+Essay scaffolding at the start of a sentence. A document that ends when its content ends doesn't need to announce it. Cut the opener, and if the sentence after it only restates earlier ones, cut that too.
+
+### "Let's dive in" `[dive-in]`
+
+*Let's dive in ... a deep dive into ... let's take a look ... let's unpack ... buckle up ... read on ... stay tuned.*
+
+Announces content instead of giving it. Delete it and start with the first real sentence.
+
+### "When it comes to" `[when-it-comes-to]`
+
+*When it comes to performance, the new parser ...*
+
+A wind-up before the subject. Start with the subject: *The new parser is faster.*
+
+### "Whether you're X or Y" `[whether-youre]`
+
+*Whether you're a beginner or an expert ... no matter your use case ...*
+
+Addresses every possible reader and so none of them. Name the reader the document is for, or cut the clause.
+
+### "In the world of" `[world-of]`
+
+*In the world of data science ... welcome to the world of ...*
+
+Places the subject in a "world" the reader is already in. Cut it and start with the subject.
+
+### "The key takeaway" `[takeaway]`
+
+*The key takeaway is ... the bottom line is ... what this means for you ...*
+
+Labels a point as important instead of making it. Delete the label and state the point. If the point repeats an earlier sentence, cut it.
+
+### "Think of it as" `[think-of-it-as]`
+
+*Think of it as a ... imagine a ... picture this ...*
+
+An analogy in place of a description. Keep it only when the comparison explains something the plain description can't; otherwise describe the thing.
+
+### "The beauty of X is" `[beauty-of]`
+
+*The beauty of this approach is ... the real power here is ... the magic of X is ...*
+
+Praises a feature before saying what it does. Say what it does: *The cache survives restarts.*
+
+### Filler sentence opener `[filler-opener]`
+
+*Simply put ... In essence ... At its core ... Fundamentally ... Needless to say ... It goes without saying ... Make no mistake ...*
+
+Promises a distilled version of the point, then states it at the same length. Delete the opener.
+
+### Essay connective `[furthermore]`
+
+*Moreover, ... Furthermore, ... Additionally, ... Notably, ... Consequently, ... Firstly, ...*
+
+School-essay transitions, reported from two. Most can go. Where the relation matters, use the plain word (*also*, *so*, *but*) inside the sentence.
+
+### "X rather than Y" frame `[antithesis]`
+
+*... rather than ... instead of ... as opposed to ... , not a ...*
+
+Defining a thing by what it isn't. One is a contrast; reported at four or more and 3.5 per 1,000 words, where every claim gets a foil. Keep the contrast when the reader would expect the other option, and otherwise state the positive half alone.
+
+### Trailing justification clause `[justification-tail]`
+
+*..., since ... , so ... , because ... , which means ... , which is why ...*
+
+A reason tacked onto the end of a finished sentence. One is how people explain things. It's reported at five or more and 6 per 1,000 words, where every sentence ends in its own justification and the prose falls into one rhythm. Vary it: give a reason its own sentence, lead with it, or cut it when the reader doesn't need it. Joining a `[choppy-run]` with *since* or *so* often creates this one, so rescan after that fix.
+
+### Counted-list announcement `[count-preview]`
+
+*Three things matter here. ... Two reasons stand out. ...*
+
+Announcing how many items follow, reported from three. The reader can count the list. Cut the count and start with the first item.
+
+### "X is what makes Y" `[cleft-emphasis]`
+
+*Caching is what makes this fast. ... That's how you ... This is where the value comes from ... is the reason that ...*
+
+A cleft sentence that delays the point for emphasis, reported from two. Say it directly: *Caching makes this fast.*
+
+### "The X story" `[business-story]`
+
+*The deployment story ... our testing story is weak ...*
+
+Business jargon for "how X works" or "the state of X". Name the thing: *Deploying takes three manual steps.* User stories, story points and "the story of" aren't counted.
+
+### Inflated figure of speech `[figurative-inflation]`
+
+*stops being hypothetical ... survives contact with ... does the heavy lifting ... where the rubber meets the road ... moves the needle ...*
+
+Stock metaphors that make a plain event sound dramatic. Say the event: *The parser handles most of the work.*
+
+### Unsourced quantifier `[vague-quantifier]`
+
+*almost everyone ... the vast majority ... most users who ... far faster ... orders of magnitude ... nine times out of ten ...*
+
+Sizes a claim without measuring it, reported from two. Give the number and where it came from, or drop the size.
+
+### Chat-assistant register `[assistant-register]`
+
+*I hope this helps ... Great question ... You're absolutely right ... Feel free to reach out ... Don't hesitate to ... Certainly!*
+
+Chat replies pasted into a document. Always delete.
+
+### Repeated sentence frame `[repeated-frame]`
+
+Three or more sentences in a row that share a content word near the front and the same connective. *The cache stores results so that ... The cache expires entries so that ... The cache logs misses so that ...*
+
+The parallelism `[echoing-run]` misses when the clauses differ in length. Merge the run into one sentence, or break the frame in all but one.
+
+### Run of sentence fragments `[fragment-run]`
+
+Two or more sentences in a row, each five words or longer, with no finite verb. *A faster parser. Fewer allocations on every render.*
+
+Usually a list padded out as prose. Give the fragments a verb and join them, or make them a real list.
+
+### Bold-label bullet run `[bold-lead-bullets]`
+
+Three or more unordered bullets in a row that each open with a bold label. *- **Speed:** ... - **Cost:** ... - **Scale:** ...*
+
+The labels make a list look organized while repeating what each bullet says. Drop them and let the bullet's first words do the work, or turn the run into a paragraph. Numbered lists of bold step names aren't counted.
+
+### Bold-label paragraph `[bold-lead-paragraph]`
+
+Paragraphs that open with a bold sentence ending in a period, reported from three. ***What it delivers.** The tool ...*
+
+A slot label written to look organized. Use a heading if the piece is long enough to need one; otherwise drop the label. A bold term with no period, as in a definition list, isn't counted.
+
+### Emoji in a heading or bullet `[emoji-decoration]`
+
+*## 🚀 Getting started ... - ✅ Fast*
+
+Decoration that adds no information. Delete it. Arrows and symbols used as notation (↔) aren't counted.
+
 ---
 
 ## Signs of AI writing
 
-### AI vocabulary `[ai-vocab]`
+### AI vocabulary `[ai-vocab]` and `[ai-vocab-soft]`
 
 Words LLMs use far more than people do: *delve, tapestry, meticulous, meticulously, pivotal, intricate, interplay, underscore(s), garner, bolster, vibrant, bustling, multifaceted, seamless(ly), ever-evolving, testament, realm, navigate (figurative), leverage (verb), robust, crucial, myriad, plethora, foster, harness, unlock, elevate, landscape (figurative), showcase, embark, profound, paramount, nuanced, holistic.*
 
-A single hit is coincidence — "crucial" is a real word. Several in one document is the tell. Replace with the plain word: *delve into* → *examine*; *underscores* → *shows*; *leverage* → *use*; *robust* → say what it survives.
+A single hit is coincidence — "crucial" is a real word. Several in one document is the tell. The scanner splits the list: words with few ordinary uses (*delve, tapestry, testament, myriad*) report on one hit as `[ai-vocab]`, and words that also have plain uses (*crucial, robust, leverage, pivotal, comprehensive*) report from two as `[ai-vocab-soft]`. Replace with the plain word: *delve into* → *examine*; *underscores* → *shows*; *leverage* → *use*; *robust* → say what it survives.
+
+### Marketing hype `[hype]`
+
+*revolutionize, supercharge, unleash, empower, streamline, game-changer, cutting-edge, state-of-the-art, best-in-class, effortless, blazing-fast, world-class, battle-tested, future-proof.*
+
+Product-page adjectives that claim a result without showing it. Replace each with the measurement or the mechanism: what it's fast at and by how much, or what it does that the old way didn't.
 
 ### "Not just X, but Y" `[not-just-but]`
 

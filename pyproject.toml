@@ -53,8 +53,14 @@ select = [
     "F",  # pyflakes
     "I",  # isort
     "UP", # pyupgrade
+    "BLE001", # blind except Exception
 ]
 ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+# The cleanup eval's fixture is deliberately sloppy; the eval grades whether an
+# agent cleans it up.
+"scripts/eval_fixtures/**" = ["BLE001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["holoviz-skills"]
