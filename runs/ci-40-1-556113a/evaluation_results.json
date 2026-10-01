@@ -1,0 +1,110 @@
+{
+  "total_queries": 2,
+  "models": [
+    "kilo_kilo-auto_free"
+  ],
+  "queries": {
+    "hvplot_interactive_scatter": {
+      "models": {
+        "kilo_kilo-auto_free": {
+          "with_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 16.939478158950806,
+            "tokens_input": 22301,
+            "tokens_output": 396,
+            "tokens_total": 22697,
+            "tokens_cached": 16120,
+            "tokens_reasoning": 0,
+            "execution_success": true,
+            "execution_duration": 1.3067452907562256,
+            "timed_out": false,
+            "resolved_models": [
+              "stealth/space-bunny-alpha"
+            ]
+          },
+          "without_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 18.517917156219482,
+            "tokens_input": 7432,
+            "tokens_output": 670,
+            "tokens_total": 8102,
+            "tokens_cached": 2265,
+            "tokens_reasoning": 0,
+            "execution_success": false,
+            "execution_duration": 1.2332000732421875,
+            "timed_out": false,
+            "resolved_models": [
+              "stealth/space-bunny-alpha"
+            ]
+          },
+          "comparison": {
+            "both_have_code": true,
+            "token_difference": -274,
+            "time_difference": -1.5784389972686768,
+            "both_executed": true,
+            "execution_improvement": true,
+            "execution_regression": false
+          }
+        }
+      }
+    },
+    "hvplot_earthquake_plot": {
+      "models": {
+        "kilo_kilo-auto_free": {
+          "with_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 17.20550036430359,
+            "tokens_input": 19960,
+            "tokens_output": 570,
+            "tokens_total": 20530,
+            "tokens_cached": 24114,
+            "tokens_reasoning": 0,
+            "execution_success": true,
+            "execution_duration": 1.330928087234497,
+            "timed_out": false,
+            "resolved_models": [
+              "stealth/space-bunny-alpha"
+            ]
+          },
+          "without_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 21.78104829788208,
+            "tokens_input": 11109,
+            "tokens_output": 1077,
+            "tokens_total": 12186,
+            "tokens_cached": 19836,
+            "tokens_reasoning": 0,
+            "execution_success": false,
+            "execution_duration": 1.2133665084838867,
+            "timed_out": false,
+            "resolved_models": [
+              "stealth/space-bunny-alpha"
+            ]
+          },
+          "comparison": {
+            "both_have_code": true,
+            "token_difference": -507,
+            "time_difference": -4.575547933578491,
+            "both_executed": true,
+            "execution_improvement": true,
+            "execution_regression": false
+          }
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "kilo_kilo-auto_free": {
+      "code_generation_rate_with": 1.0,
+      "code_generation_rate_without": 1.0,
+      "avg_token_difference": -390.5,
+      "avg_time_difference": -3.076993465423584,
+      "execution_success_rate_with": 1.0,
+      "execution_success_rate_without": 0.0
+    }
+  }
+}

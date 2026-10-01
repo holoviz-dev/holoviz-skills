@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "row_count": 12,
+  "row_count": 16,
   "rows": [
     {
       "run_id": "ci-34-1-8d17612",
@@ -157,6 +157,82 @@
       "execution_time": 75.39291977882385,
       "execution_success": true,
       "has_code": true
+    },
+    {
+      "run_id": "ci-40-1-556113a",
+      "created_at": "2026-10-01T11:17:09+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 396,
+      "tokens_input": 22301,
+      "tokens_cached": 16120,
+      "execution_time": 16.939478158950806,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/space-bunny-alpha"
+      ]
+    },
+    {
+      "run_id": "ci-40-1-556113a",
+      "created_at": "2026-10-01T11:17:09+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 670,
+      "tokens_input": 7432,
+      "tokens_cached": 2265,
+      "execution_time": 18.517917156219482,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/space-bunny-alpha"
+      ]
+    },
+    {
+      "run_id": "ci-40-1-556113a",
+      "created_at": "2026-10-01T11:17:09+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 570,
+      "tokens_input": 19960,
+      "tokens_cached": 24114,
+      "execution_time": 17.20550036430359,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/space-bunny-alpha"
+      ]
+    },
+    {
+      "run_id": "ci-40-1-556113a",
+      "created_at": "2026-10-01T11:17:09+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 1077,
+      "tokens_input": 11109,
+      "tokens_cached": 19836,
+      "execution_time": 21.78104829788208,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/space-bunny-alpha"
+      ]
     }
   ]
 }
