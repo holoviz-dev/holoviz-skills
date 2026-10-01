@@ -39,10 +39,13 @@ pixi run eval-multi
 # Run eval and merge history into eval_results/
 pixi run -e eval evals
 
-# Pull shared eval-data history, snapshots and visuals into local eval_results/
+# Merge shared eval-data history and snapshots into local eval_results/
 pixi run -e eval eval-sync
 
-# Deploy the historical dashboard from existing eval_results/
+# Run the eval_sync.py tests
+pixi run -e eval eval-test
+
+# Deploy the historical dashboard (history from eval-data; add --images DIR for plots)
 pixi run -e eval eval-deploy-dashboard
 
 # Open the historical trends dashboard
@@ -66,15 +69,23 @@ Security and scope:
 Required repository secret:
 
 - `KILO_API_KEY`: a Kilo account API key (from your profile at app.kilo.ai). If it's not
-  set, or the account can't access the free tier, the workflow retries anonymously
-  (rate-limited to 200 requests/h per IP).
+  set the workflow runs anonymously (rate-limited to 200 requests/h per IP). If the key
+  works but is rejected with "model not found" (no free-tier access), the run is retried
+  anonymously; any other failure fails the job.
 
-Workflow outputs:
+Jobs:
 
-- Uploads `eval_results/` as an Actions artifact
-- Pushes history, snapshots, and visuals to the `eval-data` branch
-- Deploys the historical dashboard when `deploy_dashboard` is set
-- Posts a PR comment with run status and a short JSON summary
+- `eval` (`contents: read`, no push credentials): runs the queries and the generated
+  code, uploads `eval_results/` as an Actions artifact, and posts the PR comment. Kilo's
+  deny rules are passed via `KILO_CONFIG_CONTENT` (ranked above project config); project
+  config stays enabled because `AGENTS.md` is what points the agent at the skills.
+- `publish` (`contents: write`, fresh runner, never runs generated code): downloads the
+  artifact, pushes the JSON history to the `eval-data` branch, and deploys the dashboard
+  (bundling plot images from the artifact) when `deploy_dashboard` is set.
+
+Each query's `metadata.json` records `instruction_reads` (the `SKILL.md` / `AGENTS.md`
+files the agent read) so a regression in skill loading is visible. A query that times out
+is recorded as `timed_out` and the run continues; the run only aborts if every call fails.
 
 ## `eval.py` Reference
 
@@ -95,6 +106,8 @@ Options:
   --skip-aggregation        Skip metrics aggregation step
   --skip-screenshots        Skip Playwright screenshot capture (faster)
   --timeout SEC             Code execution timeout in seconds (default: 30)
+  --run-trigger TRIGGER     manual|ci_comment|ci_dispatch|ci_schedule|ci_tag (default: manual)
+  --pr-number N             PR number recorded in run metadata
   --queries-file PATH       Path to queries YAML (default: scripts/eval_queries.yaml)
   --output DIR              Output directory (default: eval_results/)
 ```
@@ -158,10 +171,16 @@ pixi run -e eval eval-history-dashboard
 It reads compact history files produced during aggregation:
 
 - `eval_results/runs.json` (run registry + metadata)
-- `eval_results/history_summary.json` (flattened trend rows)
+- `eval_results/history_summary.json` (flattened trend rows, including `run_trigger`,
+  `pr_number`, `timed_out` and the `resolved_models` each call was routed to)
 
 These live on the `eval-data` branch — see below. Pull them with `pixi run -e eval eval-sync`
 before serving the dashboard on a clean checkout.
+
+By default the dashboard selects the 5 most recent runs that were not triggered by a PR
+comment; use the "Run source" filter and the "Runs" selector to include PR runs. Timed-out
+calls get their own status and are excluded from response-time statistics. The Overview
+shows a stacked bar of the underlying models each run's calls were routed to.
 
 ## Other Scripts
 
@@ -172,8 +191,8 @@ These scripts are still independently runnable in addition to being called by `e
 | `execute_generated.py` | Execute saved `generated_code.py` files and capture outputs |
 | `aggregate_metrics.py` | Read `metadata.json` files and produce the comparison report |
 | `compare_history.py` | Panel historical dashboard — `panel serve scripts/compare_history.py --args eval_results/` |
-| `eval_sync.py` | Pull eval history, snapshots, and visuals from the `eval-data` branch |
-| `eval_publish.py` | Deploy the historical dashboard from `eval-data` |
+| `eval_sync.py` | Merge eval history and snapshots from the `eval-data` branch (`--upload` is CI only) |
+| `eval_publish.py` | Deploy the historical dashboard: history from `eval-data`, plots from `--images DIR` |
 | `toggle_skills.py` | Enable or disable skill files (rename AGENTS.md / SKILL.md) |
 | `test_setup.py` | Pre-flight environment check before running evaluations |
 
@@ -185,6 +204,7 @@ eval_results/
 │   ├── with_skills/
 │   │   └── [query_id]/
 │   │       ├── response.txt        # Kilo response text
+│   │       ├── events.jsonl        # Kilo's JSON event stream for the query
 │   │       ├── metadata.json       # Model, tokens, timing, execution result
 │   │       ├── generated_code.py   # Extracted code block
 │   │       ├── execution.log       # stdout/stderr from code run
@@ -206,46 +226,42 @@ eval_results/
 
 ## Shared Eval Data (`eval-data` branch)
 
-CI publishes eval run history, snapshots, and plot outputs to a shared `eval-data` git
-branch after each run, so results aren't stuck on whichever machine produced them:
+CI publishes eval run history and snapshots to a shared `eval-data` git branch after each
+run, so results aren't stuck on whichever machine produced them. The branch holds JSON
+only (`runs.json`, `history_summary.json`, `runs/<run_id>/`); plot images stay in each
+run's CI artifact.
 
 ```bash
-# Pull the shared history into local eval_results/
+# Merge the shared history into local eval_results/ (local runs are kept)
 pixi run -e eval eval-sync
 ```
 
-## Eval And Deploy
+`eval-sync` always talks to the `origin` remote, so it fails on a fork that doesn't have the
+branch. Pushing (`--upload`) is restricted to CI.
 
-Run eval and view or deploy your own local results:
+## Eval And Deploy
 
 ```bash
 pixi run -e eval evals
 pixi run -e eval eval-history-dashboard
-python scripts/eval_publish.py --source local
 ```
 
-View or deploy what's already on the shared `eval-data` branch instead:
+Deploy the dashboard with history from `eval-data`, optionally bundling plots from a local
+results directory or a downloaded run artifact:
 
 ```bash
-pixi run -e eval eval-sync              # pull it into local eval_results/ to view locally
-pixi run -e eval eval-history-dashboard
-pixi run -e eval eval-deploy-dashboard  # deploys from eval-data directly
+pixi run -e eval eval-deploy-dashboard --images eval_results
+# or use local history instead of the branch
+python scripts/eval_publish.py --local-history eval_results --images eval_results
 ```
 
 Useful environment variables:
 
-- `EVAL_RUN_ID` (optional explicit run ID)
-- `EVAL_RUN_TRIGGER` (`manual`, `ci_comment`, `ci_dispatch`, `ci_schedule`)
 - `OUTERBOUNDS_CONFIG_TOKEN` (optional; configures the CLI profile before deploy)
 
-The deploy command stages:
-
-- `scripts/compare_history.py`
-- `eval_results/runs.json`
-- `eval_results/history_summary.json`
-- `eval_results/**/plot_output.html` (or `screenshot.png` if no plot) for the Plot Outputs tab
-
-and deploys that bundle to Outerbounds.
+The deploy command stages `scripts/compare_history.py`, `runs.json`,
+`history_summary.json`, and (with `--images`) `plot_output.html` (or `screenshot.png` if no
+plot) per query for the Plot Outputs tab, and deploys that bundle to Outerbounds.
 
 ## Adding Queries
 
@@ -277,14 +293,13 @@ Fields:
 ## Troubleshooting
 
 **`Model not found: kilo/kilo-auto/free`**
-Some accounts don't serve the free auto tier. The workflow automatically retries such runs
-anonymously (rate-limited to 200 requests/h per IP); if that's too slow, use a key from an
-account that offers the free tier.
+Some accounts don't serve the free auto tier. The workflow retries such runs anonymously
+(rate-limited to 200 requests/h per IP) when it sees this error; if that's too slow, use a
+key from an account that offers the free tier.
 
 **Tokens and execution time show 0**
-Token and cost usage come from the JSON event stream `kilo run --format json` emits, which
-isn't persisted in `eval_results/`. Run the CLI manually with `--format json` to inspect a
-query's event stream if this happens.
+Token and cost usage come from the JSON event stream `kilo run --format json` emits. It is
+saved as `events.jsonl` in the query's result directory; inspect it if this happens.
 
 **Code execution fails**
 Check `execution.log` in the query result directory for the full traceback.

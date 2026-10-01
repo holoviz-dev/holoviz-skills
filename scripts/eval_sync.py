@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Sync eval run history, snapshots, and visuals with the shared `eval-data` branch.
+"""Sync eval run history and snapshots with the shared `eval-data` branch.
 
-Copies `runs.json`, `history_summary.json`, `runs/<run_id>/` snapshots, and
-per-query `plot_output.html` / `screenshot.png` from the branch into local
-`eval_results/`.
+The branch holds JSON only (`runs.json`, `history_summary.json`, and
+`runs/<run_id>/` snapshots); plot images stay in each run's CI artifact.
 
-`--upload` (CI) merges those files onto the branch: JSON registries by key,
-new run snapshots, latest-wins visuals. Concurrent uploads re-fetch, re-merge,
-and retry.
+Default (pull) merges the branch's history into local `eval_results/` by key
+without overwriting anything local.
+
+`--upload` (CI only) merges local history onto the branch. Concurrent uploads
+re-fetch, re-merge, and retry.
 
 Usage:
   python eval_sync.py
@@ -19,19 +20,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Generator, Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
 
 from aggregate_metrics import (
-    CONDITIONS,
     HISTORY_SUMMARY_FILE,
     RUNS_REGISTRY_FILE,
     _load_json,
@@ -43,27 +42,21 @@ SCRIPTS_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPTS_DIR.parent
 DEFAULT_BRANCH = "eval-data"
 DEFAULT_REMOTE = "origin"
-VISUAL_FILENAMES = ("plot_output.html", "screenshot.png")
-VISUALS_MANIFEST_FILE = "visuals.json"
 MAX_UPLOAD_ATTEMPTS = 3
 README_TEXT = """\
 # eval-data
 
-Shared storage for HoloViz skills eval run history, snapshots, and per-query
-visuals. Written by CI via `scripts/eval_sync.py` after every successful eval
-run. Data branch — DO NOT merge into `main`.
+Shared storage for HoloViz skills eval run history. Written by CI via
+`scripts/eval_sync.py` after every successful eval run. Data branch — DO NOT
+merge into `main`.
 
-Layout mirrors `eval_results/`:
+Layout mirrors `eval_results/` (JSON only; plot images live in each run's CI
+artifact):
 
 - `runs.json`, `history_summary.json` — compact history (see
   `scripts/aggregate_metrics.py`)
 - `runs/<run_id>/` — immutable per-run snapshots (`evaluation_results.json`,
   `run_metadata.json`)
-- `<model>/<condition>/<query_id>/plot_output.html`, `screenshot.png` —
-  latest-wins visuals, overwritten by whichever run touched that query last
-- `visuals.json` — manifest of every query's current visual filenames (an
-  empty list marks a query whose latest run produced no visual, so pulls can
-  remove a stale local copy that the branch no longer has)
 """
 
 
@@ -126,20 +119,6 @@ def _data_branch_worktree(repo_root: Path, remote: str, branch: str) -> Generato
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-def _iter_query_dirs(eval_results_dir: Path) -> Iterator[tuple[str, str, Path]]:
-    if not eval_results_dir.is_dir():
-        return
-    for model_dir in sorted(eval_results_dir.iterdir()):
-        if not model_dir.is_dir() or model_dir.name == "runs":
-            continue
-        for condition_dir in sorted(model_dir.iterdir()):
-            if not condition_dir.is_dir() or condition_dir.name not in CONDITIONS:
-                continue
-            for query_dir in sorted(condition_dir.iterdir()):
-                if query_dir.is_dir():
-                    yield model_dir.name, condition_dir.name, query_dir
-
-
 def _validate_branch_json(path: Path) -> bool:
     """Check that `path` is valid JSON if it exists.
 
@@ -157,150 +136,6 @@ def _validate_branch_json(path: Path) -> bool:
         print("Refusing to merge on top of it; fix or restore the file on the branch first.")
         return False
     return True
-
-
-_SAFE_PATH_COMPONENT = re.compile(r"^[A-Za-z0-9_.\-]+$")
-
-
-def _is_safe_manifest_key(key: str) -> bool:
-    """Check that `key` is a plain `"{model}/{condition}/{query_id}"` path.
-
-    Manifest keys are used directly as relative filesystem paths, so this
-    rejects anything else (e.g. containing `..` or `/`) to prevent a
-    malformed or tampered entry from reading or writing outside the eval
-    results / worktree roots.
-    """
-    parts = key.split("/")
-    if len(parts) != 3:
-        return False
-    model, condition, query_id = parts
-    if condition not in CONDITIONS:
-        return False
-    return all(
-        part not in (".", "..") and _SAFE_PATH_COMPONENT.match(part) for part in (model, query_id)
-    )
-
-
-def _load_visuals_manifest(root: Path) -> dict[str, list[str]]:
-    """Load the `{model}/{condition}/{query_id}: [filenames]` visuals manifest.
-
-    Unsafe keys and filenames are dropped (see `_is_safe_manifest_key`).
-    """
-    payload = _load_json(root / VISUALS_MANIFEST_FILE, {"schema_version": 1, "visuals": {}})
-    visuals = {}
-    for key, files in payload.get("visuals", {}).items():
-        if not _is_safe_manifest_key(key):
-            print(f"Warning: dropping unsafe visuals manifest key {key!r}.")
-            continue
-        visuals[key] = [f for f in files if f in VISUAL_FILENAMES]
-    return visuals
-
-
-def _write_visuals_manifest(root: Path, visuals: dict[str, list[str]]) -> None:
-    payload = {"schema_version": 1, "visuals": dict(sorted(visuals.items()))}
-    (root / VISUALS_MANIFEST_FILE).write_text(json.dumps(payload, indent=2) + "\n")
-
-
-def _reconcile_visual_files(
-    dest_root: Path, key: str, files: list[str], source_dir: Path | None
-) -> int:
-    """Make `dest_root/key` hold exactly `files`, copied from `source_dir`.
-
-    Both possible filenames are removed from the destination first, so an
-    empty `files` list (a query whose latest run produced no visual) clears a
-    stale copy just as reliably as a non-empty list replaces one.
-
-    Parameters
-    ----------
-    dest_root : Path
-        Root directory to update.
-    key : str
-        Query key, ``"{model}/{condition}/{query_id}"``.
-    files : list of str
-        Filenames that should exist at `dest_root/key` afterwards.
-    source_dir : Path or None
-        Directory to copy `files` from. None if there's nothing to copy from.
-
-    Returns
-    -------
-    int
-        Number of files copied.
-    """
-    dest_dir = dest_root / key
-    for filename in VISUAL_FILENAMES:
-        (dest_dir / filename).unlink(missing_ok=True)
-    copied = 0
-    for filename in files:
-        if source_dir is None:
-            continue
-        src = source_dir / filename
-        if not src.exists():
-            continue
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest_dir / filename)
-        copied += 1
-    return copied
-
-
-def _push_visuals(source_root: Path, dest_root: Path) -> int:
-    """Upload local visuals to `dest_root`, latest-wins, updating its manifest.
-
-    Only touches query dirs present in `source_root` (the local run that just
-    finished); the manifest's other entries are left as they were.
-
-    Parameters
-    ----------
-    source_root : Path
-        Local `eval_results/` to read visuals from.
-    dest_root : Path
-        Branch worktree to update.
-
-    Returns
-    -------
-    int
-        Number of files copied.
-    """
-    manifest = _load_visuals_manifest(dest_root)
-    copied = 0
-    for model, condition, query_dir in _iter_query_dirs(source_root):
-        key = f"{model}/{condition}/{query_dir.name}"
-        if not _is_safe_manifest_key(key):
-            print(f"Warning: skipping query with unsafe directory name {query_dir.name!r}.")
-            continue
-        present = [name for name in VISUAL_FILENAMES if (query_dir / name).exists()]
-        copied += _reconcile_visual_files(dest_root, key, present, query_dir)
-        manifest[key] = present
-    _write_visuals_manifest(dest_root, manifest)
-    return copied
-
-
-def _pull_visuals(source_root: Path, dest_root: Path) -> int:
-    """Mirror `source_root`'s visuals into `dest_root`, including deletions.
-
-    Reconciles every key the manifest has ever recorded rather than just
-    query dirs that still exist in `source_root`, since a directory with no
-    tracked files doesn't exist in a git checkout and so can't be iterated —
-    this is what lets a query whose latest run produced no visual have its
-    local copy removed too.
-
-    Parameters
-    ----------
-    source_root : Path
-        Branch worktree to read visuals from.
-    dest_root : Path
-        Local `eval_results/` to update.
-
-    Returns
-    -------
-    int
-        Number of files copied.
-    """
-    manifest = _load_visuals_manifest(source_root)
-    copied = 0
-    for key, files in manifest.items():
-        copied += _reconcile_visual_files(dest_root, key, files, source_root / key)
-    _write_visuals_manifest(dest_root, manifest)
-    return copied
 
 
 def _copy_run_snapshots(source_root: Path, dest_root: Path, run_ids: set[str] | None) -> int:
@@ -347,15 +182,26 @@ def _write_readme_if_missing(worktree_dir: Path) -> None:
         readme.write_text(README_TEXT)
 
 
-def cmd_upload(args: argparse.Namespace) -> int:
-    if os.environ.get("GITHUB_ACTIONS") != "true":
-        print(
-            "Error: --upload is restricted to CI. Run without it to refresh local "
-            "eval_results/ from the shared branch."
-        )
-        return 1
+def upload(branch: str, eval_results: Path, run_id: str | None = None) -> int:
+    """Merge local run history and snapshots onto `branch` and push it.
 
-    eval_results = args.eval_results
+    Registries are merged by key, snapshots are added if new. Concurrent
+    uploads re-fetch, re-merge, and retry.
+
+    Parameters
+    ----------
+    branch : str
+        Shared branch to update.
+    eval_results : Path
+        Local `eval_results/` directory to read from.
+    run_id : str, optional
+        Upload only this run's records and snapshot. All if None.
+
+    Returns
+    -------
+    int
+        Process exit code: 0 on success, 1 on failure.
+    """
     if not eval_results.exists():
         print(f"Error: eval results directory not found: {eval_results}")
         return 1
@@ -364,24 +210,21 @@ def cmd_upload(args: argparse.Namespace) -> int:
     history_rows = _load_json(eval_results / HISTORY_SUMMARY_FILE, {"rows": []}).get("rows", [])
 
     run_ids: set[str] | None = None
-    if args.run_id:
-        run_ids = {args.run_id}
-        run_records = [r for r in run_records if r.get("run_id") == args.run_id]
-        history_rows = [r for r in history_rows if r.get("run_id") == args.run_id]
+    if run_id:
+        run_ids = {run_id}
+        run_records = [r for r in run_records if r.get("run_id") == run_id]
+        history_rows = [r for r in history_rows if r.get("run_id") == run_id]
         if not run_records:
-            print(f"Error: run_id '{args.run_id}' not found in local {RUNS_REGISTRY_FILE}")
+            print(f"Error: run_id '{run_id}' not found in local {RUNS_REGISTRY_FILE}")
             return 1
 
-    if not run_records and not history_rows and args.skip_visuals:
+    if not run_records and not history_rows:
         print("Nothing to upload: no local run history found.")
         return 0
 
     for attempt in range(1, MAX_UPLOAD_ATTEMPTS + 1):
-        with _data_branch_worktree(REPO_ROOT, DEFAULT_REMOTE, args.branch) as worktree_dir:
-            manifest_file = None if args.skip_visuals else worktree_dir / VISUALS_MANIFEST_FILE
+        with _data_branch_worktree(REPO_ROOT, DEFAULT_REMOTE, branch) as worktree_dir:
             branch_files = [worktree_dir / RUNS_REGISTRY_FILE, worktree_dir / HISTORY_SUMMARY_FILE]
-            if manifest_file is not None:
-                branch_files.append(manifest_file)
             if not all(_validate_branch_json(path) for path in branch_files):
                 return 1
 
@@ -391,9 +234,6 @@ def cmd_upload(args: argparse.Namespace) -> int:
                 _update_history_summary(worktree_dir, history_rows)
 
             snapshots_copied = _copy_run_snapshots(eval_results, worktree_dir, run_ids)
-            visuals_copied = 0
-            if not args.skip_visuals:
-                visuals_copied = _push_visuals(eval_results, worktree_dir)
             _write_readme_if_missing(worktree_dir)
 
             _git(["add", "-A"], cwd=worktree_dir)
@@ -401,19 +241,16 @@ def cmd_upload(args: argparse.Namespace) -> int:
                 print("Nothing new to upload (branch already up to date).")
                 return 0
 
-            message = (
-                f"chore: eval run {args.run_id}" if args.run_id else "chore: sync eval history"
-            )
+            message = f"chore: eval run {run_id}" if run_id else "chore: sync eval history"
             _git(["commit", "-m", message], cwd=worktree_dir)
 
             upload_result = _git(
-                ["push", DEFAULT_REMOTE, f"HEAD:{args.branch}"], cwd=worktree_dir, check=False
+                ["push", DEFAULT_REMOTE, f"HEAD:{branch}"], cwd=worktree_dir, check=False
             )
             if upload_result.returncode == 0:
                 print(
                     f"Uploaded {len(run_records)} run record(s), {len(history_rows)} history "
-                    f"row(s), {snapshots_copied} snapshot(s), {visuals_copied} visual(s) to "
-                    f"{DEFAULT_REMOTE}/{args.branch}."
+                    f"row(s), {snapshots_copied} snapshot(s) to {DEFAULT_REMOTE}/{branch}."
                 )
                 return 0
 
@@ -424,47 +261,67 @@ def cmd_upload(args: argparse.Namespace) -> int:
             time.sleep(attempt)
 
     print(
-        f"Error: failed to upload to {DEFAULT_REMOTE}/{args.branch} after "
+        f"Error: failed to upload to {DEFAULT_REMOTE}/{branch} after "
         f"{MAX_UPLOAD_ATTEMPTS} attempts."
     )
     return 1
 
 
-def cmd_pull(args: argparse.Namespace) -> int:
-    """Copy eval history and visuals from the shared branch into local `eval_results/`."""
-    if not _remote_branch_exists(REPO_ROOT, DEFAULT_REMOTE, args.branch):
+def pull(branch: str, eval_results: Path) -> int:
+    """Merge history and snapshots from `branch` into local `eval_results/`.
+
+    Local-only runs and files are never overwritten or removed.
+
+    Returns
+    -------
+    int
+        Process exit code: 0 on success, 1 on failure.
+    """
+    if not _remote_branch_exists(REPO_ROOT, DEFAULT_REMOTE, branch):
         print(
-            f"Error: branch '{args.branch}' not found on {DEFAULT_REMOTE}. "
+            f"Error: branch '{branch}' not found on {DEFAULT_REMOTE}. "
             "It is created by the first successful CI eval run."
         )
         return 1
 
-    with _data_branch_worktree(REPO_ROOT, DEFAULT_REMOTE, args.branch) as worktree_dir:
-        args.eval_results.mkdir(parents=True, exist_ok=True)
+    with _data_branch_worktree(REPO_ROOT, DEFAULT_REMOTE, branch) as worktree_dir:
+        branch_files = [worktree_dir / RUNS_REGISTRY_FILE, worktree_dir / HISTORY_SUMMARY_FILE]
+        if not all(_validate_branch_json(path) for path in branch_files):
+            return 1
 
-        for name in (RUNS_REGISTRY_FILE, HISTORY_SUMMARY_FILE):
-            src = worktree_dir / name
-            if src.exists():
-                shutil.copy2(src, args.eval_results / name)
-
-        snapshots_copied = _copy_run_snapshots(worktree_dir, args.eval_results, run_ids=None)
-        visuals_copied = 0
-        if not args.skip_visuals:
-            if not _validate_branch_json(worktree_dir / VISUALS_MANIFEST_FILE):
-                return 1
-            visuals_copied = _pull_visuals(worktree_dir, args.eval_results)
+        eval_results.mkdir(parents=True, exist_ok=True)
+        run_records = _load_json(worktree_dir / RUNS_REGISTRY_FILE, {"runs": []}).get("runs", [])
+        history_rows = _load_json(worktree_dir / HISTORY_SUMMARY_FILE, {"rows": []}).get("rows", [])
+        for run_record in run_records:
+            _update_runs_registry(eval_results, run_record)
+        if history_rows:
+            _update_history_summary(eval_results, history_rows)
+        snapshots_copied = _copy_run_snapshots(worktree_dir, eval_results, run_ids=None)
 
     print(
-        f"Pulled history, {snapshots_copied} snapshot(s), {visuals_copied} visual(s) from "
-        f"{DEFAULT_REMOTE}/{args.branch} into {args.eval_results}."
+        f"Merged {len(run_records)} run record(s), {len(history_rows)} history row(s), "
+        f"{snapshots_copied} new snapshot(s) from {DEFAULT_REMOTE}/{branch} into {eval_results}."
     )
     return 0
 
 
+def cmd_upload(args: argparse.Namespace) -> int:
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        print(
+            "Error: --upload is restricted to CI. Run without it to refresh local "
+            "eval_results/ from the shared branch."
+        )
+        return 1
+    return upload(args.branch, args.eval_results, args.run_id)
+
+
+def cmd_pull(args: argparse.Namespace) -> int:
+    return pull(args.branch, args.eval_results)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Sync eval run history, snapshots, and visuals with the shared "
-        "eval-data branch",
+        description="Sync eval run history and snapshots with the shared eval-data branch",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -488,11 +345,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--run-id",
         default=None,
         help="With --upload, merge only this run's history rows and runs/<run_id>/ snapshot",
-    )
-    parser.add_argument(
-        "--skip-visuals",
-        action="store_true",
-        help="Don't sync plot_output.html/screenshot.png visuals",
     )
     return parser
 
