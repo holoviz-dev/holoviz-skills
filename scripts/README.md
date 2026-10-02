@@ -1,6 +1,6 @@
 # HoloViz Skills Evaluation
 
-Automated system to measure whether SKILL.md files improve Copilot's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces JSON summaries plus dashboards. Supports running multiple models in a single pass to compare their outputs side by side.
+Automated system to measure whether SKILL.md files improve Kilo Code's responses to HoloViz tasks. Runs queries with and without skills enabled, executes the generated code, and produces JSON summaries plus dashboards. Supports running multiple models in a single pass to compare their outputs side by side.
 
 ## Coverage
 
@@ -13,8 +13,10 @@ adding queries for other skills are welcome — see "Adding Queries" below.
 
 ## Requirements
 
-- A GitHub Copilot subscription (Individual, Business, or Enterprise) or access via the GitHub Copilot API
-- GitHub Copilot CLI installed and authenticated — see [installation guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli)
+- Kilo Code CLI installed — `npm install -g @kilocode/cli` (see the [Kilo CLI docs](https://kilo.ai/docs/code-with-ai/platforms/cli))
+- A Kilo account API key for authenticated runs. The free `kilo/kilo-auto/free` tier also
+  runs anonymously, but anonymous access is rate-limited (200 requests/h per IP), so a key
+  is recommended — and required for reliable CI runs.
 
 ## Quick Start
 
@@ -31,13 +33,19 @@ pixi run evals
 # Run without screenshots (faster, no Playwright needed)
 pixi run eval-no-screenshots
 
-# Run across multiple models
+# Compare the frontier (paid) and free Kilo auto tiers
 pixi run eval-multi
 
 # Run eval and merge history into eval_results/
 pixi run -e eval evals
 
-# Deploy the historical dashboard from existing eval_results/
+# Merge shared eval-data history and snapshots into local eval_results/
+pixi run -e eval eval-sync
+
+# Run the eval_sync.py tests
+pixi run -e eval eval-test
+
+# Deploy the historical dashboard (history from eval-data; add --images DIR for plots)
 pixi run -e eval eval-deploy-dashboard
 
 # Open the historical trends dashboard
@@ -55,17 +63,29 @@ Security and scope:
 
 - Comment-triggered runs are limited to trusted users (`OWNER`, `MEMBER`, `COLLABORATOR`)
 - Comment-triggered runs only support same-repository pull requests (fork PRs are rejected)
-- The workflow checks out the PR head SHA and runs the full pipeline by default
+- The workflow checks out the PR head SHA and runs its full pipeline, including the PR's
+  own `scripts/`/`pixi.toml`
 
 Required repository secret:
 
-- `COPILOT_GITHUB_TOKEN`: a fine-grained PAT with `Copilot Requests` permission, tied to a user with Copilot CLI access
+- `KILO_API_KEY`: a Kilo account API key (from your profile at app.kilo.ai). If it's not
+  set the workflow runs anonymously (rate-limited to 200 requests/h per IP). If the key
+  works but is rejected with "model not found" (no free-tier access), the run is retried
+  anonymously; any other failure fails the job.
 
-Workflow outputs:
+Jobs:
 
-- Uploads `eval_results/` as an Actions artifact
-- Runs `evals`, then `eval-deploy-dashboard` when deploying the dashboard
-- Posts a PR comment with run status and a short JSON summary (or a fallback message if missing)
+- `eval` (`contents: read`, no push credentials): runs the queries and the generated
+  code, uploads `eval_results/` as an Actions artifact, and posts the PR comment. Kilo's
+  deny rules are passed via `KILO_CONFIG_CONTENT` (ranked above project config); project
+  config stays enabled because `AGENTS.md` is what points the agent at the skills.
+- `publish` (`contents: write`, fresh runner, never runs generated code): downloads the
+  artifact, pushes the JSON history to the `eval-data` branch, and deploys the dashboard
+  (bundling plot images from the artifact) when `deploy_dashboard` is set.
+
+Each query's `metadata.json` records `instruction_reads` (the `SKILL.md` / `AGENTS.md`
+files the agent read) so a regression in skill loading is visible. A query that times out
+is recorded as `timed_out` and the run continues; the run only aborts if every call fails.
 
 ## `eval.py` Reference
 
@@ -77,15 +97,17 @@ python scripts/eval.py [options]
 Options:
   --queries ID [ID ...]     Run specific query IDs only (default: all)
   --models MODEL [MODEL ...]
-                            Model(s) to evaluate (default: Copilot's default).
-                            E.g. --models claude-sonnet-4.6 gpt-5.4-mini
+                            Model(s) to evaluate in provider/model format
+                            (default: Kilo's default). E.g. --models kilo/kilo-auto/free
   --skills both|with|without
                             Which condition(s) to evaluate (default: both)
-  --skip-generation         Skip Copilot queries; use existing generated_code.py files
+  --skip-generation         Skip Kilo queries; use existing generated_code.py files
   --skip-execution          Skip code execution step
   --skip-aggregation        Skip metrics aggregation step
   --skip-screenshots        Skip Playwright screenshot capture (faster)
   --timeout SEC             Code execution timeout in seconds (default: 30)
+  --run-trigger TRIGGER     manual|ci_comment|ci_dispatch|ci_schedule|ci_tag (default: manual)
+  --pr-number N             PR number recorded in run metadata
   --queries-file PATH       Path to queries YAML (default: scripts/eval_queries.yaml)
   --output DIR              Output directory (default: eval_results/)
 ```
@@ -96,10 +118,10 @@ Options:
 # Full pipeline, specific queries only
 python scripts/eval.py --queries hvplot_earthquake_plot
 
-# With-skills condition only (skip Copilot without-skills run)
+# With-skills condition only (skip Kilo without-skills run)
 python scripts/eval.py --skills with
 
-# Re-run execution + report without re-querying Copilot
+# Re-run execution + report without re-querying Kilo
 python scripts/eval.py --skip-generation
 
 # Generate responses only, no execution or report
@@ -109,27 +131,27 @@ python scripts/eval.py --skip-execution --skip-aggregation
 python scripts/eval.py --timeout 60 --skip-screenshots
 
 # Run with specific models
-python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-mini
+python scripts/eval.py --models kilo/anthropic/claude-sonnet-5
 
 # Compare two models, with-skills only
-python scripts/eval.py --models claude-sonnet-4.6 gpt-5.4-mini --skills with
+python scripts/eval.py --models kilo/kilo-auto/frontier kilo/kilo-auto/free --skills with
 ```
 
 ### Available models
 
-Run `copilot --allow-all -p "list available model IDs"` to see current models. At time of writing:
+Models are given in `provider/model` format. Run `kilo models kilo` to list the Kilo
+Gateway catalog. Auto tiers route to underlying models server-side, so the tier ID stays
+stable even as the models behind it change:
 
-- `claude-sonnet-4.6` (default)
-- `claude-sonnet-4.5`
-- `claude-haiku-4.5`
-- `gpt-5.4`
-- `gpt-5.4-mini`
-- `gpt-5.3-codex`
-- `gpt-5-mini`
-- `gemini-3.1-pro-preview`
-- `gemini-3.5-flash`
+- `kilo/kilo-auto/free` — best available free models, no credits required (CI default)
+- `kilo/kilo-auto/efficient`, `kilo/kilo-auto/balanced`, `kilo/kilo-auto/frontier` — paid tiers
+- Individual free models appear as `*:free` entries in `kilo models kilo | grep :free`,
+  but that list rotates as providers change promotional periods
 
-When `--models` is not specified, Copilot uses its own default model. The `model` field is recorded as `"default"` in `metadata.json`, while the CLI labels it as `Default (Copilot)`.
+`pixi run eval-multi` compares the paid `kilo/kilo-auto/frontier` tier against the free
+tier so per-run cost can be compared.
+
+When `--models` is not specified, Kilo uses its own default model. The `model` field is recorded as `"default"` in `metadata.json`, while the CLI labels it as `Default (Kilo)`.
 
 ## Historical Dashboard
 
@@ -149,9 +171,16 @@ pixi run -e eval eval-history-dashboard
 It reads compact history files produced during aggregation:
 
 - `eval_results/runs.json` (run registry + metadata)
-- `eval_results/history_summary.json` (flattened trend rows)
+- `eval_results/history_summary.json` (flattened trend rows, including `run_trigger`,
+  `pr_number`, `timed_out` and the `resolved_models` each call was routed to)
 
-This keeps the repo lean while allowing persistent time-based comparisons.
+These live on the `eval-data` branch — see below. Pull them with `pixi run -e eval eval-sync`
+before serving the dashboard on a clean checkout.
+
+By default the dashboard selects the 5 most recent runs that were not triggered by a PR
+comment; use the "Run source" filter and the "Runs" selector to include PR runs. Timed-out
+calls get their own status and are excluded from response-time statistics. The Overview
+shows a stacked bar of the underlying models each run's calls were routed to.
 
 ## Other Scripts
 
@@ -162,7 +191,8 @@ These scripts are still independently runnable in addition to being called by `e
 | `execute_generated.py` | Execute saved `generated_code.py` files and capture outputs |
 | `aggregate_metrics.py` | Read `metadata.json` files and produce the comparison report |
 | `compare_history.py` | Panel historical dashboard — `panel serve scripts/compare_history.py --args eval_results/` |
-| `eval_publish.py` | Deploy the historical dashboard from existing eval results |
+| `eval_sync.py` | Merge eval history and snapshots from the `eval-data` branch (`--upload` is CI only) |
+| `eval_publish.py` | Deploy the historical dashboard: history from `eval-data`, plots from `--images DIR` |
 | `toggle_skills.py` | Enable or disable skill files (rename AGENTS.md / SKILL.md) |
 | `test_setup.py` | Pre-flight environment check before running evaluations |
 
@@ -170,10 +200,11 @@ These scripts are still independently runnable in addition to being called by `e
 
 ```
 eval_results/
-├── <model>/                         # e.g. claude-sonnet-4.6, gpt-5.4-mini, default
+├── <model>/                         # e.g. kilo_kilo-auto_free, default
 │   ├── with_skills/
 │   │   └── [query_id]/
-│   │       ├── response.txt        # Raw Copilot output
+│   │       ├── response.txt        # Kilo response text
+│   │       ├── events.jsonl        # Kilo's JSON event stream for the query
 │   │       ├── metadata.json       # Model, tokens, timing, execution result
 │   │       ├── generated_code.py   # Extracted code block
 │   │       ├── execution.log       # stdout/stderr from code run
@@ -186,42 +217,51 @@ eval_results/
 │   └── <run_id>/
 │       ├── evaluation_results.json
 │       └── run_metadata.json
-├── runs.json                        # Compact run registry (git-commit friendly)
+├── runs.json                        # Compact run registry
 └── history_summary.json             # Flattened historical trend rows
 ```
 
 `metadata.json` always includes a `"model"` field — either the model name passed via
 `--models` or `"default"` when no model flag was used.
 
-## Eval And Deploy
+## Shared Eval Data (`eval-data` branch)
 
-The recommended command for local parity with CI is:
+CI publishes eval run history and snapshots to a shared `eval-data` git branch after each
+run, so results aren't stuck on whichever machine produced them. The branch holds JSON
+only (`runs.json`, `history_summary.json`, `runs/<run_id>/`); plot images stay in each
+run's CI artifact.
+
+```bash
+# Merge the shared history into local eval_results/ (local runs are kept)
+pixi run -e eval eval-sync
+```
+
+`eval-sync` always talks to the `origin` remote, so it fails on a fork that doesn't have the
+branch. Pushing (`--upload`) is restricted to CI.
+
+## Eval And Deploy
 
 ```bash
 pixi run -e eval evals
-pixi run -e eval eval-deploy-dashboard
+pixi run -e eval eval-history-dashboard
+```
+
+Deploy the dashboard with history from `eval-data`, optionally bundling plots from a local
+results directory or a downloaded run artifact:
+
+```bash
+pixi run -e eval eval-deploy-dashboard --images eval_results
+# or use local history instead of the branch
+python scripts/eval_publish.py --local-history eval_results --images eval_results
 ```
 
 Useful environment variables:
 
-- `EVAL_RUN_ID` (optional explicit run ID)
-- `EVAL_RUN_TRIGGER` (`manual`, `ci_comment`, `ci_dispatch`, `ci_schedule`)
 - `OUTERBOUNDS_CONFIG_TOKEN` (optional; configures the CLI profile before deploy)
 
-The deploy command stages:
-
-- `scripts/compare_history.py`
-- `eval_results/runs.json`
-- `eval_results/history_summary.json`
-- `eval_results/**/plot_output.html` (or `screenshot.png` if no plot) for the Plot Outputs tab
-
-and deploys that bundle to Outerbounds.
-
-To deploy the dashboard without rerunning eval:
-
-```bash
-pixi run -e eval eval-deploy-dashboard
-```
+The deploy command stages `scripts/compare_history.py`, `runs.json`,
+`history_summary.json`, and (with `--images`) `plot_output.html` (or `screenshot.png` if no
+plot) per query for the Plot Outputs tab, and deploys that bundle to Outerbounds.
 
 ## Adding Queries
 
@@ -238,9 +278,9 @@ queries:
 ```
 
 Fields:
-- `id` — unique slug (lowercase, underscores or hyphens)
-- `prompt` — the question/task sent to Copilot
-- `timeout` — per-query Copilot timeout in seconds
+- `id` — unique slug; lowercase letters, numbers, underscores, or hyphens only
+- `prompt` — the question/task sent to Kilo
+- `timeout` — per-query Kilo timeout in seconds (capped at 900)
 - `expected_output` — **not currently read or enforced by `eval.py`**; only
   `static_plot` outputs are actually supported by `execute_generated.py` (it
   can save HoloViews `Dimensioned` objects and Bokeh `Model` objects to
@@ -252,10 +292,14 @@ Fields:
 
 ## Troubleshooting
 
+**`Model not found: kilo/kilo-auto/free`**
+Some accounts don't serve the free auto tier. The workflow retries such runs anonymously
+(rate-limited to 200 requests/h per IP) when it sees this error; if that's too slow, use a
+key from an account that offers the free tier.
+
 **Tokens and execution time show 0**
-The Copilot CLI token format changed. The parser in `eval.py` handles the current format:
-`Tokens  ↑ 13.0k (6.8k cached) • ↓ 170 (128 reasoning)`. If you see zeros, capture
-a raw `response.txt` and check the `Tokens` line format matches this pattern.
+Token and cost usage come from the JSON event stream `kilo run --format json` emits. It is
+saved as `events.jsonl` in the query's result directory; inspect it if this happens.
 
 **Code execution fails**
 Check `execution.log` in the query result directory for the full traceback.

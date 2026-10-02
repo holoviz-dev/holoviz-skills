@@ -2,12 +2,12 @@
 """
 Utility to toggle SKILL.md files on/off for evaluation purposes.
 
-Disabling skills: renames AGENTS.md -> .AGENTS.md.disabled so the Copilot CLI
-                  finds no custom instructions.
+Disabling skills: renames AGENTS.md -> .AGENTS.md.disabled so coding agents
+                  (e.g. Kilo Code) find no custom instructions.
 Enabling skills:  restores .AGENTS.md.disabled -> AGENTS.md.
 
 SKILL.md files are also renamed to .SKILL.md.disabled when disabling, for
-runtimes (e.g. OpenCode/Claude) that discover skills by that filename.
+runtimes (e.g. Kilo Code) that discover skills by that filename.
 """
 
 from pathlib import Path
@@ -58,8 +58,8 @@ def find_skill_files(root_dir: Path, enabled: bool = True) -> list[Path]:
 def disable_skills(root_dir: Path) -> list[tuple[Path, Path]]:
     """
     Disable skills for the without-skills eval condition:
-    - Renames AGENTS.md -> .AGENTS.md.disabled (hides it from the Copilot CLI)
-    - Renames SKILL.md -> .SKILL.md.disabled (hides from OpenCode/Claude runtimes)
+    - Renames AGENTS.md -> .AGENTS.md.disabled (hides it from coding agents, e.g. Kilo Code)
+    - Renames SKILL.md -> .SKILL.md.disabled (hides from runtimes that discover skills by filename)
 
     Args:
         root_dir: Root directory to search from

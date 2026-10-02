@@ -10,6 +10,44 @@ the top for each release; keep `## Unreleased` (no "Version" prefix) for
 in-progress notes so it is skipped by the extraction.
 -->
 
+## Unreleased
+
+### Added
+
+- **Shared `eval-data` branch for eval history** — CI publishes run history and run
+  snapshots (JSON only) to a dedicated `eval-data` git branch after each eval run.
+  `pixi run eval-sync` merges that history into a local `eval_results/` without
+  overwriting local runs, and `eval-deploy-dashboard` deploys the historical dashboard from
+  it (`--images DIR` bundles plots from a run artifact; `--local-history DIR` uses local
+  history instead).
+- **Run source and routed models in eval history** — history rows record the trigger, PR
+  number, and the underlying models `kilo-auto/*` routed to; the dashboard filters by run
+  source, defaults to recent non-PR runs, and charts routed models per run.
+- **Eval timeouts are recorded, not fatal** — a timed-out query is stored as `timed_out`,
+  shown as its own status, and excluded from response-time statistics. The run only aborts
+  if every call fails. Each query also saves `events.jsonl` and the `SKILL.md`/`AGENTS.md`
+  files the agent read.
+- **`eval_sync.py` tests** — `pixi run -e eval eval-test`.
+
+### Changed
+
+- **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline now
+  drives the Kilo Code CLI (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier, with
+  `eval-multi` comparing it against the paid `kilo/kilo-auto/frontier` tier. Configure a
+  `KILO_API_KEY` repository secret for CI; runs fall back to the anonymous, rate-limited
+  free tier if it's missing or the account can't access it.
+- **CI eval is split into `eval` and `publish` jobs** — the job that runs generated code is
+  read-only; a separate job on a fresh runner holds the write token. Kilo's deny rules are
+  now passed via `KILO_CONFIG_CONTENT` so project `AGENTS.md` still loads, and the anonymous
+  retry only triggers on a "model not found" error.
+- **CI eval runs are sandboxed and can't leak credentials** — generated code runs in a
+  separate, credential-free process, the Kilo agent's tool access is locked down (including
+  against a checked-out project config overriding that policy), and `scripts/`/`pixi.toml`
+  are restored from the git-committed content before any later step that holds a fresh
+  secret, so generated code can't tamper with what those steps load. A crafted query ID can
+  no longer write outside the eval results directory, and a job timeout plus a cap on the
+  per-query timeout bound a run to the eval content defined in `eval_queries.yaml`.
+
 ## Version 2026.08.13
 
 ### Added

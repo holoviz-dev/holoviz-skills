@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Deploy the historical dashboard from existing eval results."""
+"""Deploy the historical dashboard.
+
+JSON history comes from the shared `eval-data` branch (or `--local-history`).
+Plot images are not stored on that branch; pass `--images DIR` (e.g. a
+downloaded run artifact) to bundle them into the deploy.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +15,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-# For Plot Outputs tab.
+import eval_sync
+
+# For the dashboard's Plot Outputs tab.
 _PLOT_FILES = frozenset({"plot_output.html", "screenshot.png"})
 
 
@@ -37,10 +44,22 @@ def main() -> int:
     repo_root = Path(__file__).parent.parent
     parser = argparse.ArgumentParser(description="Deploy the historical dashboard")
     parser.add_argument(
-        "--eval-results",
+        "--branch",
+        default=eval_sync.DEFAULT_BRANCH,
+        help=f"Shared eval-data branch to pull history from (default: {eval_sync.DEFAULT_BRANCH})",
+    )
+    parser.add_argument(
+        "--local-history",
         type=Path,
-        default=repo_root / "eval_results",
-        help="Output directory for eval results",
+        default=None,
+        help="Use runs.json/history_summary.json from this directory instead of the branch",
+    )
+    parser.add_argument(
+        "--images",
+        type=Path,
+        default=None,
+        help="eval_results-shaped directory to bundle plot_output.html / screenshot.png from "
+        "for the Plot Outputs tab (default: no images)",
     )
     parser.add_argument(
         "--outerbounds-config-token",
@@ -52,11 +71,6 @@ def main() -> int:
         type=Path,
         default=repo_root / "deploy" / "outerbounds" / "compare_history.yaml",
         help="Outerbounds app config file",
-    )
-    parser.add_argument(
-        "--skip-plot-outputs",
-        action="store_true",
-        help="Skip bundling plot_output.html / screenshot.png for the Plot Outputs tab.",
     )
     args = parser.parse_args()
 
@@ -81,15 +95,20 @@ def main() -> int:
 
         eval_results_dst = staging_path / "eval_results"
         eval_results_dst.mkdir(parents=True, exist_ok=True)
-        for name in ("runs.json", "history_summary.json"):
-            src = args.eval_results / name
-            if not src.exists():
-                print(f"Missing tracked eval history file: {src}")
-                return 1
-            shutil.copy2(src, eval_results_dst / name)
 
-        if not args.skip_plot_outputs:
-            n = _copy_plot_artifacts(args.eval_results, eval_results_dst)
+        if args.local_history is None:
+            if eval_sync.pull(args.branch, eval_results_dst) != 0:
+                return 1
+        else:
+            for name in ("runs.json", "history_summary.json"):
+                src = args.local_history / name
+                if not src.exists():
+                    print(f"Missing eval history file: {src}")
+                    return 1
+                shutil.copy2(src, eval_results_dst / name)
+
+        if args.images is not None:
+            n = _copy_plot_artifacts(args.images, eval_results_dst)
             print(f"Bundled {n} plot artifact(s) into the deploy staging dir.")
 
         print("Deploying historical dashboard to Outerbounds...")

@@ -54,7 +54,10 @@ def _load_json(path: Path, default: dict) -> dict:
         return default
 
 
-def _flatten_history_rows(summary: dict, run_id: str, created_at: str) -> list[dict]:
+def _flatten_history_rows(
+    summary: dict, run_id: str, created_at: str, run_metadata: dict | None = None
+) -> list[dict]:
+    run_metadata = run_metadata or {}
     rows: list[dict] = []
     for query_id, query_data in summary.get("queries", {}).items():
         models = query_data.get("models", {})
@@ -67,6 +70,8 @@ def _flatten_history_rows(summary: dict, run_id: str, created_at: str) -> list[d
                     {
                         "run_id": run_id,
                         "created_at": created_at,
+                        "run_trigger": run_metadata.get("run_trigger", "manual"),
+                        "pr_number": run_metadata.get("pr_number"),
                         "query_id": query_id,
                         "model": model,
                         "condition": condition,
@@ -76,6 +81,8 @@ def _flatten_history_rows(summary: dict, run_id: str, created_at: str) -> list[d
                         "execution_time": metrics.get("execution_time"),
                         "execution_success": metrics.get("execution_success"),
                         "has_code": metrics.get("has_code"),
+                        "timed_out": bool(metrics.get("timed_out", False)),
+                        "resolved_models": metrics.get("resolved_models", []),
                     }
                 )
     return rows
@@ -127,6 +134,19 @@ def _update_runs_registry(eval_results_dir: Path, run_record: dict):
     path.write_text(json.dumps(payload, indent=2) + "\n")
 
 
+def _collect_resolved_models(summary: dict) -> dict[str, list[str]]:
+    """Map each requested model to the distinct models it was routed to."""
+    resolved: dict[str, list[str]] = {}
+    for query_data in summary.get("queries", {}).values():
+        for model, model_data in query_data.get("models", {}).items():
+            seen = resolved.setdefault(model, [])
+            for condition in CONDITIONS:
+                for name in model_data.get(condition, {}).get("resolved_models", []):
+                    if name not in seen:
+                        seen.append(name)
+    return resolved
+
+
 def _build_run_record(
     run_id: str,
     created_at: str,
@@ -143,6 +163,8 @@ def _build_run_record(
         "total_queries": summary.get("total_queries", 0),
         "models": summary.get("models", []),
         "run_trigger": metadata.get("run_trigger", "manual"),
+        "pr_number": metadata.get("pr_number"),
+        "resolved_models": _collect_resolved_models(summary),
         "publish_target": metadata.get("publish_target", "local"),
         "models_requested": metadata.get("models_requested", []),
         "query_ids": metadata.get("query_ids", []),
@@ -180,7 +202,10 @@ def _persist_run_snapshot(
     (snapshot_dir / "run_metadata.json").write_text(json.dumps(run_record, indent=2) + "\n")
 
     _update_runs_registry(eval_results_dir, run_record)
-    _update_history_summary(eval_results_dir, _flatten_history_rows(summary, run_id, created_at))
+    _update_history_summary(
+        eval_results_dir,
+        _flatten_history_rows(summary, run_id, created_at, run_metadata),
+    )
 
 
 def _extract_metrics(metadata: dict) -> dict:
@@ -198,6 +223,8 @@ def _extract_metrics(metadata: dict) -> dict:
         "tokens_reasoning": metadata.get("tokens", {}).get("reasoning", 0),
         "execution_success": metadata.get("execution", {}).get("success", None),
         "execution_duration": metadata.get("execution", {}).get("execution_time", None),
+        "timed_out": bool(metadata.get("timed_out", False)),
+        "resolved_models": metadata.get("resolved_models", []),
     }
 
 
@@ -251,7 +278,10 @@ def _condition_comparison(with_skills: dict, without_skills: dict) -> dict:
 
     if with_skills and without_skills:
         comp["token_difference"] = with_skills["tokens_output"] - without_skills["tokens_output"]
-        comp["time_difference"] = with_skills["execution_time"] - without_skills["execution_time"]
+        if not (with_skills.get("timed_out") or without_skills.get("timed_out")):
+            comp["time_difference"] = (
+                with_skills["execution_time"] - without_skills["execution_time"]
+            )
 
     ws_exec = with_skills.get("execution_success")
     wos_exec = without_skills.get("execution_success")
@@ -320,9 +350,9 @@ def generate_comparison_summary(metrics: dict) -> dict:
             agg["avg_token_difference"] = sum(
                 c.get("token_difference", 0) for c in comparisons
             ) / len(comparisons)
-            agg["avg_time_difference"] = sum(
-                c.get("time_difference", 0) for c in comparisons
-            ) / len(comparisons)
+            time_diffs = [c["time_difference"] for c in comparisons if "time_difference" in c]
+            if time_diffs:
+                agg["avg_time_difference"] = sum(time_diffs) / len(time_diffs)
 
         ws_executed = [e for e in ws_list if e.get("execution_success") is not None]
         wos_executed = [e for e in wos_list if e.get("execution_success") is not None]

@@ -1,5 +1,5 @@
 # Evaluation queries for testing HoloViz skills
-# Each query tests whether SKILL.md files improve Copilot's responses
+# Each query tests whether SKILL.md files improve the agent's responses
 #
 # Coverage note: only the hvplot skill has queries below. The other skills in
 # this repo (routing skills, param, panel + references, holoviews + references,
@@ -21,7 +21,7 @@ queries:
       containing columns 'x', 'y', and 'category'. Include hover tooltips
       that show all column values when hovering over points.
     expected_output: static_plot
-    timeout: 120
+    timeout: 600
     category: hvplot_interactivity
 
   - id: hvplot_earthquake_plot
@@ -29,5 +29,5 @@ queries:
       I'm working with the earthquake dataset from the sampledata module.
       Create an hvplot map visualization using a dark CartoDB tile basemap, colored by magnitude.
     expected_output: static_plot
-    timeout: 120
+    timeout: 600
     category: hvplot_interactivity

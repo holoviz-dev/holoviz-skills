@@ -6,7 +6,7 @@ This script checks:
 1. Python version
 2. Required dependencies (matches feature.eval.dependencies in pixi.toml)
 3. Playwright availability (required for screenshot capture)
-4. Copilot CLI availability
+4. Kilo Code CLI availability
 5. SKILL.md files
 6. Query file validity
 7. Evaluation scripts
@@ -100,23 +100,21 @@ def check_playwright():
         return False
 
 
-def check_copilot_cli():
-    """Check if Copilot CLI is available"""
+def check_kilo_cli():
+    """Check if Kilo Code CLI is available"""
     try:
-        result = subprocess.run(["copilot", "--help"], capture_output=True, text=True, timeout=5)
+        result = subprocess.run(["kilo", "--version"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             return True
         else:
-            print("Copilot CLI returned a non-zero exit code")
+            print("Kilo Code CLI returned a non-zero exit code")
             return False
     except FileNotFoundError:
-        print("Copilot CLI is NOT installed or not in PATH")
-        print(
-            "See: https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli"
-        )
+        print("Kilo Code CLI is NOT installed or not in PATH")
+        print("Install it with: npm install -g @kilocode/cli")
         return False
     except Exception as e:
-        print(f"Error checking Copilot CLI: {e}")
+        print(f"Error checking Kilo Code CLI: {e}")
         return False
 
 
@@ -193,7 +191,7 @@ def main():
     checks = {
         "Python Version": lambda: check_python_version(),
         "Dependencies": lambda: check_dependencies(),
-        "Copilot CLI": lambda: check_copilot_cli(),
+        "Kilo Code CLI": lambda: check_kilo_cli(),
         "SKILL.md Files": lambda: check_skill_files(),
         "Queries File": lambda: check_queries_file(),
         "Evaluation Scripts": lambda: check_scripts(),
