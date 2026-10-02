@@ -51,6 +51,10 @@ nav = [
     { "Cleanup" = "contributing-to-holoviz/cleanup.md" },
     { "Documentation" = "contributing-to-holoviz/documentation.md" },
     { "Minimal Examples" = "contributing-to-holoviz/minimal-example.md" },
+    { "Outreach" = [
+      "contributing-to-holoviz/outreach/index.md",
+      { "Writing a Blog Post" = "contributing-to-holoviz/outreach/writing-a-blog-post.md" },
+    ] },
     { "PR Descriptions" = "contributing-to-holoviz/pr-description.md" },
     { "Testing" = "contributing-to-holoviz/testing.md" },
   ] },

@@ -47,6 +47,9 @@ in-progress notes so it is skipped by the extraction.
   secret, so generated code can't tamper with what those steps load. A crafted query ID can
   no longer write outside the eval results directory, and a job timeout plus a cap on the
   per-query timeout bound a run to the eval content defined in `eval_queries.yaml`.
+- **`outreach` sub-skill** with the **Writing a Blog Post** reference — the reader and the
+  point, structure, voice, code snippets, figures, people and sources, and the review loop —
+  routed from a new "Write or review a blog post" Loading Table row.
 
 ## Version 2026.08.13
 
