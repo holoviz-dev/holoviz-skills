@@ -52,6 +52,10 @@ in-progress notes so it is skipped by the extraction.
 - **`cleanup_scan.py`** — the cleanup skill's own scanner, for file order, single-use constants,
   standard-library imports inside functions, docstrings that repeat the name, blind excepts, and
   handlers that turn a failure into `None`.
+- **Reproducing Browser Bugs** reference in `minimal-example`, adapted from @hoxbro's
+  `mre-playwright` skill: a Playwright script that reproduces a bug only visible in the browser,
+  with a screenshot per step and a programmatic check, so the same script confirms the fix.
+  Routed from a new "Reproduce a browser-only bug with Playwright" Loading Table row.
 
 ### Changed
 

@@ -1,8 +1,8 @@
 ---
 name: minimal-example
-description: Write a minimal, self-contained, reproducible example for a HoloViz behavior or bug. Use when drafting a bug report, an issue reproducer, a PR "How to test" snippet, or any code sample a maintainer must be able to paste and run unchanged.
+description: Write a minimal, self-contained, reproducible example for a HoloViz behavior or bug. Use when drafting a bug report, an issue reproducer, a PR "How to test" snippet, any code sample a maintainer must be able to paste and run unchanged, or a Playwright script that confirms a bug only visible in the browser.
 metadata:
-  version: "2026.09.14"
+  version: "2026.10.02"
   author: holoviz
 ---
 
@@ -10,6 +10,10 @@ metadata:
 
 A reproducer a tester pastes and runs unchanged to check a fix, so keep it short
 enough to skim, not study. These are the traps specific to HoloViz reproducers.
+
+## References
+
+- [Reproducing Browser Bugs](reproducing-browser-bugs.md): a Playwright script an agent runs to confirm a bug that only shows up in the browser, with a screenshot per step and a programmatic check for whether the bug is still there.
 
 ## Contents
 
