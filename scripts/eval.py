@@ -338,7 +338,6 @@ def run_generation(
             # Surface the CLI's error (e.g. "Model not found") in the log.
             print(f"  CLI output: {output.strip()[-500:]}")
 
-    anonymous_models = anonymous_models or frozenset()
     for model in models:
         model_label = model or DEFAULT_MODEL
         anonymous = model in anonymous_models
