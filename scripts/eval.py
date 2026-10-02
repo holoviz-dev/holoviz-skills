@@ -218,7 +218,7 @@ def model_to_slug(model: str | None) -> str:
 
 
 def run_kilo_query(
-    query: str, model: str | None = None, timeout: int = 180
+    query: str, model: str | None = None, timeout: int = 180, cwd: Path = REPO_ROOT
 ) -> tuple[str, float, list[dict], int]:
     """Run one query through the Kilo Code CLI in autonomous mode.
 
@@ -238,7 +238,7 @@ def run_kilo_query(
             capture_output=True,
             text=True,
             timeout=timeout,
-            cwd=REPO_ROOT,
+            cwd=cwd,
         )
         execution_time = time.time() - start_time
         events = _parse_kilo_events(result.stdout)

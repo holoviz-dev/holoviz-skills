@@ -5,6 +5,8 @@ Usage:
     deslop_scan.py FILE [FILE ...]     scan files (directories are walked)
     deslop_scan.py -                   scan stdin
     deslop_scan.py --comments src/     also scan comments and docstrings in .py files
+    deslop_scan.py --explain FILE      add the catalogue entries for the rules that fired
+    deslop_scan.py --check-catalogue   check that rules and catalogue entries match
 
 Options:
     --colon-triple   enable the colon-into-a-triple check (noisy in docs)
@@ -19,9 +21,15 @@ Options:
     --json           emit JSON instead of a text report
     --context N      characters of match text to show (default 90)
     --comments       include .py files when walking directories
+    --explain        print the references/patterns.md entries for the rules that
+                     fired, then the patterns no regex catches
+    --check-catalogue
+                     exit 1 if a rule has no catalogue entry or an entry names
+                     no rule
 
 A .py file is scanned for its comments and docstrings only, whether it is named
-on the command line or found with --comments; the code itself is skipped.
+on the command line or found with --comments; the code itself is skipped, and
+so are the rules in COMMENT_SKIP.
 
 Fenced code blocks, indented code blocks, inline code, blockquotes, RST
 directives and section underlines are skipped.
@@ -47,6 +55,23 @@ from dataclasses import dataclass, field
 I = re.IGNORECASE  # noqa: E741
 
 TEXT_SUFFIXES = {".md", ".markdown", ".rst", ".txt"}
+
+CATALOGUE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "references", "patterns.md"
+)
+
+# These fire on ordinary comments and docstrings: a why-comment ends in its
+# reason (", since ...", "instead of ..."), docstrings open with the same verb
+# ("Return ..."), numpydoc parameter lists read as fragments, and a "# ..." line
+# in a docstring's usage block isn't a heading.
+COMMENT_SKIP = {
+    "antithesis",
+    "choppy-run",
+    "fragment-run",
+    "justification-tail",
+    "repeated-openers",
+    "short-section",
+}
 
 
 @dataclass(frozen=True)
@@ -1220,6 +1245,7 @@ def scan_text(
         # which keeps the same line numbers and columns.
         text = python_prose(text)
         mask = mask_inline
+        rules = [r for r in rules if r.id not in COMMENT_SKIP]
     else:
         mask = mask_non_prose
     masked = mask(text)
@@ -1345,6 +1371,60 @@ def print_rules(optional: set[str]) -> None:
     print()
 
 
+def catalogue_entries(text: str) -> tuple[dict[str, str], str]:
+    """Split patterns.md into ``{rule id: entry}`` and the no-regex section.
+
+    An entry runs from its ``###`` heading to the next heading or ``---`` line.
+    A heading that names two ids maps both to the same entry.
+    """
+    entries: dict[str, str] = {}
+    judgment: list[str] = []
+    ids: list[str] = []
+    block: list[str] = []
+    in_judgment = False
+
+    def flush() -> None:
+        for rule_id in ids:
+            entries[rule_id] = "\n".join(block).strip()
+
+    for line in text.splitlines():
+        if line.startswith("## "):
+            flush()
+            ids, block = [], []
+            in_judgment = line.strip() == "## Patterns no regex catches"
+        if in_judgment:
+            judgment.append(line)
+        elif line.startswith("### ") or line.strip() == "---":
+            flush()
+            ids = re.findall(r"`\[([a-z0-9-]+)\]`", line) if line.startswith("### ") else []
+            block = [line]
+        elif ids:
+            block.append(line)
+    flush()
+    return entries, "\n".join(judgment).strip()
+
+
+def check_catalogue(path: str = CATALOGUE) -> list[str]:
+    with open(path, encoding="utf-8") as fh:
+        entries, _ = catalogue_entries(fh.read())
+    missing = sorted(set(BY_ID) - set(entries))
+    unknown = sorted(set(entries) - set(BY_ID))
+    return [f"rule [{r}] has no entry in patterns.md" for r in missing] + [
+        f"patterns.md has an entry for [{r}], which no rule reports" for r in unknown
+    ]
+
+
+def print_explanation(rule_ids: set[str], path: str = CATALOGUE) -> None:
+    with open(path, encoding="utf-8") as fh:
+        entries, judgment = catalogue_entries(fh.read())
+    shown = []
+    for rule_id in sorted(rule_ids):
+        entry = entries.get(rule_id)
+        if entry and entry not in shown:
+            shown.append(entry)
+    print("\n\n".join([*shown, judgment]), end="\n\n")
+
+
 def collect_paths(paths: list[str], python: bool = False) -> list[str]:
     suffixes = TEXT_SUFFIXES | {".py"} if python else TEXT_SUFFIXES
     found: list[str] = []
@@ -1377,7 +1457,15 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--context", type=int, default=90)
     ap.add_argument("--comments", action="store_true")
+    ap.add_argument("--explain", action="store_true")
+    ap.add_argument("--check-catalogue", action="store_true")
     args = ap.parse_args(argv)
+
+    if args.check_catalogue:
+        problems = check_catalogue()
+        for problem in problems:
+            print(problem)
+        return 1 if problems else 0
 
     optional = {r.id for r in RULES if r.optional} if args.all else set()
     if args.colon_triple:
@@ -1455,6 +1543,9 @@ def main(argv: list[str]) -> int:
             print_report(r)
         if args.summary and len(reports) > 1:
             print_summary(reports)
+        fired = {h.rule for r in reports for h in r.listed}
+        if args.explain and fired:
+            print_explanation(fired)
 
     if all(r.error for r in reports):
         for r in reports:

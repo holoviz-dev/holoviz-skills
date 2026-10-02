@@ -1,6 +1,6 @@
 ---
 name: cleanup
-description: Code cleanup and refactoring guidelines for HoloViz packages. Use when reviewing PRs, refactoring code, or checking adherence to code quality standards in any HoloViz repository.
+description: Code quality guidelines for HoloViz packages. Use when writing, changing, refactoring, or reviewing code in any HoloViz repository.
 metadata:
   version: "2026.10.01"
   author: holoviz
@@ -8,7 +8,7 @@ metadata:
 
 # Cleanup
 
-This skill covers code quality patterns and common pitfalls when reviewing or refactoring HoloViz code. Keeping slop out matters more with agents in the loop: every line costs tokens each time an agent reads it, and the agent treats what it reads as the standard and copies it into the next change.
+This skill covers code quality patterns and common pitfalls when writing, changing, refactoring or reviewing HoloViz code. When you're writing, apply the sections below as you go and run the scan in step 2 of the Review before you finish. Keeping slop out matters more with agents in the loop: every line costs tokens each time an agent reads it, and the agent treats what it reads as the standard and copies it into the next change.
 
 ## Contents
 
@@ -28,8 +28,9 @@ Review the change against the whole repo, not just the diff. The diff can't show
    - For each `try`/`except`, say how the code inside could fail and what the caller sees when it does. If it can't fail, remove the `except`.
    - List the constants and helpers that are used only once.
    - For each fix, say whether it's where the problem starts or where it showed up. When a traceback points at a caller, an agent tends to patch the caller, like adding `.strip()` wherever a helper's output is used, instead of fixing the helper once. A PR that touches five files to work around a problem may have a two-line fix elsewhere.
-2. Delete first: dead guards, single-use constants whose name adds nothing, and wrappers that only reword an error. Each deletion shrinks what the rest of the review has to cover.
-3. Then review the change as a whole:
+2. Run `python3 scripts/cleanup_scan.py <package dir>` over the whole package, since it counts a constant's reads across every file it's given. It flags the findings a parser can see: file order, single-use constants, standard-library imports inside functions, docstrings that only repeat the name, blind excepts, and handlers that turn a failure into `None`. Fix each hit, or mark one that's right as written with `# cleanup: ignore[rule-id]` and the reason.
+3. Delete first: dead guards, single-use constants whose name adds nothing, and wrappers that only reword an error. Each deletion shrinks what the rest of the review has to cover.
+4. Then review the change as a whole:
    - Explain *why* this approach over the alternatives (mixin vs. inheritance vs. duplication); reviewers consistently ask for that rationale.
    - Don't change an existing default or signature — that breaks users — unless a breaking change is the explicit goal of the PR.
    - Treat every new `# noqa` as a review question: ask what it works around, and whether the workaround is the real problem. A `# noqa: B904` explaining that a retry helper would otherwise show the raw database error to the model points at a retry helper that reads the wrong error.

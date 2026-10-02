@@ -34,15 +34,22 @@ in-progress notes so it is skipped by the extraction.
 - **`deslop_scan.py` reads comments and docstrings in `.py` files** — a `.py` file is now scanned
   for its comments and docstrings only, with doctest examples skipped, and `--comments` adds
   `.py` files to a directory walk. Before, a `.py` file was scanned as if the code were prose,
-  and a directory walk skipped Python entirely.
+  and a directory walk skipped Python entirely. Rules that misfire on comments are off for `.py`
+  files, `--explain` prints only the catalogue entries for the rules that fired, and
+  `--check-catalogue` fails when a rule and its `patterns.md` entry drift apart.
 - **`scripts/check_routing.py` pre-commit hook** — fails when a Loading Table path or a relative
   `.md` link in a skill file doesn't resolve, or when a sub-skill or reference isn't named in its
   routing skill's Loading Table or its sub-skill's SKILL.md. The link check is the docs build's
   `build_stubs.find_broken_links`, which only warned before.
-- **`scripts/eval_cleanup.py`** — the first eval for `cleanup`: Kilo cleans up the post's
-  opening snippet inside a fixture package (`scripts/eval_fixtures/cleanup_review/`), with and
-  without skills, and AST checks grade the result on the post's six findings. `pixi run -e eval
-  eval-cleanup`.
+- **`scripts/eval_cleanup.py`** — the first eval for `cleanup`, with two fixtures: the post's
+  opening snippet (`scripts/eval_fixtures/cleanup_review/`, a smoke test, since the skill quotes
+  it) and a held-out package with the same six findings (`cleanup_holdout/`). Each run works in a
+  temporary copy of the package, so Kilo can't read the answer key, and grades the files Kilo
+  returns with `cleanup_scan.py` plus checks for the two reused helpers. `--repeat N` reports a
+  pass rate per check. `pixi run -e eval eval-cleanup`.
+- **`cleanup_scan.py`** — the cleanup skill's own scanner, for file order, single-use constants,
+  standard-library imports inside functions, docstrings that repeat the name, blind excepts, and
+  handlers that turn a failure into `None`.
 
 ### Changed
 
@@ -75,6 +82,13 @@ in-progress notes so it is skipped by the extraction.
   Slop Part 2: Code".
 - **`testing` asks for tests written from expected behavior** — not from what the new code does —
   and rules out editing an expected value just to make a test pass.
+- **The prose skills reference one copy of each rule instead of restating it** — `deslop` gains
+  a Before drafting section (a voice sample, the reader, the HoloViz voice) that `pr-description`,
+  `documentation` and the blog post reference link to. The blog post drops structure rules and a
+  review loop that duplicated deslop's patterns and workflow, `pr-description` points at
+  `cleanup` for comments, and its "Added documentation" checklist line no longer reads as "remove
+  it". The Loading Table gains a "Write, change or refactor code" row and merges "Review a PR or
+  refactor code" with "Full PR review", which loaded every sub-skill.
 - **`deslop` pattern catalogue covers every scanner rule** — 26 rules the scanner reported but
   `references/patterns.md` never described, including `justification-tail`, `antithesis`,
   `vague-quantifier`, `hype`, `fragment-run` and the bold-label rules, now have entries.
