@@ -57,6 +57,10 @@ CODE_OUTPUT_INSTRUCTION = (
 # Sentinel used when no --model flag is passed (Kilo picks its default).
 DEFAULT_MODEL = "default"
 DEFAULT_MODEL_LABEL = "Default (Kilo)"
+MAX_QUERY_TIMEOUT = 900
+# Exit code `kilo run` uses for timeouts; also what run_kilo_query reports when
+# its own subprocess timeout fires.
+TIMEOUT_RETURNCODE = 124
 
 SCRIPTS_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPTS_DIR.parent
@@ -119,6 +123,25 @@ def _extract_usage_from_events(events: list[dict]) -> tuple[dict[str, int], floa
     return tokens, cost, resolved_models
 
 
+def _extract_instruction_reads(events: list[dict]) -> list[str]:
+    """Return SKILL.md / AGENTS.md paths the agent read, per the tool events.
+
+    Lets us notice when the agent stops loading skills (e.g. project
+    instructions silently not being picked up).
+    """
+    reads: list[str] = []
+    for event in events:
+        part = event.get("part") or {}
+        if part.get("tool") != "read":
+            continue
+        state = part.get("state") or {}
+        tool_input = state.get("input") or {}
+        path = tool_input.get("filePath") or tool_input.get("path") or ""
+        if path.endswith(("SKILL.md", "AGENTS.md")) and path not in reads:
+            reads.append(path)
+    return reads
+
+
 class KiloResponse:
     """Parsed response from the Kilo Code CLI."""
 
@@ -137,8 +160,10 @@ class KiloResponse:
         self.model = model
         self.events = events or []
         self.returncode = returncode
+        self.timed_out = returncode == TIMEOUT_RETURNCODE
         self.code_blocks = self._extract_code_blocks()
         self.tokens, self.cost, self.resolved_models = _extract_usage_from_events(self.events)
+        self.instruction_reads = _extract_instruction_reads(self.events)
 
     def _extract_code_blocks(self) -> list[str]:
         """Extract Python code blocks from the response (fenced ``` blocks only)."""
@@ -159,13 +184,32 @@ class KiloResponse:
             "code_blocks_count": len(self.code_blocks),
             "has_code": len(self.code_blocks) > 0,
             "cli_exit_code": self.returncode,
+            "timed_out": self.timed_out,
+            "instruction_reads": self.instruction_reads,
         }
 
 
+_QUERY_ID_PATTERN = re.compile(r"^[a-z0-9_\-]+$")
+
+
 def load_queries(yaml_path: Path) -> list[dict]:
+    """Load queries from `eval_queries.yaml`, rejecting unsafe `id` values.
+
+    Query IDs become directory names (and later, `eval-data` manifest keys),
+    so they're restricted to the documented slug format rather than left free
+    to contain path separators or `..`.
+    """
     with open(yaml_path) as f:
         data = yaml.safe_load(f)
-    return data.get("queries", [])
+    queries = data.get("queries", [])
+    for query in queries:
+        query_id = query.get("id", "")
+        if not _QUERY_ID_PATTERN.match(query_id):
+            raise ValueError(
+                f"Invalid query id {query_id!r} in {yaml_path}: must contain only "
+                "lowercase letters, numbers, underscores, and hyphens."
+            )
+    return queries
 
 
 def model_to_slug(model: str | None) -> str:
@@ -195,8 +239,7 @@ def run_kilo_query(
 
     Returns the reconstructed assistant text, wall-clock time, the parsed
     JSON events (token/cost usage comes from the events, not text), and the
-    CLI's exit code (nonzero means the query itself failed, e.g. auth or
-    rate-limit errors, as opposed to a model that answered without code).
+    CLI's exit code.
     """
     start_time = time.time()
     try:
@@ -223,7 +266,7 @@ def run_kilo_query(
             output += f"\n\n[STDERR]\n{result.stderr}"
         return output, execution_time, events, result.returncode
     except subprocess.TimeoutExpired:
-        return f"[TIMEOUT after {timeout}s]", time.time() - start_time, [], 1
+        return f"[TIMEOUT after {timeout}s]", time.time() - start_time, [], TIMEOUT_RETURNCODE
     except Exception as e:
         return f"[ERROR: {str(e)}]", time.time() - start_time, [], 1
 
@@ -241,6 +284,9 @@ def save_results(
     query_dir.mkdir(parents=True, exist_ok=True)
 
     (query_dir / "response.txt").write_text(response.raw_output)
+    (query_dir / "events.jsonl").write_text(
+        "".join(json.dumps(event) + "\n" for event in response.events)
+    )
 
     metadata = response.to_dict()
     metadata["skills_enabled"] = skills_enabled
@@ -268,18 +314,30 @@ def run_generation(
     skip_without_skills: bool = False,
     skip_with_skills: bool = False,
     anonymous_models: frozenset[str] | None = None,
-) -> list[str]:
-    """Run the generation step, returning the query IDs whose Kilo invocation
-    failed (nonzero CLI exit). Failed invocations still write their raw
-    output to disk for debugging, but the caller must not aggregate or
-    publish a run that contains them.
+) -> dict[str, list[str]]:
+    """Run the generation step.
 
-    Models listed in `anonymous_models` run each CLI invocation with a fresh
-    ``XDG_DATA_HOME``, i.e. without credentials, so models the authenticated
-    account doesn't serve (``kilo/kilo-auto/free``) still work. The paid
-    models keep the inherited logged-in environment.
-    """
+    Returns ``{"attempted", "timed_out", "failed"}``, each a list of
+    "model/condition/query" labels. ``timed_out`` are queries that hit their
+    timeout (recorded as ``timed_out`` in metadata, run continues); ``failed``
+    are other nonzero exits. Both still write their response text and
+    metadata to disk for debugging."""
+    attempted: list[str] = []
+    timed_out: list[str] = []
     failed: list[str] = []
+    anonymous_models = anonymous_models or frozenset()
+
+    def record(label: str, returncode: int, output: str = "") -> None:
+        attempted.append(label)
+        if returncode == TIMEOUT_RETURNCODE:
+            timed_out.append(label)
+            print(f"  Timed out (recorded, continuing): {label}")
+        elif returncode != 0:
+            failed.append(label)
+            print(f"  Kilo CLI exited with code {returncode}")
+            # Surface the CLI's error (e.g. "Model not found") in the log.
+            print(f"  CLI output: {output.strip()[-500:]}")
+
     anonymous_models = anonymous_models or frozenset()
     for model in models:
         model_label = model or DEFAULT_MODEL
@@ -296,7 +354,7 @@ def run_generation(
         for i, query in enumerate(queries, 1):
             query_id = query["id"]
             prompt = query["prompt"].rstrip() + CODE_OUTPUT_INSTRUCTION
-            timeout = query.get("timeout", 180)
+            timeout = min(query.get("timeout", 180), MAX_QUERY_TIMEOUT)
 
             print(f"[{i}/{len(queries)}] {query_id}")
 
@@ -324,6 +382,7 @@ def run_generation(
                     save_results(
                         query_id, response, output_dir, skills_enabled=False, anonymous=anonymous
                     )
+                    record(f"{model_label}/without_skills/{query_id}", returncode, raw_output)
                 finally:
                     enable_skills(REPO_ROOT)
 
@@ -349,17 +408,14 @@ def run_generation(
                 save_results(
                     query_id, response, output_dir, skills_enabled=True, anonymous=anonymous
                 )
-
-            if returncode != 0:
-                failed.append(query_id)
-                print(f"  ✗ Kilo CLI exited with code {returncode}")
+                record(f"{model_label}/with_skills/{query_id}", returncode, raw_output)
 
             print(f"{'─' * 60}")
 
         if data_home is not None:
             shutil.rmtree(data_home, ignore_errors=True)
 
-    return failed
+    return {"attempted": attempted, "timed_out": timed_out, "failed": failed}
 
 
 def run_execution(
@@ -368,16 +424,32 @@ def run_execution(
     timeout: int,
     skip_screenshots: bool,
 ):
-    # Import here so execute_generated.py remains independently runnable
-    sys.path.insert(0, str(SCRIPTS_DIR))
-    from execute_generated import execute_all_code
+    """Execute generated code in a separate process.
 
-    execute_all_code(
-        eval_results_dir=output_dir,
-        timeout=timeout,
-        query_ids=query_ids,
-        skip_screenshots=skip_screenshots,
-    )
+    Runs `execute_generated.py` as a subprocess rather than importing it, and
+    strips credential-like variables from that subprocess's environment from
+    the moment it's created so the process tree that runs untrusted generated
+    code never holds `KILO_API_KEY`.
+    """
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    from execute_generated import _execution_env
+
+    cmd = [
+        sys.executable,
+        str(SCRIPTS_DIR / "execute_generated.py"),
+        "--eval-results",
+        str(output_dir),
+        "--timeout",
+        str(timeout),
+    ]
+    if query_ids:
+        cmd += ["--queries", *query_ids]
+    if skip_screenshots:
+        cmd.append("--skip-screenshots")
+
+    result = subprocess.run(cmd, cwd=REPO_ROOT, env=_execution_env())
+    if result.returncode != 0:
+        print(f"Warning: execute_generated.py exited with code {result.returncode}")
 
 
 def _slugify(value: str) -> str:
@@ -523,9 +595,14 @@ Examples:
     )
     parser.add_argument(
         "--run-trigger",
-        choices=["manual", "ci_comment", "ci_dispatch", "ci_schedule"],
+        choices=["manual", "ci_comment", "ci_dispatch", "ci_schedule", "ci_tag"],
         default="manual",
         help="Source that triggered this run (default: manual)",
+    )
+    parser.add_argument(
+        "--pr-number",
+        default=None,
+        help="Pull request number this run was triggered for (recorded in run metadata)",
     )
     parser.add_argument(
         "--anonymous-models",
@@ -567,6 +644,7 @@ Examples:
     run_metadata = {
         "run_trigger": args.run_trigger,
         "publish_target": args.publish_target,
+        "pr_number": args.pr_number or None,
         "models_requested": models_requested,
         "anonymous_models": args.anonymous_models,
         "query_ids": [q["id"] for q in queries],
@@ -580,7 +658,7 @@ Examples:
 
     # Step 1: Generate
     if not args.skip_generation:
-        failed_queries = run_generation(
+        outcome = run_generation(
             queries=queries,
             output_dir=args.output,
             models=models,
@@ -589,13 +667,27 @@ Examples:
             anonymous_models=frozenset(args.anonymous_models),
         )
         print("\nGeneration complete.")
-        if failed_queries:
+        attempted, timed_out, failed = (
+            outcome["attempted"],
+            outcome["timed_out"],
+            outcome["failed"],
+        )
+        if timed_out or failed:
             print(
-                "\nError: the Kilo CLI exited nonzero for: "
-                f"{', '.join(sorted(set(failed_queries)))}. The run is not "
+                f"{len(attempted) - len(timed_out) - len(failed)} succeeded, "
+                f"{len(timed_out)} timed out, {len(failed)} failed."
+            )
+        # Timeouts are recorded and the run continues. Only abort when every
+        # call failed outright (bad key, unknown model, broken CLI).
+        if attempted and len(failed) == len(attempted):
+            print(
+                "\nError: the Kilo CLI exited nonzero for every call: "
+                f"{', '.join(sorted(set(failed)))}. The run is not "
                 "aggregated or published; fix the CLI invocation and retry."
             )
             return 1
+        if failed:
+            print(f"Warning: Kilo CLI failed for: {', '.join(sorted(set(failed)))}")
 
     # Step 2: Execute
     if not args.skip_execution:

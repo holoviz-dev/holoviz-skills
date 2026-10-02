@@ -192,6 +192,30 @@ One of these in a document is a stylistic choice. Three is a tic. Complete the v
 
 Not a construction, a frequency. LLM prose reaches for the em-dash for every parenthetical, aside, and dramatic pause. Enable with `--em-dash` to get a count and per-line hits; treat more than roughly one per 150 words as a signal. Convert most of them to commas, colons, parentheses, or a full stop.
 
+### Choppy sentence runs `[choppy-run]`
+
+Two or more short declarative sentences in a row within one paragraph, usually one idea chopped into beats. *Banning words half works. Models find substitutes.*
+
+A single short sentence after a long one is emphasis. A run of them is a rhythm LLM prose applies everywhere to sound decisive, and readers hear it as machine-written. Join them into one sentence with the connective the beats were hiding (*since*, *so*, *but*, *and*):
+
+> Delete first. Most slop is additive. → Delete first, since most slop is extra words.
+
+The scanner counts sentences of six words or fewer. If the author's voice genuinely runs short, leave it, since the pattern is the run of them rather than any one short sentence.
+
+### Tidy closer `[tidy-closer]`
+
+A final sentence opening on *Ultimately*, *In the end*, *At the end of the day*, *In conclusion* or *All in all*.
+
+It exists to make the paragraph feel finished, and it almost always restates the first sentence in bigger words. Cut it. If it carries a real conclusion, drop the opener and keep the claim.
+
+> Ultimately, this change empowers developers to build faster dashboards. → (cut)
+
+### Heading over a short section `[short-section]`
+
+A heading over fewer than about 40 words, reported once two or more turn up. Usually paired with a bold one-line takeaway under each heading, so a two-sentence point gets a title, a summary and a body.
+
+Headings are for navigating a long piece, and a reader doesn't need one to find two sentences. Fold short sections into one section as paragraphs, starting each with a plain sentence that names the point. (A heading followed directly by a subheading is a parent and isn't counted.)
+
 ---
 
 ## Signs of AI writing
@@ -276,6 +300,12 @@ Reread for these after working through the scanner hits.
 
 **Conclusions that restate the introduction.** The final paragraph paraphrasing the first with different vocabulary.
 
+**Sections that restate themselves.** The same thing at section scale: a section's last sentence repeats its heading or its opening line. *If a sentence promises content, delete the promise and keep the content. … If the announcement has nothing behind it, the whole sentence goes.* Check the last sentence of every section against its first, and cut it unless it adds a case the first didn't cover.
+
 **Uniform sentence length.** Every sentence between 12 and 20 words. Human prose varies more, including sentences of three words and of fifty.
 
 **Confidence that outruns the evidence.** Hedges deleted where they belonged, certainty added where the author had none.
+
+**Triplets outside a colon.** Three benefits, three adjectives, three verbs, listed because three sounds complete: *reduce redundant computation, improve responsiveness, and lower server costs.* `[colon-triple]` only catches the ones after a colon. Keep the items you could back up with a number and drop the rest.
+
+**Formal words nobody says.** Not the classic AI vocabulary, but stiff choices that read the same way: *discounting* (doubting), *register* (style), *additive* (extra), *prime* (make more likely), *constructions* (sentence patterns), *supplies* (makes up). If you wouldn't say it out loud to a colleague, use the word you would.

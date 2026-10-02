@@ -14,6 +14,7 @@ from pathlib import Path
 
 import holoviews as hv
 import hvplot.pandas  # noqa: F401
+import numpy as np
 import pandas as pd
 import panel as pn
 import panel_material_ui as pmui
@@ -41,11 +42,29 @@ _HEATMAP = {
 }
 _CONDITIONS = ("with_skills", "without_skills")
 _CONDITION_ABBR = {"with_skills": "on", "without_skills": "off"}
-GREEN, RED = "#2ca02c", "#d62728"
-GRADE_STYLE = {
-    True: "background-color: #e6f4ea; font-weight: 600",
-    False: "background-color: #fdecea",
+GREEN, RED, GREY = "#2ca02c", "#d62728", "#9e9e9e"
+_STATUS_STYLE = {
+    "success": "background-color: #e6f4ea; font-weight: 600",
+    "failure": "background-color: #fdecea",
+    "timeout": "background-color: #eeeeee; color: #555",
 }
+_DEFAULT_RUN_COUNT = 5
+_PR_TRIGGER = "ci_comment"
+
+
+def _row_status(df):
+    """Per-row status: timeout (no response), else success / failure."""
+    ok = df["execution_success"].fillna(False).astype(bool)
+    return pd.Series(
+        np.where(df["timed_out"], "timeout", np.where(ok, "success", "failure")),
+        index=df.index,
+    )
+
+
+def _without_timeouts(df):
+    """Drop timed-out rows so they don't skew response-time statistics."""
+    return df[~df["timed_out"]]
+
 
 _CHART = dict(
     toolbar=None,
@@ -135,6 +154,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
     selected_models = param.ListSelector(default=[], objects=[])
     selected_queries = param.ListSelector(default=[], objects=[])
     selected_runs = param.ListSelector(default=[], objects=[])
+    selected_sources = param.ListSelector(default=[], objects=[])
     df = param.DataFrame()
 
     def __init__(self, results_dir: Path, **params):
@@ -152,7 +172,11 @@ class HistoricalDashboard(pn.viewable.Viewer):
         all_queries = (
             sorted(self._history_df["query_id"].unique()) if not self._history_df.empty else []
         )
-        params.setdefault("selected_runs", all_runs[: min(5, len(all_runs))])
+        all_sources = (
+            sorted(self._history_df["run_trigger"].unique()) if not self._history_df.empty else []
+        )
+        params.setdefault("selected_runs", self._default_runs(all_runs))
+        params.setdefault("selected_sources", all_sources)
         params.setdefault("selected_models", all_models)
         params.setdefault("selected_queries", all_queries)
 
@@ -163,12 +187,14 @@ class HistoricalDashboard(pn.viewable.Viewer):
         )
         super().__init__(**params)
         self.param.selected_runs.objects = all_runs
+        self.param.selected_sources.objects = all_sources
         self.param.selected_models.objects = all_models
         self.param.selected_queries.objects = all_queries
 
         self._run_filter = pmui.MultiSelect.from_param(
             self.param.selected_runs, label="Runs", sizing_mode="stretch_width"
         )
+        self._source_filter = self._check_group("selected_sources", label="Run source")
         self._model_filter = self._check_group("selected_models", label="Models")
         self._query_filter = self._check_group("selected_queries", label="Queries")
         self._condition_filter = self._check_group("selected_conditions", label="Conditions")
@@ -181,6 +207,16 @@ class HistoricalDashboard(pn.viewable.Viewer):
             sizing_mode="stretch_width",
             **kw,
         )
+
+    def _default_runs(self, all_runs: list[str]) -> list[str]:
+        """Most recent runs, leaving out PR-comment runs unless nothing else exists."""
+        df = self._history_df
+        if df.empty:
+            return []
+        latest = df.groupby("run_id")["created_at"].max().sort_values(ascending=False)
+        non_pr = set(df[df["run_trigger"] != _PR_TRIGGER]["run_id"])
+        ordered = [r for r in latest.index if r in non_pr] or list(latest.index)
+        return ordered[:_DEFAULT_RUN_COUNT]
 
     def _load_history(self, results_dir: Path) -> pd.DataFrame:
         history_file = results_dir / "history_summary.json"
@@ -196,6 +232,20 @@ class HistoricalDashboard(pn.viewable.Viewer):
         else:
             df["cost"] = df["cost"].fillna(0.0)
         df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
+        # Rows written before these fields existed.
+        for col, default in (
+            ("run_trigger", "unknown"),
+            ("pr_number", None),
+            ("timed_out", False),
+            ("resolved_models", None),
+        ):
+            if col not in df:
+                df[col] = default
+        df["run_trigger"] = df["run_trigger"].fillna("unknown")
+        df["timed_out"] = df["timed_out"].fillna(False).astype(bool)
+        df["resolved_models"] = df["resolved_models"].apply(
+            lambda v: v if isinstance(v, list) else []
+        )
         return df.sort_values(["created_at", "run_id", "model", "condition", "query_id"])
 
     def _filtered_df(self) -> pd.DataFrame:
@@ -207,6 +257,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             ("model", self.selected_models),
             ("query_id", self.selected_queries),
             ("condition", self.selected_conditions),
+            ("run_trigger", self.selected_sources),
         ):
             df = df[df[col].isin(values or [])]
         return df
@@ -216,6 +267,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         "selected_models",
         "selected_queries",
         "selected_conditions",
+        "selected_sources",
         watch=True,
         on_init=True,
     )
@@ -240,8 +292,12 @@ class HistoricalDashboard(pn.viewable.Viewer):
             return float(values.mean()) if not values.empty else None
 
         def counts(sub):
-            ok = sub["execution_success"].fillna(False).astype(bool)
-            return int(ok.sum()), int((~ok).sum())
+            status = _row_status(sub)
+            return (
+                int((status == "success").sum()),
+                int((status == "failure").sum()),
+                int((status == "timeout").sum()),
+            )
 
         with_rate, without_rate = rate(with_df), rate(without_df)
         lift = None if None in (with_rate, without_rate) else with_rate - without_rate
@@ -251,7 +307,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             ("success with skills", with_rate, "{value:.0%}"),
             ("success without skills", without_rate, "{value:.0%}"),
             ("pass-rate lift", lift, "{value:+.0%}"),
-            ("avg response time", df["execution_time"].mean(), "{value:.1f} s"),
+            ("avg response time", _without_timeouts(df)["execution_time"].mean(), "{value:.1f} s"),
             ("avg tokens", df["tokens_output"].mean(), "{value:,.0f}"),
             ("total cost", df["cost"].sum(), "${value:.4f}"),
         ]
@@ -262,27 +318,68 @@ class HistoricalDashboard(pn.viewable.Viewer):
             ],
             gap="10px",
         )
-        ws_ok, ws_fail = counts(with_df)
-        wo_ok, wo_fail = counts(without_df)
+        ws_ok, ws_fail, ws_to = counts(with_df)
+        wo_ok, wo_fail, wo_to = counts(without_df)
         impact = self._skills_impact(df)
         return pmui.Column(
             kpis,
             pmui.Row(
                 donut(
-                    [("Success", ws_ok, GREEN), ("Failure", ws_fail, RED)],
+                    [
+                        ("Success", ws_ok, GREEN),
+                        ("Failure", ws_fail, RED),
+                        ("Timeout", ws_to, GREY),
+                    ],
                     "Execution success — with skills",
                 ),
                 donut(
-                    [("Success", wo_ok, GREEN), ("Failure", wo_fail, RED)],
+                    [
+                        ("Success", wo_ok, GREEN),
+                        ("Failure", wo_fail, RED),
+                        ("Timeout", wo_to, GREY),
+                    ],
                     "Execution success — without skills",
                 ),
             ),
+            self._routed_models(df),
             impact
             if impact is not None
             else pmui.Alert(
                 "Select both conditions to see the skills-impact chart.", severity="info"
             ),
             sx={"gap": "16px"},
+        )
+
+    def _routed_models(self, df: pd.DataFrame):
+        """Stacked bar per run: how many calls were routed to each underlying model."""
+        exploded = df[["run_id", "created_at", "resolved_models"]].explode("resolved_models")
+        exploded = exploded[exploded["resolved_models"].notna()]
+        if exploded.empty:
+            return pmui.Alert(
+                "No routed-model data for the selected runs (older runs didn't record it).",
+                severity="info",
+            )
+        counts = exploded.groupby(["run_id", "resolved_models"]).size().unstack(fill_value=0)
+        order = exploded.groupby("run_id")["created_at"].min().sort_values().index.tolist()
+        counts = counts.loc[order]
+        return pn.pane.ECharts(
+            {
+                "title": {"text": "Routed models per run", "left": "center"},
+                "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+                "legend": {"bottom": 0},
+                "xAxis": {"type": "category", "data": list(counts.index)},
+                "yAxis": {"type": "value", "name": "calls"},
+                "series": [
+                    {
+                        "name": model,
+                        "type": "bar",
+                        "stack": "models",
+                        "data": [int(v) for v in counts[model]],
+                    }
+                    for model in counts.columns
+                ],
+            },
+            height=340,
         )
 
     def _skills_impact(self, df: pd.DataFrame):
@@ -335,6 +432,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
         work = df.copy()
         if metric == "execution_success":
             work[metric] = work[metric].astype(float)
+        if metric == "execution_time":
+            work = _without_timeouts(work)
         work = work[work[metric].notna()]
         if work.empty:
             return None
@@ -398,6 +497,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
     # ------------------------------------------------------------------
 
     def _build_metric_violin(self, df: pd.DataFrame, metric: str, *, i: int, n: int):
+        if metric == "execution_time":
+            df = _without_timeouts(df)
         xaxis = stack_xaxis(i, n - 1)
         violin = hv.Violin(df, kdims=["model", "condition"], vdims=[metric]).opts(
             responsive=True,
@@ -453,6 +554,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
         work = df.copy()
         if metric == "execution_success":
             work[metric] = work[metric].astype(float)
+        elif metric == "execution_time":
+            work = _without_timeouts(work)
         agg = (
             work.groupby(["run_id", "model", "condition"], as_index=False)
             .agg(**{metric: (metric, "mean"), "created_at": ("created_at", "first")})
@@ -524,9 +627,14 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 "tokens_input",
                 "execution_time",
                 "cost",
-                "execution_success",
+                "run_trigger",
+                "pr_number",
             ]
         ]
+        table["status"] = _row_status(df.loc[table.index])
+        table["pr_number"] = table["pr_number"].apply(
+            lambda v: "" if pd.isna(v) else str(int(float(v)))
+        )
         table["created_at"] = pd.to_datetime(table["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
         for col in ("tokens_output", "tokens_input"):
             table[col] = table[col].fillna(0).astype(int)
@@ -549,10 +657,12 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 "tokens_input": "Tokens (in)",
                 "execution_time": "Response time (s)",
                 "cost": "Cost (USD)",
-                "execution_success": "Status",
+                "status": "Status",
+                "run_trigger": "Source",
+                "pr_number": "PR",
             },
         )
-        tabulator.style.map(lambda g: GRADE_STYLE.get(g, ""), subset=["execution_success"])
+        tabulator.style.map(lambda g: _STATUS_STYLE.get(g, ""), subset=["status"])
         return tabulator
 
     # ------------------------------------------------------------------
@@ -638,6 +748,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
             latest = latest.strftime("%Y-%m-%d %H:%M")
         sidebar = pmui.Column(
             pmui.Typography("Filters", variant="h6"),
+            self._source_filter,
+            pmui.Divider(),
             self._run_filter,
             pmui.Divider(),
             self._model_filter,
@@ -648,7 +760,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
             pn.pane.HTML(
                 f'<div style="font-size:12px;display:flex;gap:10px">'
                 f'<span style="color:{GREEN}">●</span> success'
-                f'<span style="color:{RED}">●</span> failure</div>'
+                f'<span style="color:{RED}">●</span> failure'
+                f'<span style="color:{GREY}">●</span> timeout</div>'
             ),
             pmui.Typography(
                 f"{n_runs} run(s) · latest {latest or '—'}",

@@ -25,10 +25,9 @@ on:
   issue_comment:
     types: [created]
 
+# Least privilege by default; jobs that need more declare it themselves.
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: eval-command-${{ github.event.issue.number || github.ref }}
@@ -38,6 +37,9 @@ jobs:
   gate:
     name: Validate trigger
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       should_run: ${{ steps.decide.outputs.should_run }}
       reason: ${{ steps.decide.outputs.reason }}
@@ -135,16 +137,25 @@ jobs:
           echo "checkout_ref=${{ steps.decide.outputs.checkout_ref }}"
           echo "pr_number=${{ steps.decide.outputs.pr_number }}"
 
+  # Runs generated (untrusted) code. Never receives write credentials: the
+  # results leave this job only as an artifact, published by the `publish` job.
   eval:
     name: Run evaluation pipeline
     runs-on: ubuntu-latest
     needs: gate
     if: needs.gate.outputs.should_run == 'true'
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    outputs:
+      run_id: ${{ steps.runmeta.outputs.run_id }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.gate.outputs.checkout_ref }}
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -154,6 +165,9 @@ jobs:
       - name: Install Kilo Code CLI
         run: npm install -g @kilocode/cli
 
+      # KILO_CONFIG_CONTENT ranks above project config, so a checked-in
+      # kilo.json can't weaken the deny rules. Project config stays enabled on
+      # purpose: AGENTS.md is what points the agent at the skills.
       - name: Configure Kilo Code
         env:
           KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
@@ -161,23 +175,28 @@ jobs:
           python - <<'PY'
           import json
           import os
-          from pathlib import Path
 
-          cfg_dir = Path.home() / ".config" / "kilo"
-          cfg_dir.mkdir(parents=True, exist_ok=True)
           cfg = {
               "$schema": "https://app.kilo.ai/config.json",
               "model": "kilo/kilo-auto/free",
               "small_model": "kilo/kilo-auto/free",
               "experimental": {"openTelemetry": False},
+              "permission": {
+                  "bash": {"*": "deny"},
+                  "background_process": {"*": "deny"},
+                  "edit": {"*": "deny"},
+                  "write": {"*": "deny"},
+                  "task": {"*": "deny"},
+                  "kilo_local_recall": {"*": "deny"},
+                  "external_directory": {"*": "deny"},
+              },
           }
           if os.environ.get("KILO_API_KEY"):
-              cfg["provider"] = {
-                  "kilo": {"options": {"apiKey": "{env:KILO_API_KEY}"}},
-              }
+              cfg["provider"] = {"kilo": {"options": {"apiKey": "{env:KILO_API_KEY}"}}}
           else:
               print("::warning::KILO_API_KEY is not set; Kilo runs anonymously (free tier, 200 req/h per IP)")
-          (cfg_dir / "kilo.jsonc").write_text(json.dumps(cfg, indent=2) + "\n")
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"KILO_CONFIG_CONTENT={json.dumps(cfg)}\n")
           PY
 
       - name: Set up Pixi
@@ -186,40 +205,56 @@ jobs:
           environments: eval
 
       - name: Preflight checks
-        env:
-          KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
         run: pixi run -e eval eval-check
 
       - name: Compute run metadata
         id: runmeta
         env:
-          CHECKOUT_REF: ${{ needs.gate.outputs.checkout_ref }}
+          TRIGGER_SOURCE: ${{ needs.gate.outputs.trigger_source }}
         run: |
-          # issue_comment runs check out the PR head SHA, which differs from GITHUB_SHA
-          SHA="$GITHUB_SHA"
-          if [[ "$CHECKOUT_REF" =~ ^[0-9a-f]{40}$ ]]; then
-            SHA="$CHECKOUT_REF"
-          fi
+          SHA="$(git rev-parse HEAD)"
           echo "run_id=ci-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+          case "$TRIGGER_SOURCE" in
+            workflow_dispatch) RUN_TRIGGER=ci_dispatch ;;
+            issue_comment) RUN_TRIGGER=ci_comment ;;
+            tag_push) RUN_TRIGGER=ci_tag ;;
+            *) RUN_TRIGGER=manual ;;
+          esac
+          echo "run_trigger=$RUN_TRIGGER" >> "$GITHUB_OUTPUT"
 
       - name: Run eval pipeline
         env:
           KILO_API_KEY: ${{ secrets.KILO_API_KEY }}
-        # Some kilo auth accounts doesn't have ``kilo-auto/free``. Need to anonymize the request for this
-        run: XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals --models kilo/kilo-auto/free --run-id "${{ steps.runmeta.outputs.run_id }}"
-
-      - name: Push eval history to eval-data
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ steps.runmeta.outputs.run_id }}
+          RUN_TRIGGER: ${{ steps.runmeta.outputs.run_trigger }}
+          PR_NUMBER: ${{ needs.gate.outputs.pr_number }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          pixi run -e eval eval-sync --upload --run-id "${{ steps.runmeta.outputs.run_id }}"
-
-      - name: Deploy historical dashboard
-        if: needs.gate.outputs.deploy_dashboard == 'true'
-        run: pixi run -e eval eval-deploy-dashboard
+          # XDG_DATA_HOME isolates Kilo's local session/database state.
+          run_eval() {
+            XDG_DATA_HOME="$(mktemp -d)" pixi run -e eval evals \
+              --models kilo/kilo-auto/free --run-id "$RUN_ID" \
+              --run-trigger "$RUN_TRIGGER" --pr-number "$PR_NUMBER" \
+              --publish-target eval-data
+          }
+          set +e
+          run_eval 2>&1 | tee "$RUNNER_TEMP/eval.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          # Some API keys lack free-tier access and get "model not found". That
+          # is the only failure worth an anonymous retry; anything else is real.
+          if [ -n "$KILO_API_KEY" ] && grep -qiE 'model ?not ?found' "$RUNNER_TEMP/eval.log"; then
+            echo "::warning::Authenticated key can't use the free tier; retrying anonymously."
+            rm -rf eval_results
+            KILO_CONFIG_CONTENT="$(printf '%s' "$KILO_CONFIG_CONTENT" | python -c 'import json,sys; d=json.load(sys.stdin); d.pop("provider", None); print(json.dumps(d))')"
+            export KILO_CONFIG_CONTENT
+            unset KILO_API_KEY
+            run_eval
+          else
+            exit "$status"
+          fi
 
       - name: Upload eval artifacts
         if: always()
@@ -323,6 +358,51 @@ jobs:
               issue_number: prNumber,
               body,
             });
+
+  # Only job with write access. Runs on a fresh runner and never executes
+  # generated code: it just pushes the JSON history to `eval-data` and deploys
+  # the dashboard (bundling plot images from the eval artifact).
+  publish:
+    name: Publish results
+    runs-on: ubuntu-latest
+    needs: [gate, eval]
+    if: needs.gate.outputs.should_run == 'true' && needs.eval.result == 'success'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.checkout_ref }}
+          persist-credentials: false
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
+        with:
+          environments: eval
+
+      - name: Download eval results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: eval-results-${{ github.run_id }}
+          path: eval_results
+
+      - name: Push eval history to eval-data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ needs.eval.outputs.run_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Authenticate via env-only git config instead of writing the token
+          # to .git/config.
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf '%s' "x-access-token:${GH_TOKEN}" | base64 | tr -d '\n')"
+          pixi run -e eval eval-sync --upload --run-id "$RUN_ID"
+
+      - name: Deploy historical dashboard
+        if: needs.gate.outputs.deploy_dashboard == 'true'
+        run: pixi run -e eval eval-deploy-dashboard --images eval_results
 
   skipped:
     name: Skip report
