@@ -52,3 +52,6 @@ eval_results/*
 
 # Outerbounds
 .ob_apps/
+
+# Git Diff
+*.diff
