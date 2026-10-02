@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "row_count": 16,
+  "row_count": 20,
   "rows": [
     {
       "run_id": "ci-34-1-8d17612",
@@ -232,6 +232,86 @@
       "timed_out": false,
       "resolved_models": [
         "stealth/space-bunny-alpha"
+      ]
+    },
+    {
+      "run_id": "ci-43-1-25aabbe",
+      "created_at": "2026-10-02T19:39:12+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 2831,
+      "tokens_input": 17568,
+      "tokens_cached": 63527,
+      "execution_time": 49.294394731521606,
+      "cost": 0.0,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/space-bunny-alpha"
+      ]
+    },
+    {
+      "run_id": "ci-43-1-25aabbe",
+      "created_at": "2026-10-02T19:39:12+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 929,
+      "tokens_input": 14911,
+      "tokens_cached": 37306,
+      "execution_time": 28.29618263244629,
+      "cost": 0.0,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/space-bunny-alpha"
+      ]
+    },
+    {
+      "run_id": "ci-43-1-25aabbe",
+      "created_at": "2026-10-02T19:39:12+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 629,
+      "tokens_input": 22109,
+      "tokens_cached": 23435,
+      "execution_time": 20.48826789855957,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/space-bunny-alpha"
+      ]
+    },
+    {
+      "run_id": "ci-43-1-25aabbe",
+      "created_at": "2026-10-02T19:39:12+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 642,
+      "tokens_input": 15273,
+      "tokens_cached": 22400,
+      "execution_time": 21.490442991256714,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stepfun/step-3.7-flash"
       ]
     }
   ]
