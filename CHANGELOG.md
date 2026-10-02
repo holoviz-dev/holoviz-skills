@@ -36,11 +36,13 @@ in-progress notes so it is skipped by the extraction.
   `.py` files to a directory walk. Before, a `.py` file was scanned as if the code were prose,
   and a directory walk skipped Python entirely. Rules that misfire on comments are off for `.py`
   files, `--explain` prints only the catalogue entries for the rules that fired, and
-  `--check-catalogue` fails when a rule and its `patterns.md` entry drift apart.
-- **`scripts/check_routing.py` pre-commit hook** — fails when a Loading Table path or a relative
-  `.md` link in a skill file doesn't resolve, or when a sub-skill or reference isn't named in its
-  routing skill's Loading Table or its sub-skill's SKILL.md. The link check is the docs build's
-  `build_stubs.find_broken_links`, which only warned before.
+  `--check-catalogue`, run as a pre-commit hook, fails when a rule and its `patterns.md` entry
+  drift apart.
+- **`scripts/check_routing.py` pre-commit hook** — fails when a Loading Table path, a path named
+  in the root `AGENTS.md`, or a relative `.md` link in a skill file doesn't resolve, or when a
+  sub-skill or reference isn't named in its routing skill's Loading Table or its sub-skill's
+  SKILL.md. The link check is the docs build's `build_stubs.find_broken_links`, which only warned
+  before.
 - **`scripts/eval_cleanup.py`** — the first eval for `cleanup`, with two fixtures: the post's
   opening snippet (`scripts/eval_fixtures/cleanup_review/`, a smoke test, since the skill quotes
   it) and a held-out package with the same six findings (`cleanup_holdout/`). Each run works in a
@@ -112,6 +114,10 @@ in-progress notes so it is skipped by the extraction.
 
 - **`zensical.toml` nav** adds the `deslop` section that `build_stubs.py` produces but the
   committed nav was missing.
+- **`build_plugin.py` skips dot directories at any depth** — it only checked each entry's own
+  name, so a `.kilo/` worktree, and even the files inside `.git/` or `.pixi/`, got packaged. A
+  stale Kilo worktree with a copy of every skill made the plugin upload fail on duplicate skill
+  names.
 
 ## Version 2026.08.13
 

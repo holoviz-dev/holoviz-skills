@@ -122,7 +122,7 @@ class Tool:
     def detect_reason(self) -> str:
         """Return what triggered detection, or "" if the tool wasn't detected."""
         try:
-            return self.detect_fn()
+            return self.detect_fn() or ""
         except OSError as e:
             # A config dir we can't stat (e.g. PermissionError) shouldn't abort the
             # install, but say so rather than silently reporting "not detected".

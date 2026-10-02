@@ -6,7 +6,8 @@ Table or a link from another skill file, so a renamed file, or a new one that
 nothing names, drops out without an error. This runs as a pre-commit hook over
 tracked files and reports:
 
-* a ``path.md`` in a routing skill's Loading Table that doesn't exist;
+* a ``path.md`` in a routing skill's Loading Table, or in the root
+  ``AGENTS.md``, that doesn't exist;
 * a relative ``.md`` link in a skill file that doesn't resolve, using the same
   check the docs build warns with (``build_stubs.find_broken_links``);
 * a sub-skill ``SKILL.md`` missing from its routing skill's Loading Table;
@@ -26,7 +27,7 @@ from pathlib import Path, PurePosixPath
 
 from build_stubs import find_broken_links
 
-TABLE_PATH_RE = re.compile(r"`([^`\s]+\.md)`")
+MD_PATH_RE = re.compile(r"`([^`\s]+\.md)`")
 
 
 def tracked_files(root: Path) -> set[PurePosixPath]:
@@ -42,7 +43,7 @@ def tracked_files(root: Path) -> set[PurePosixPath]:
 
 def loading_table_paths(skill_md: str) -> list[str]:
     match = re.search(r"^## Loading Table\n(.*?)(?=^## |\Z)", skill_md, re.MULTILINE | re.DOTALL)
-    return TABLE_PATH_RE.findall(match.group(1)) if match else []
+    return MD_PATH_RE.findall(match.group(1)) if match else []
 
 
 def owning_skill(path: PurePosixPath, tracked: set[PurePosixPath]) -> PurePosixPath | None:
@@ -67,6 +68,13 @@ def check(root: Path) -> list[str]:
         text = (root / path).read_text(encoding="utf-8")
         for lineno, target in find_broken_links(text, Path(path), {}):
             problems.append(f"{path}:{lineno}: link to {target} doesn't resolve")
+
+    # toggle_skills.py renames AGENTS.md during an eval while git still tracks it.
+    agents_md = PurePosixPath("AGENTS.md")
+    if agents_md in tracked and (root / agents_md).exists():
+        for target in MD_PATH_RE.findall((root / agents_md).read_text(encoding="utf-8")):
+            if PurePosixPath(target) not in tracked:
+                problems.append(f"{agents_md} names {target}, which doesn't exist")
 
     routing_skills = [p for p in markdown if p.name == "SKILL.md" and len(p.parts) == 2]
     for routing in routing_skills:

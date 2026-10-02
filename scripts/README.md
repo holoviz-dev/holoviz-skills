@@ -15,22 +15,24 @@ queries for other skills are welcome — see "Adding Queries" below.
 
 ## Cleanup Eval
 
-`eval_cleanup.py` asks Copilot, with and without skills, to clean up
-`eval_fixtures/cleanup_review/pkg/query.py`: the opening snippet of "Deslop AI Slop
-Part 2: Code" inside a tiny package that already has a `with_timeout` helper and a
-parser for the same error message. It grades the returned file on the post's six
-findings (restating comments, a single-use constant, an inline import and class
-order, guards that hide failures, and the two reinvented helpers) and prints a score
-per model and condition.
+`eval_cleanup.py` asks Kilo, with and without skills, to clean up a sloppy change in a
+tiny package whose other modules already have the helpers the change rewrites.
+`cleanup_review` is the opening snippet of "Deslop AI Slop Part 2: Code", which the
+cleanup skill quotes, so treat it as a smoke test; `cleanup_holdout` plants the same six
+findings in code no skill shows. Each run works in a temporary copy of the package, so
+Kilo can't read this README or the eval's docstring, and the files Kilo returns are
+graded with `cleanup_scan.py` plus a check for each helper the change should reuse.
 
 ```bash
-pixi run -e eval eval-cleanup                                  # default model, both conditions
-python scripts/eval_cleanup.py --models claude-sonnet-4.6 --skills with
-python scripts/eval_cleanup.py --grade eval_results/cleanup_review/default/with_skills/query.py
+pixi run -e eval eval-cleanup                                   # both fixtures, both conditions
+python scripts/eval_cleanup.py --fixtures cleanup_holdout --repeat 5
+python scripts/eval_cleanup.py --models kilo/kilo-auto/free --skills with
+python scripts/eval_cleanup.py --fixtures cleanup_holdout \
+    --grade eval_results/cleanup/cleanup_holdout/default/with_skills/run-1
 ```
 
 Rerun it after a model release to check the skill still earns its place: if the
-without-skills score catches up, the rules the model now follows on its own can go.
+without-skills pass rate for a check catches up, the rule behind that check can go.
 
 ## Requirements
 
