@@ -28,6 +28,12 @@ in-progress notes so it is skipped by the extraction.
   if every call fails. Each query also saves `events.jsonl` and the `SKILL.md`/`AGENTS.md`
   files the agent read.
 - **`eval_sync.py` tests** — `pixi run -e eval eval-test`.
+- **Cost metrics and anonymous model runs** — the eval pipeline reports per-run cost in
+  summaries, comparisons, and the history dashboard (KPI, heatmap, trend, and details table),
+  and `--anonymous-models` runs the listed models with credentials stripped from the CLI
+  subprocess so the free tier can be evaluated alongside paid models. Costs unknown for runs
+  predating cost tracking are kept as unknown: they are excluded from averages and the total
+  cost is marked partial rather than counting them as free.
 
 ### Changed
 
