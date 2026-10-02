@@ -25,18 +25,20 @@ pn.extension("tabulator", "echarts", throttled=True, sizing_mode="stretch_width"
 _DEFAULT_RESULTS_DIR = Path(__file__).parent.parent / "eval_results"
 _RESULTS_DIR = next((Path(a) for a in sys.argv[1:] if Path(a).is_dir()), _DEFAULT_RESULTS_DIR)
 
-_METRICS = ("tokens_output", "tokens_input", "execution_time")
+_METRICS = ("tokens_output", "tokens_input", "execution_time", "cost")
 _LABELS = {
     "execution_success": "Execution success",
     "tokens_output": "Tokens (output)",
     "tokens_input": "Tokens (input)",
     "execution_time": "Response Time (s)",
+    "cost": "Cost (USD)",
 }
 _HEATMAP = {
     "execution_success": ("{:.0%}", "RdYlGn"),
     "tokens_output": ("{:,.0f}", "RdYlGn_r"),
     "tokens_input": ("{:,.0f}", "RdYlGn_r"),
     "execution_time": ("{:.1f}", "RdYlGn_r"),
+    "cost": ("${:.4f}", "RdYlGn_r"),
 }
 _CONDITIONS = ("with_skills", "without_skills")
 _CONDITION_ABBR = {"with_skills": "on", "without_skills": "off"}
@@ -224,6 +226,13 @@ class HistoricalDashboard(pn.viewable.Viewer):
         if not rows:
             return pd.DataFrame()
         df = pd.DataFrame(rows)
+        # Rows recorded before cost tracking have an unknown cost, not a zero
+        # one. Keep them NaN so they are excluded from averages and flagged in
+        # the total rather than silently counted as free.
+        if "cost" not in df.columns:
+            df["cost"] = np.nan
+        else:
+            df["cost"] = pd.to_numeric(df["cost"], errors="coerce")
         df["created_at"] = pd.to_datetime(df["created_at"], errors="coerce", utc=True)
         # Rows written before these fields existed.
         for col, default in (
@@ -294,6 +303,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
 
         with_rate, without_rate = rate(with_df), rate(without_df)
         lift = None if None in (with_rate, without_rate) else with_rate - without_rate
+        known_cost = df["cost"].notna()
+        total_cost_label = "total cost" if known_cost.all() else "total cost (partial)"
         cards = [
             ("runs shown", df["run_id"].nunique(), "{value}"),
             ("queries x models", df["query_id"].nunique(), f"{{value}} x {df['model'].nunique()}"),
@@ -302,6 +313,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             ("pass-rate lift", lift, "{value:+.0%}"),
             ("avg response time", _without_timeouts(df)["execution_time"].mean(), "{value:.1f} s"),
             ("avg tokens", df["tokens_output"].mean(), "{value:,.0f}"),
+            (total_cost_label, df["cost"].sum(), "${value:.4f}"),
         ]
         kpis = pn.FlexBox(
             *[
@@ -618,6 +630,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 "tokens_output",
                 "tokens_input",
                 "execution_time",
+                "cost",
                 "run_trigger",
                 "pr_number",
             ]
@@ -629,6 +642,9 @@ class HistoricalDashboard(pn.viewable.Viewer):
         table["created_at"] = pd.to_datetime(table["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
         for col in ("tokens_output", "tokens_input"):
             table[col] = table[col].fillna(0).astype(int)
+        # Unknown costs (runs predating cost tracking) show blank rather than
+        # a money-formatted zero, so they aren't read as free.
+        table["cost"] = table["cost"].map(lambda v: "" if pd.isna(v) else f"${v:.4f}")
         tabulator = pn.widgets.Tabulator(
             table,
             disabled=True,
@@ -646,6 +662,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 "tokens_output": "Tokens (out)",
                 "tokens_input": "Tokens (in)",
                 "execution_time": "Response time (s)",
+                "cost": "Cost (USD)",
                 "status": "Status",
                 "run_trigger": "Source",
                 "pr_number": "PR",
