@@ -592,12 +592,18 @@ def python_prose(source: str) -> str:
     return "\n".join(out)
 
 
-def mask_python_prose(prose: str, keep_urls: bool = False) -> str:
-    """Blank out inline code and URLs in the output of ``python_prose``."""
-    masked = INLINE_CODE_RE.sub(lambda m: _blank(m.group(0)), prose)
+def mask_inline(text: str, keep_urls: bool = False) -> str:
+    """Blank out HTML tags, inline code, link targets and URLs, preserving offsets.
+
+    ``mask_non_prose`` ends with this, and it's all the masking the output of
+    ``python_prose`` needs.
+    """
+    text = HTML_TAG_RE.sub(lambda m: _blank(m.group(0)), text)
+    text = INLINE_CODE_RE.sub(lambda m: _blank(m.group(0)), text)
+    text = LINK_TARGET_RE.sub(lambda m: _blank(m.group(0)), text)
     if not keep_urls:
-        masked = URL_RE.sub(lambda m: _blank(m.group(0)), masked)
-    return masked
+        text = URL_RE.sub(lambda m: _blank(m.group(0)), text)
+    return text
 
 
 def mask_non_prose(text: str, keep_urls: bool = False) -> str:
@@ -676,13 +682,7 @@ def mask_non_prose(text: str, keep_urls: bool = False) -> str:
         out.append(line)
         prev_blank = False
 
-    masked = "\n".join(out)
-    masked = HTML_TAG_RE.sub(lambda m: _blank(m.group(0)), masked)
-    masked = INLINE_CODE_RE.sub(lambda m: _blank(m.group(0)), masked)
-    masked = LINK_TARGET_RE.sub(lambda m: _blank(m.group(0)), masked)
-    if not keep_urls:
-        masked = URL_RE.sub(lambda m: _blank(m.group(0)), masked)
-    return masked
+    return mask_inline("\n".join(out), keep_urls)
 
 
 # ------------------------------------------------------- sentence-level rules
@@ -1219,7 +1219,7 @@ def scan_text(
         # Hits report positions in `text`, so swap the source for its prose,
         # which keeps the same line numbers and columns.
         text = python_prose(text)
-        mask = mask_python_prose
+        mask = mask_inline
     else:
         mask = mask_non_prose
     masked = mask(text)

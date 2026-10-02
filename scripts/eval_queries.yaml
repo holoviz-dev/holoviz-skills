@@ -1,11 +1,8 @@
 # Evaluation queries for testing HoloViz skills
 # Each query tests whether SKILL.md files improve the agent's responses
 #
-# Coverage note: only the hvplot skill has queries below. cleanup has its own
-# eval in eval_cleanup.py, since a review has no plot to execute. The other
-# skills in this repo (routing skills, param, panel + references, holoviews +
-# references, documentation, minimal-example, outreach, pr-description, testing,
-# creating-custom-holoviz-skills) have no eval coverage yet.
+# Coverage note: only the hvplot skill has queries below. scripts/README.md
+# lists what the other skills have.
 #
 # NOTE: `expected_output` and `category` fields below are NOT read or
 # enforced by scripts/eval.py (see load_queries/run_generation, which only use

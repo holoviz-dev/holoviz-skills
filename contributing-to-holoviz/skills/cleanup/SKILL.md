@@ -25,35 +25,32 @@ Review the change against the whole repo, not just the diff. The diff can't show
 1. Run `git diff main...HEAD` to see the change, then check it against the rest of the repo:
    - For each new function, search the repo for one that already does the same job. The existing helper may have a name you wouldn't guess, so search for what it does as well as for likely names, using a semantic codebase index if one is available.
    - For each comment, check that what it claims is true.
-   - For each `try`/`except`, say how the code inside could fail. If it can't, remove the `except`.
+   - For each `try`/`except`, say how the code inside could fail and what the caller sees when it does. If it can't fail, remove the `except`.
    - List the constants and helpers that are used only once.
-   - For each fix, say whether it's where the problem starts or where it showed up.
+   - For each fix, say whether it's where the problem starts or where it showed up. When a traceback points at a caller, an agent tends to patch the caller, like adding `.strip()` wherever a helper's output is used, instead of fixing the helper once. A PR that touches five files to work around a problem may have a two-line fix elsewhere.
 2. Delete first: dead guards, single-use constants whose name adds nothing, and wrappers that only reword an error. Each deletion shrinks what the rest of the review has to cover.
 3. Then review the change as a whole:
-   - Fix a problem where it starts, not where it shows up. When a traceback points at a caller, an agent tends to patch the caller, like adding `.strip()` wherever a helper's output is used, instead of fixing the helper once. A PR that touches five files to work around a problem may have a two-line fix elsewhere.
    - Explain *why* this approach over the alternatives (mixin vs. inheritance vs. duplication); reviewers consistently ask for that rationale.
    - Don't change an existing default or signature — that breaks users — unless a breaking change is the explicit goal of the PR.
-   - Treat every new `# noqa` as a review question: ask what it works around, and whether the workaround is the real problem. A `# noqa: B904` explaining that a retry helper would otherwise show the raw database error to the model points at a retry helper that reads the wrong error. Even as a stopgap, `raise ... from None` satisfies B904 and cuts the chain without a `# noqa`.
-   - Keep each PR to one change a reviewer can hold in their head and revert on its own. A commit that bundles eight fixes can't be rolled back one fix at a time.
-   - If fixing the review comments would touch most of the diff, recommend splitting the PR or starting over from a smaller request. That's faster than a cleanup pass over code that's slop from top to bottom.
+   - Treat every new `# noqa` as a review question: ask what it works around, and whether the workaround is the real problem. A `# noqa: B904` explaining that a retry helper would otherwise show the raw database error to the model points at a retry helper that reads the wrong error.
+   - Keep each PR to one change a reviewer can hold in their head and revert on its own; a commit that bundles eight fixes can't be rolled back one fix at a time. If fixing the review comments would touch most of the diff, recommend splitting the PR or starting over from a smaller request rather than a cleanup pass.
    - Scrutinize AI-assisted code like any other; flag it and verify the behavior yourself.
 
 ## Reuse and Duplication
 
-- Before writing a helper, search for an existing one. If the repo already has one that does the job, call it. If the existing one has the same flaw as the new code, fix it there and drop the new copy, leaving one helper to maintain instead of two.
+- If the repo already has a helper that does the job, call it. If it has the same flaw as the new code, fix it there and drop the new copy, leaving one helper to maintain instead of two.
 - Keep each piece of knowledge in one place: a regex that parses an error message, a mapping of option names, a list of supported backends. Copies drift apart, and the next agent can't tell which one is the source of truth.
 - Keep a value or helper that's used once inline: `timeout_seconds: float = 60` in the signature, not a module-level `QUERY_TIMEOUT = 60` used only as that default. Pull it out when a second caller needs it, or when the name explains something the value can't, like a compiled regex named for what it matches.
 - Share cross-backend or cross-variant logic via a mixin or helper, but extract only what every caller has in common. A shared helper full of per-caller branches is harder to follow than the copies it replaced.
 
 ## Errors and Guards
 
-Agents add guards because code that looks careful gets rated higher in training, and many guard nothing. For each guard, ask how the code inside could fail and what the caller sees when it does.
+Agents add guards because code that looks careful gets rated higher in training, and many guard nothing. A `try` around code that can't raise only makes every reader work out that it's dead.
 
-- Remove a `try`/`except` around code that can't raise. It makes every reader work out that it's dead.
 - Catch the exceptions the code can raise (`subprocess.CalledProcessError`, `KeyError`), not bare `Exception`. A blind except also swallows the bug you'd want to see, and turns a crash into wrong output.
 - Don't turn a failure into a normal-looking return value. A helper that returns `None` on a timeout leaves the caller unable to tell a timeout from an empty result. Let it raise, or return something the caller has to check.
 - Don't wrap a required dependency's import in `try`/`except ImportError`. The guard doesn't make the dependency optional; it only moves the failure somewhere less obvious.
-- Chain with `raise ... from err` to keep the cause, or `raise ... from None` when the original error would mislead whoever reads the traceback, person or model.
+- Chain with `raise ... from err` to keep the cause, or `raise ... from None` when the original error would mislead whoever reads the traceback, person or model. `from None` also satisfies B904 without a `# noqa`.
 
 ```python
 # WRONG — guards code that can't fail, defers a stdlib import, docstring restates the name
@@ -154,6 +151,5 @@ class MyWidget(param.Parameterized):
 
 - Write comments about *why* and *what must remain true*, not what the syntax does. Good comments explain intent, constraints, workarounds, performance rationale, or API quirks. Avoid restating obvious code or narrating line-by-line. Keep them concise; over-explaining is also a smell.
 - Cut comments and docstrings that only repeat the name: `# Seconds to wait before giving up on a query.` above `QUERY_TIMEOUT`, or `"""Run a coroutine with a timeout."""` on `run_with_timeout`. Keep a public function's docstring when it documents parameters and behavior for users.
-- Check that each comment is still true. Comments go stale when the code next to them changes, and a wrong comment misleads the next reader more than no comment would.
-- Run the [`deslop` skill](../deslop/SKILL.md) over comments and docstrings as well as prose: an AI-assisted diff tends to leave a comment that recounts the symptom, the trace and the fix, where the constraint alone was wanted. The scanner reads only the comments and docstrings of a `.py` file: pass the changed files by name, or a directory with `--comments`.
-- Cutting a comment can strand the one above it, so check that neighbouring comments still describe what the code does.
+- Comments go stale when the code next to them changes, and cutting one can strand the one above it. A wrong comment misleads the next reader more than no comment would, so after an edit check that the comments around it still describe the code.
+- Run the [`deslop` skill](../deslop/SKILL.md) over comments and docstrings as well as prose, passing it the changed `.py` files: an AI-assisted diff tends to leave a comment that recounts the symptom, the trace and the fix, where the constraint alone was wanted.
