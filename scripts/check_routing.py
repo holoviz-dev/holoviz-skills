@@ -7,8 +7,8 @@ nothing names, drops out without an error. This runs as a pre-commit hook over
 tracked files and reports:
 
 * a ``path.md`` in a routing skill's Loading Table that doesn't exist;
-* a relative Markdown link in a skill file that doesn't resolve (``docs/`` is
-  generated, so it isn't checked);
+* a relative ``.md`` link in a skill file that doesn't resolve, using the same
+  check the docs build warns with (``build_stubs.find_broken_links``);
 * a sub-skill ``SKILL.md`` missing from its routing skill's Loading Table;
 * any other ``.md`` under ``skills/`` that neither the Loading Table nor its
   sub-skill's ``SKILL.md`` names.
@@ -19,15 +19,13 @@ scripts in this folder.
 
 from __future__ import annotations
 
-import posixpath
 import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
-FENCE_RE = re.compile(r"^\s*(```|~~~).*?^\s*\1", re.MULTILINE | re.DOTALL)
-INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
-LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+from build_stubs import find_broken_links
+
 TABLE_PATH_RE = re.compile(r"`([^`\s]+\.md)`")
 
 
@@ -47,16 +45,6 @@ def loading_table_paths(skill_md: str) -> list[str]:
     return TABLE_PATH_RE.findall(match.group(1)) if match else []
 
 
-def link_targets(markdown: str) -> list[str]:
-    prose = INLINE_CODE_RE.sub("", FENCE_RE.sub("", markdown))
-    targets = []
-    for target in LINK_RE.findall(prose):
-        if target.startswith(("http://", "https://", "mailto:", "#")):
-            continue
-        targets.append(target.split("#", 1)[0])
-    return targets
-
-
 def owning_skill(path: PurePosixPath, tracked: set[PurePosixPath]) -> PurePosixPath | None:
     for parent in path.parents:
         candidate = parent / "SKILL.md"
@@ -67,7 +55,6 @@ def owning_skill(path: PurePosixPath, tracked: set[PurePosixPath]) -> PurePosixP
 
 def check(root: Path) -> list[str]:
     tracked = tracked_files(root)
-    tracked_dirs = {parent for path in tracked for parent in path.parents}
     skill_roots = {p.parts[0] for p in tracked if p.name == "SKILL.md" and len(p.parts) == 2}
     markdown = sorted(
         p
@@ -77,10 +64,9 @@ def check(root: Path) -> list[str]:
     problems = []
 
     for path in markdown:
-        for target in link_targets((root / path).read_text(encoding="utf-8")):
-            normalized = PurePosixPath(posixpath.normpath(path.parent / target))
-            if normalized not in tracked and normalized not in tracked_dirs:
-                problems.append(f"{path}: link to {target} doesn't resolve")
+        text = (root / path).read_text(encoding="utf-8")
+        for lineno, target in find_broken_links(text, Path(path), {}):
+            problems.append(f"{path}:{lineno}: link to {target} doesn't resolve")
 
     routing_skills = [p for p in markdown if p.name == "SKILL.md" and len(p.parts) == 2]
     for routing in routing_skills:

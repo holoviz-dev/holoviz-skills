@@ -75,7 +75,7 @@ to* a HoloViz package (testing, docs, releases), it goes under
    agents know when to load your skill. The `check skill routing and links`
    pre-commit hook (`scripts/check_routing.py`) fails when a sub-skill or
    reference is missing from both, or when a Loading Table path or relative
-   link doesn't resolve. If you added reference files, make each
+   `.md` link doesn't resolve. If you added reference files, make each
    one reachable from a Loading Table user-need row that pairs it with the
    sub-skill (e.g. "Filterable data table → `panel/SKILL.md` + `using-tabulator.md`").
    The full per-reference index belongs in the sub-skill's own References
@@ -256,7 +256,7 @@ Panel + HoloViews Integration
 When `build_stubs.py` finds sibling `.md` files alongside a SKILL.md, it
 automatically creates a nested docs section: the SKILL.md becomes
 `panel/index.md` and each sibling becomes a page (`panel/custom-components.md`,
-etc.). Links like `[name](foo.md)` in SKILL.md resolve naturally in both the
+etc.). Relative links to a sibling like `foo.md` in SKILL.md resolve naturally in both the
 source directory and the docs output. No manual nav configuration needed.
 
 `.py` files in `examples/` and `scripts/` become pages too, grouped under
@@ -309,7 +309,7 @@ agent-facing frontmatter) and the docs (which need clean Markdown):
 
 1. Finds every SKILL.md under non-excluded top-level directories.
 2. Strips YAML frontmatter and HTML comments.
-3. Rewrites internal `[name](…/SKILL.md)` links to point at sibling docs pages.
+3. Rewrites internal links that point at another skill's `SKILL.md` to point at sibling docs pages.
 4. For skills with sibling `.md` files, or an `examples/` or `scripts/`
    directory, creates a nested directory (`panel/index.md` +
    `panel/custom-components.md` + `panel/preflight.md`, etc.).
