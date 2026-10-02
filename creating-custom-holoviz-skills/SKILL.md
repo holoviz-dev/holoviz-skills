@@ -2,7 +2,7 @@
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
 metadata:
-  version: "2026.08.13"
+  version: "2026.10.01"
   author: holoviz
 ---
 
@@ -72,7 +72,10 @@ to* a HoloViz package (testing, docs, releases), it goes under
 2. Write the SKILL.md (see structure below).
 3. Optionally add sibling `*.md` reference files for detailed lookup material.
 4. Add an entry to the parent routing skill's Loading Table and Skill Map so
-   agents know when to load your skill. If you added reference files, make each
+   agents know when to load your skill. The `check skill routing and links`
+   pre-commit hook (`scripts/check_routing.py`) fails when a sub-skill or
+   reference is missing from both, or when a Loading Table path or relative
+   `.md` link doesn't resolve. If you added reference files, make each
    one reachable from a Loading Table user-need row that pairs it with the
    sub-skill (e.g. "Filterable data table → `panel/SKILL.md` + `using-tabulator.md`").
    The full per-reference index belongs in the sub-skill's own References
@@ -103,7 +106,7 @@ disable-model-invocation: false  # true = manual invocation only (use for skills
 argument-hint: "[component] [description]"  # shown in slash-command input
 allowed-tools: Read Grep Glob Bash(python:*)  # experimental: pre-approve tools
 metadata:
-  version: "0.1.0"           # see Versioning below
+  version: "2026.10.01"      # today's date, YYYY.MM.DD; see Versioning below
   author: holoviz
 ---
 ```
@@ -111,27 +114,27 @@ metadata:
 ### Versioning
 
 `metadata.version` is per-skill and independent of the package version and of
-the other skills — `build_stubs.py` renders it into each docs page as *Skill
-version X.Y.Z*, so it describes that skill's content, not the release it shipped
-in. New skills start at `0.1.0`.
+the other skills. It's CalVer: the date the skill last changed, as
+`YYYY.MM.DD`. `build_stubs.py` renders it into each docs page as *Skill
+version YYYY.MM.DD*, so it describes that skill's content, not the release it
+shipped in. A new skill starts at the date you write it.
 
-**Patch bumps are automatic.** The `bump skill version on edit` pre-commit hook
-(`scripts/bump_skill_version.py`) maps each staged file to its owning skill —
-the nearest ancestor directory with a SKILL.md, so editing a reference file
-bumps its sub-skill — and patch-bumps that skill once per branch, comparing
-against the merge-base with `main` rather than the previous commit. The hook
-exits non-zero after writing, so the commit needs re-running; that's expected,
-not a failure. Don't hand-bump a patch to save it the trouble.
+**Stamping is automatic.** The `bump skill version on edit` pre-commit hook
+(`scripts/bump_skill_version.py`) maps each changed file to its owning skill
+(the nearest ancestor directory with a SKILL.md, so editing a reference file
+stamps its sub-skill) and sets that skill's version to today's date, once per
+branch, comparing against the merge-base with `main` rather than the previous
+commit. The hook exits non-zero after writing, so the commit needs re-running;
+that's expected, not a failure. Don't hand-edit the date to save it the
+trouble. The hook only acts when the staged value still matches the
+merge-base, and leaves a version you set by hand alone.
 
-**Bump the minor component yourself** when the change is more than a fix —
-a new section or reference file, or changed guidance an agent would act on
-differently (a new recommended API, a reversed recommendation, a new gotcha).
-The hook respects any version you set: it only acts when the staged value still
-matches the merge-base, so a manual bump makes it a no-op for that skill.
+A date can't say how big a change was: a typo fix and a reversed
+recommendation stamp the same way. Record the *why* in `CHANGELOG.md` under
+`## Unreleased`.
 
-Leave the *other* skills' versions alone. They diverged once before and were
-reset to a uniform baseline, which only stays meaningful if each bump tracks a
-real change to that skill.
+Leave the *other* skills' versions alone. Each date should track a real change
+to that skill.
 
 After the frontmatter, write Markdown. Key principles:
 
@@ -253,7 +256,7 @@ Panel + HoloViews Integration
 When `build_stubs.py` finds sibling `.md` files alongside a SKILL.md, it
 automatically creates a nested docs section: the SKILL.md becomes
 `panel/index.md` and each sibling becomes a page (`panel/custom-components.md`,
-etc.). Links like `[name](foo.md)` in SKILL.md resolve naturally in both the
+etc.). Relative links to a sibling like `foo.md` in SKILL.md resolve naturally in both the
 source directory and the docs output. No manual nav configuration needed.
 
 `.py` files in `examples/` and `scripts/` become pages too, grouped under
@@ -306,7 +309,7 @@ agent-facing frontmatter) and the docs (which need clean Markdown):
 
 1. Finds every SKILL.md under non-excluded top-level directories.
 2. Strips YAML frontmatter and HTML comments.
-3. Rewrites internal `[name](…/SKILL.md)` links to point at sibling docs pages.
+3. Rewrites internal links that point at another skill's `SKILL.md` to point at sibling docs pages.
 4. For skills with sibling `.md` files, or an `examples/` or `scripts/`
    directory, creates a nested directory (`panel/index.md` +
    `panel/custom-components.md` + `panel/preflight.md`, etc.).
@@ -331,10 +334,13 @@ To add test queries for your skill, edit `scripts/eval_queries.yaml`:
 
 Run `pixi run evals` to execute the full pipeline.
 
-Note: coverage is currently thin — only the `hvplot` skill has any eval
-queries today, and the `expected_output`/`category` fields are documentation
-only (not read or enforced by `eval.py`). Adding queries for your skill is a
-useful, but not blocking, contribution.
+Note: coverage is currently thin — only the `hvplot` skill has eval queries
+today, and the `expected_output`/`category` fields are documentation only (not
+read or enforced by `eval.py`). `eval.py` executes generated plots, so a skill
+whose output isn't a plot needs its own grader: `scripts/eval_cleanup.py` is
+the model, grading a fixed sloppy change in `scripts/eval_fixtures/` with AST
+checks. Adding an eval for your skill is a useful, but not blocking,
+contribution.
 
 ## Resources
 

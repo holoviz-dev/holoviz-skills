@@ -8,7 +8,7 @@ metadata:
 
 # Outreach
 
-This skill covers writing about HoloViz work for an outside audience. Run the [`deslop` skill](../deslop/SKILL.md) over every draft, since a post about engineering work loses readers fastest when it reads as generated.
+This skill covers writing about HoloViz work for an outside audience. Draft and review every post with the [`deslop` skill](../deslop/SKILL.md) as well, since a post about engineering work loses readers fastest when it reads as generated.
 
 ## References
 

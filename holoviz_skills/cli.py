@@ -117,16 +117,16 @@ class Tool:
         self.install_fn = install_fn
 
     def detected(self) -> bool:
-        try:
-            return bool(self.detect_fn())
-        except Exception:
-            return False
+        return bool(self.detect_reason())
 
     def detect_reason(self) -> str:
-        """Return a human-readable string of what triggered detection."""
+        """Return what triggered detection, or "" if the tool wasn't detected."""
         try:
             return self.detect_fn() or ""
-        except Exception:
+        except OSError as e:
+            # A config dir we can't stat (e.g. PermissionError) shouldn't abort the
+            # install, but say so rather than silently reporting "not detected".
+            print(f"warning: couldn't check for {self.name}: {e}", file=sys.stderr)
             return ""
 
     def is_installed(self, skill_names: list[str]) -> bool:

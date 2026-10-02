@@ -16,6 +16,7 @@ This script:
 """
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -200,7 +201,7 @@ class CodeExecutor:
                     "screenshot": False,
                 }
 
-            except Exception as e:
+            except OSError as e:
                 execution_time = time.time() - start_time
                 return {
                     "success": False,
@@ -227,18 +228,18 @@ class CodeExecutor:
         # to _last_plot so the globals scan can find it. This correctly handles
         # multi-line expressions like df.hvplot.points(\n    ...\n).
         try:
-            import ast as _ast
+            tree = ast.parse(modified_code)
+        except (SyntaxError, ValueError):
+            # Generated code that doesn't parse runs as-is, so the execution
+            # step reports the error instead of this rewrite hiding it.
+            return modified_code + _HEADLESS_SAVE_CODE
 
-            tree = _ast.parse(modified_code)
-            if tree.body and isinstance(tree.body[-1], _ast.Expr):
-                last_stmt = tree.body[-1]
-                start = last_stmt.lineno - 1  # 0-indexed
-                lines = modified_code.splitlines()
-                prefix = "\n".join(lines[:start])
-                expr_src = "\n".join(lines[start:])
-                modified_code = prefix + "\n_last_plot = " + expr_src + "\n"
-        except Exception:
-            pass  # Leave code unmodified if AST parse fails
+        if tree.body and isinstance(tree.body[-1], ast.Expr):
+            start = tree.body[-1].lineno - 1  # 0-indexed
+            lines = modified_code.splitlines()
+            prefix = "\n".join(lines[:start])
+            expr_src = "\n".join(lines[start:])
+            modified_code = prefix + "\n_last_plot = " + expr_src + "\n"
 
         return modified_code + _HEADLESS_SAVE_CODE
 
@@ -266,34 +267,28 @@ class CodeExecutor:
 
         # If HTML exists, use Playwright to screenshot it
         if html_file.exists():
+            # Optional dependency: screenshots are skipped without it.
             try:
+                from playwright.sync_api import Error as PlaywrightError
                 from playwright.sync_api import sync_playwright
-
-                screenshot_path = query_dir / "screenshot.png"
-
-                with sync_playwright() as p:
-                    browser = p.chromium.launch(headless=True)
-                    page = browser.new_page(viewport={"width": 1200, "height": 800})
-
-                    # Load the HTML file
-                    page.goto(f"file://{html_file.absolute()}")
-
-                    # Wait for Bokeh to render
-                    page.wait_for_timeout(2000)  # 2 seconds
-
-                    # Take screenshot
-                    page.screenshot(path=screenshot_path, full_page=False)
-
-                    browser.close()
-
-                return screenshot_path
             except ImportError:
                 print("Playwright not installed, skipping screenshot")
                 print("Install with: pip install playwright && playwright install chromium")
                 return None
-            except Exception as e:
+
+            screenshot_path = query_dir / "screenshot.png"
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True)
+                    page = browser.new_page(viewport={"width": 1200, "height": 800})
+                    page.goto(f"file://{html_file.absolute()}")
+                    page.wait_for_timeout(2000)  # give Bokeh time to render
+                    page.screenshot(path=screenshot_path, full_page=False)
+                    browser.close()
+            except PlaywrightError as e:
                 print(f"Screenshot capture failed: {e}")
                 return None
+            return screenshot_path
 
         return None
 

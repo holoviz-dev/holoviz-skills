@@ -29,6 +29,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -662,18 +663,17 @@ def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> di
     if not examples:
         return {}
 
-    # Check if playwright is available.
+    # Optional dependency: the docs build skips screenshots without it.
     try:
+        from playwright.sync_api import Error as PlaywrightError
         from playwright.sync_api import sync_playwright
     except ImportError:
         print("build_stubs: playwright not installed — skipping screenshots")
         return {}
 
-    # Collect .py files to serve.
     example_files = [ex.source for ex in examples]
     examples_dir = example_files[0].parent
 
-    # Start panel server.
     cmd = [
         sys.executable,
         "-m",
@@ -690,15 +690,12 @@ def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> di
         stderr=subprocess.STDOUT,
     )
 
-    # Wait for server to be ready (poll until connection succeeds).
-    import socket
-
-    for _ in range(30):  # up to 30 seconds
+    for _ in range(30):  # poll for up to 30 seconds until the server accepts connections
         time.sleep(1)
         try:
             with socket.create_connection(("localhost", 5099), timeout=1):
                 break
-        except (TimeoutError, ConnectionRefusedError, OSError):
+        except OSError:
             pass
     else:
         print("build_stubs: WARNING — panel server did not start in time")
@@ -717,18 +714,16 @@ def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> di
                     page.goto(url, timeout=10000)
                     page.wait_for_timeout(3000)
 
-                    # Save screenshot to docs/assets/examples/
                     screenshot_dir = ASSETS_DIR / "examples"
                     screenshot_dir.mkdir(parents=True, exist_ok=True)
                     screenshot_file = screenshot_dir / f"{ex.slug}.png"
                     page.screenshot(path=str(screenshot_file))
 
-                    # Return path relative to skill docs dir
-                    # (e.g., ../../assets/examples/dashboard.png)
+                    # e.g. ../../assets/examples/dashboard.png
                     rel_path = os.path.relpath(screenshot_file, skill_dir)
                     screenshots[ex.slug] = rel_path
                     print(f"build_stubs: screenshot {ex.slug}.png")
-                except Exception as e:
+                except (PlaywrightError, OSError) as e:
                     print(f"build_stubs: WARNING — failed to screenshot {ex.slug}: {e}")
 
             browser.close()

@@ -81,20 +81,19 @@ def check_dependencies():
 def check_playwright():
     """Check if Playwright and the Chromium browser are available."""
     try:
-        from playwright.sync_api import sync_playwright  # noqa: F401
+        from playwright.sync_api import Error as PlaywrightError
+        from playwright.sync_api import sync_playwright
     except ImportError:
         print("playwright is NOT installed (required for screenshots)")
         print("Install with: pip install playwright && playwright install chromium")
         return False
 
     try:
-        from playwright.sync_api import sync_playwright
-
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             browser.close()
         return True
-    except Exception as e:
+    except PlaywrightError as e:
         print(f"Chromium browser is NOT available: {e}")
         print("Run: playwright install chromium")
         return False
@@ -113,7 +112,7 @@ def check_kilo_cli():
         print("Kilo Code CLI is NOT installed or not in PATH")
         print("Install it with: npm install -g @kilocode/cli")
         return False
-    except Exception as e:
+    except (subprocess.TimeoutExpired, OSError) as e:
         print(f"Error checking Kilo Code CLI: {e}")
         return False
 
@@ -156,7 +155,7 @@ def check_queries_file():
             return False
         return True
 
-    except Exception as e:
+    except (OSError, yaml.YAMLError) as e:
         print(f"Error parsing eval_queries.yaml: {e}")
         return False
 
