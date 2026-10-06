@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "row_count": 20,
+  "row_count": 24,
   "rows": [
     {
       "run_id": "ci-34-1-8d17612",
@@ -312,6 +312,82 @@
       "timed_out": false,
       "resolved_models": [
         "stepfun/step-3.7-flash"
+      ]
+    },
+    {
+      "run_id": "ci-44-1-16c4e4c",
+      "created_at": "2026-10-06T15:51:26+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 561,
+      "tokens_input": 69222,
+      "tokens_cached": 12960,
+      "execution_time": 78.61150193214417,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "nvidia/nemotron-3-ultra-550b-a55b:free"
+      ]
+    },
+    {
+      "run_id": "ci-44-1-16c4e4c",
+      "created_at": "2026-10-06T15:51:26+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 163,
+      "tokens_input": 7943,
+      "tokens_cached": 2048,
+      "execution_time": 15.596704006195068,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "dots-studio/dots-3-note-preview:free"
+      ]
+    },
+    {
+      "run_id": "ci-44-1-16c4e4c",
+      "created_at": "2026-10-06T15:51:26+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 669,
+      "tokens_input": 33516,
+      "tokens_cached": 12032,
+      "execution_time": 33.60715579986572,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stepfun/step-3.7-flash"
+      ]
+    },
+    {
+      "run_id": "ci-44-1-16c4e4c",
+      "created_at": "2026-10-06T15:51:26+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 222,
+      "tokens_input": 17056,
+      "tokens_cached": 4096,
+      "execution_time": 16.63716721534729,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "dots-studio/dots-3-note-preview:free"
       ]
     }
   ]

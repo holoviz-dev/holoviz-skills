@@ -1,0 +1,110 @@
+{
+  "total_queries": 2,
+  "models": [
+    "kilo_kilo-auto_free"
+  ],
+  "queries": {
+    "hvplot_interactive_scatter": {
+      "models": {
+        "kilo_kilo-auto_free": {
+          "with_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 78.61150193214417,
+            "tokens_input": 69222,
+            "tokens_output": 561,
+            "tokens_total": 69783,
+            "tokens_cached": 12960,
+            "tokens_reasoning": 607,
+            "execution_success": true,
+            "execution_duration": 1.721431016921997,
+            "timed_out": false,
+            "resolved_models": [
+              "nvidia/nemotron-3-ultra-550b-a55b:free"
+            ]
+          },
+          "without_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 15.596704006195068,
+            "tokens_input": 7943,
+            "tokens_output": 163,
+            "tokens_total": 8106,
+            "tokens_cached": 2048,
+            "tokens_reasoning": 100,
+            "execution_success": true,
+            "execution_duration": 1.8873252868652344,
+            "timed_out": false,
+            "resolved_models": [
+              "dots-studio/dots-3-note-preview:free"
+            ]
+          },
+          "comparison": {
+            "both_have_code": true,
+            "token_difference": 398,
+            "time_difference": 63.0147979259491,
+            "both_executed": true,
+            "execution_improvement": false,
+            "execution_regression": false
+          }
+        }
+      }
+    },
+    "hvplot_earthquake_plot": {
+      "models": {
+        "kilo_kilo-auto_free": {
+          "with_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 33.60715579986572,
+            "tokens_input": 33516,
+            "tokens_output": 669,
+            "tokens_total": 34185,
+            "tokens_cached": 12032,
+            "tokens_reasoning": 0,
+            "execution_success": true,
+            "execution_duration": 3.6260247230529785,
+            "timed_out": false,
+            "resolved_models": [
+              "stepfun/step-3.7-flash"
+            ]
+          },
+          "without_skills": {
+            "has_code": true,
+            "code_blocks_count": 1,
+            "execution_time": 16.63716721534729,
+            "tokens_input": 17056,
+            "tokens_output": 222,
+            "tokens_total": 17278,
+            "tokens_cached": 4096,
+            "tokens_reasoning": 249,
+            "execution_success": false,
+            "execution_duration": 0.027446269989013672,
+            "timed_out": false,
+            "resolved_models": [
+              "dots-studio/dots-3-note-preview:free"
+            ]
+          },
+          "comparison": {
+            "both_have_code": true,
+            "token_difference": 447,
+            "time_difference": 16.969988584518433,
+            "both_executed": true,
+            "execution_improvement": true,
+            "execution_regression": false
+          }
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "kilo_kilo-auto_free": {
+      "code_generation_rate_with": 1.0,
+      "code_generation_rate_without": 1.0,
+      "avg_token_difference": 422.5,
+      "avg_time_difference": 39.992393255233765,
+      "execution_success_rate_with": 1.0,
+      "execution_success_rate_without": 0.5
+    }
+  }
+}
