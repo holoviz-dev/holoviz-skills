@@ -253,8 +253,8 @@ def run_kilo_query(
     query: str,
     model: str | None = None,
     timeout: int = 180,
-    data_home: str | None = None,
     cwd: Path = REPO_ROOT,
+    data_home: str | None = None,
 ) -> tuple[str, float, list[dict], int]:
     """Run one query through the Kilo Code CLI in autonomous mode.
 
