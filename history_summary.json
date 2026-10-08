@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "row_count": 24,
+  "row_count": 28,
   "rows": [
     {
       "run_id": "ci-34-1-8d17612",
@@ -389,6 +389,90 @@
       "resolved_models": [
         "dots-studio/dots-3-note-preview:free"
       ]
+    },
+    {
+      "run_id": "ci-45-1-5f449ce",
+      "created_at": "2026-10-08T09:46:56+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 435,
+      "tokens_input": 58535,
+      "tokens_cached": 8640,
+      "execution_time": 56.47270965576172,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "nvidia/nemotron-3-ultra-550b-a55b:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-45-1-5f449ce",
+      "created_at": "2026-10-08T09:46:56+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_interactive_scatter",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 125,
+      "tokens_input": 291,
+      "tokens_cached": 9728,
+      "execution_time": 43.84146070480347,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "dots-studio/dots-3-note-preview:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-45-1-5f449ce",
+      "created_at": "2026-10-08T09:46:56+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 490,
+      "tokens_input": 37719,
+      "tokens_cached": 6720,
+      "execution_time": 68.0433623790741,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "poolside/laguna-s-2.1:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-45-1-5f449ce",
+      "created_at": "2026-10-08T09:46:56+00:00",
+      "run_trigger": "ci_dispatch",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 299,
+      "tokens_input": 28931,
+      "tokens_cached": 25600,
+      "execution_time": 26.34692692756653,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "dots-studio/dots-3-note-preview:free"
+      ],
+      "anonymous": false
     }
   ]
 }
