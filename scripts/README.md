@@ -5,11 +5,34 @@ Automated system to measure whether SKILL.md files improve Kilo Code's responses
 ## Coverage
 
 `scripts/eval_queries.yaml` currently defines only 2 queries (`hvplot_earthquake_plot`,
-`hvplot_interactive_scatter`), both testing the `hvplot` skill. None of the other 11
-skills (both routing skills, `param`, `panel` and its references, `holoviews` and its
-references, `cleanup`, `documentation`, `minimal-example`, `pr-description`,
-`testing`, `creating-custom-holoviz-skills`) have any eval coverage yet. Contributions
-adding queries for other skills are welcome — see "Adding Queries" below.
+`hvplot_interactive_scatter`), both testing the `hvplot` skill. `cleanup` has its own
+eval, `eval_cleanup.py` (see below), because `eval.py` executes generated plots and a
+code review has nothing to execute. None of the other skills (both routing skills,
+`param`, `panel` and its references, `holoviews` and its references, `documentation`,
+`minimal-example`, `outreach`, `pr-description`, `testing`,
+`creating-custom-holoviz-skills`) have any eval coverage yet. Contributions adding
+queries for other skills are welcome — see "Adding Queries" below.
+
+## Cleanup Eval
+
+`eval_cleanup.py` asks Kilo, with and without skills, to clean up a sloppy change in a
+tiny package whose other modules already have the helpers the change rewrites.
+`cleanup_review` is the opening snippet of "Deslop AI Slop Part 2: Code", which the
+cleanup skill quotes, so treat it as a smoke test; `cleanup_holdout` plants the same six
+findings in code no skill shows. Each run works in a temporary copy of the package, so
+Kilo can't read this README or the eval's docstring, and the files Kilo returns are
+graded with `cleanup_scan.py` plus a check for each helper the change should reuse.
+
+```bash
+pixi run -e eval eval-cleanup                                   # both fixtures, both conditions
+python scripts/eval_cleanup.py --fixtures cleanup_holdout --repeat 5
+python scripts/eval_cleanup.py --models kilo/kilo-auto/free --skills with
+python scripts/eval_cleanup.py --fixtures cleanup_holdout \
+    --grade eval_results/cleanup/cleanup_holdout/default/with_skills/run-1
+```
+
+Rerun it after a model release to check the skill still earns its place: if the
+without-skills pass rate for a check catches up, the rule behind that check can go.
 
 ## Requirements
 

@@ -40,3 +40,15 @@ repos:
         language: system
         require_serial: true
         files: ^(developing-with-holoviz|contributing-to-holoviz|creating-custom-holoviz-skills)/
+      - id: check-skill-routing
+        name: check skill routing and links
+        entry: python scripts/check_routing.py
+        language: system
+        pass_filenames: false
+        files: \.md$
+      - id: check-deslop-catalogue
+        name: check deslop rules match the pattern catalogue
+        entry: python contributing-to-holoviz/skills/deslop/scripts/deslop_scan.py --check-catalogue
+        language: system
+        pass_filenames: false
+        files: ^contributing-to-holoviz/skills/deslop/

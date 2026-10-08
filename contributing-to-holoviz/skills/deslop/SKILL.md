@@ -2,7 +2,7 @@
 name: deslop
 description: Strip LLM slop from prose — rhetorical tics, false-profundity constructions, AI vocabulary, and boilerplate. Use when writing or reviewing any HoloViz prose (PR descriptions, docs, blog posts, READMEs, commit messages) to remove recognizable LLM patterns.
 metadata:
-  version: "2026.09.28"
+  version: "2026.10.01"
   author: holoviz
 ---
 
@@ -14,6 +14,21 @@ Two failure modes to avoid, in order of severity:
 
 1. **Changing the meaning.** The point is to delete the performance, not the content. If a slop pattern is wrapped around a real claim, keep the claim and drop the wrapper.
 2. **Trading one tic for another.** A rewrite that swaps "here's the thing" for "the reality is" has done nothing. Prefer deletion over substitution.
+
+## Before drafting
+
+The rest of this skill cleans up a finished draft. When you're the one drafting a PR description, a docs page or a blog post, these keep most slop out of the first draft:
+
+- Ask for a sample of the author's writing, or a piece they want to sound like, and match it. Models imitate an example far more reliably than they follow adjectives like "concise" or "natural".
+- Name the reader before writing ("maintains a Panel app", "has never used HoloViews"). The reader decides what needs explaining.
+- Describe the voice you want instead of listing tics to avoid. Naming a tic tends to make it show up.
+
+The HoloViz voice, which the `pr-description`, `documentation` and `outreach` skills build on:
+
+- Write in the first person, as the person who did the work, including what went wrong.
+- Join cause and effect in one sentence with the connective that relates them (*since*, *so*, *but*) instead of a run of short beats, and vary the length. Joining can trade a `[choppy-run]` for a `[justification-tail]` once every sentence ends the same way, and a rescan catches that.
+- Make each point once, and keep the concrete anchors (identifiers, numbers, a minimal example) while compressing.
+- Use the word you'd say out loud to a colleague.
 
 ## Workflow
 
@@ -27,7 +42,7 @@ Two failure modes to avoid, in order of severity:
 python3 scripts/deslop_scan.py <file>
 ```
 
-Flags: `--colon-triple` and `--em-dash` enable two patterns that are off by default because they are noisy in technical writing. `--json` for machine-readable output. Pass `-` to read stdin, which is how you scan a draft that only exists in the conversation:
+Flags: `--colon-triple` and `--em-dash` enable two patterns that are off by default because they are noisy in technical writing. `--json` for machine-readable output. A `.py` file is scanned for its comments and docstrings only, and `--comments` adds `.py` files to a directory walk (`deslop_scan.py --comments src/`), which is how you deslop the comments in a code change. Pass `-` to read stdin, which is how you scan a draft that only exists in the conversation:
 
 ```bash
 python3 scripts/deslop_scan.py - <<'EOF'
@@ -35,7 +50,7 @@ python3 scripts/deslop_scan.py - <<'EOF'
 EOF
 ```
 
-The scanner is a starting point, not the specification. It has false positives (a legitimate "no X, no Y" in quoted dialogue) and it cannot see the patterns that need judgment (a paragraph that gestures at profundity without tripping any regex). Read `references/patterns.md` for the full catalogue, including the ones no regex catches.
+The scanner is a starting point, not the specification. It has false positives (a legitimate "no X, no Y" in quoted dialogue) and it cannot see the patterns that need judgment (a paragraph that gestures at profundity without tripping any regex). Add `--explain` to print the `references/patterns.md` entries for the rules that fired, followed by the patterns no regex catches, so you read only the part of the catalogue that applies.
 
 **4. Rewrite.** Apply `references/patterns.md` hit by hit, then reread the whole thing for the patterns the scanner missed. Use Edit for files. For a conversation draft, output the rewritten text.
 

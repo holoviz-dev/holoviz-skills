@@ -2,7 +2,7 @@
 name: testing
 description: Testing guidelines for HoloViz packages. Use when writing tests, reviewing test coverage in PRs, or identifying missing edge cases in any HoloViz repository.
 metadata:
-  version: "2026.08.03"
+  version: "2026.10.01"
   author: holoviz
 ---
 
@@ -18,9 +18,11 @@ This skill covers testing patterns and edge cases specific to HoloViz repositori
 ## General Guidelines
 
 - Run tests via pixi. Check `pixi.toml` for tasks (e.g. `pixi run test-unit`, `pixi run test-ui`).
-- New tests must fail on `main` before submitting.
+- New tests must fail on `main` before submitting, since a test that passes without the fix doesn't test the fix.
+- Write tests from the issue or the expected behavior, not from what the new code does. A test written to match the implementation checks the author's assumptions, so it can pass on the very bug it was meant to catch. Agents tend to write this kind of test for their own code.
+- Never change a test's expected value just to make it pass. Change it only after confirming the new output is correct, and say why in the PR, since editing the expectation to match wrong output hides the regression the test caught.
 - UI tests require the `--ui` flag.
-- Only create a new test file if no existing file is a good fit.
+- Only create a new test file if no existing file is a good fit, so tests for one module stay in one place and the next contributor finds them.
 - Cover the lines you add; exercise new behavior, don't just import it.
 
 ## Edge Cases and Logical Errors

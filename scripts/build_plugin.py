@@ -133,7 +133,6 @@ def _combined_manifest(category_dirs: list[Path]) -> dict:
 
 # Names to omit from every output archive.
 EXCLUDE_NAMES: set[str] = {".DS_Store", ".gitkeep", "__pycache__"}
-EXCLUDE_DIRS: set[str] = {".git", ".pixi", "__pycache__"}
 
 
 # ---------------------------------------------------------------------------
@@ -161,14 +160,21 @@ def find_sub_skill_dirs(category_dir: Path) -> list[Path]:
     return sorted(d for d in sub_root.iterdir() if d.is_dir() and (d / "SKILL.md").exists())
 
 
+def _excluded(path: Path) -> bool:
+    # Dot directories hold local state, like a Kilo worktree with a full copy of
+    # every skill, which the plugin host rejects as duplicate skill names.
+    return path.name in EXCLUDE_NAMES or (path.is_dir() and path.name.startswith("."))
+
+
 def _ignore(directory: str, names: list[str]) -> list[str]:
-    """shutil.copytree ignore callback — skip unwanted files/dirs."""
-    return [n for n in names if n in EXCLUDE_NAMES]
+    """shutil.copytree ignore callback — skip unwanted files and dot directories."""
+    return [n for n in names if _excluded(Path(directory) / n)]
 
 
-def _should_skip(path: Path) -> bool:
-    """Return True if *path* should be omitted from any output archive."""
-    return path.name in EXCLUDE_NAMES or (path.is_dir() and path.name in EXCLUDE_DIRS)
+def _should_skip(path: Path, root: Path) -> bool:
+    """Return True if *path*, or any directory between *root* and it, is excluded."""
+    parts = path.relative_to(root).parts
+    return any(_excluded(root.joinpath(*parts[: i + 1])) for i in range(len(parts)))
 
 
 def _write_zip(source_dir: Path, archive_root: str, output: Path) -> None:
@@ -181,7 +187,7 @@ def _write_zip(source_dir: Path, archive_root: str, output: Path) -> None:
     try:
         with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for path in sorted(source_dir.rglob("*")):
-                if _should_skip(path):
+                if _should_skip(path, source_dir):
                     continue
                 arcname = archive_root + "/" + str(path.relative_to(source_dir))
                 zf.write(path, arcname)
@@ -198,7 +204,7 @@ def _write_zip_multi(source_dirs: list[Path], output: Path) -> None:
         with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for source_dir in source_dirs:
                 for path in sorted(source_dir.rglob("*")):
-                    if _should_skip(path):
+                    if _should_skip(path, source_dir):
                         continue
                     arcname = source_dir.name + "/" + str(path.relative_to(source_dir))
                     zf.write(path, arcname)
@@ -249,8 +255,9 @@ def _write_plugin(output: Path, manifest: dict, category_dirs: list[Path]) -> No
 
         tmp_zip = tmp_dir / output.name
         with zipfile.ZipFile(tmp_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            # copytree already dropped excluded paths, and .claude-plugin/ must stay.
             for path in sorted(tmp_dir.rglob("*")):
-                if _should_skip(path) or path == tmp_zip:
+                if path == tmp_zip:
                     continue
                 zf.write(path, path.relative_to(tmp_dir))
         shutil.copy2(tmp_zip, output)

@@ -123,6 +123,7 @@ eval-multi = { cmd = "python scripts/eval.py --models kilo/kilo-auto/frontier ki
     "_eval-setup",
     "eval-check",
 ], description = "Compare the frontier (paid, authenticated) and free (anonymous) Kilo auto tiers" }
+eval-cleanup = { cmd = "python scripts/eval_cleanup.py", cwd = ".", description = "Check whether the cleanup skill catches the slop in a known change" }
 eval-history-dashboard = { cmd = "panel serve scripts/compare_history.py --show --args eval_results/", cwd = ".", description = "Open the historical run dashboard in the browser" }
 eval-deploy-dashboard = { cmd = "python scripts/eval_publish.py", cwd = ".", description = "Deploy the historical dashboard (JSON history from eval-data; pass --images DIR to bundle plots)" }
 eval-sync = { cmd = "python scripts/eval_sync.py", cwd = ".", description = "Merge eval history and snapshots from the shared eval-data branch into eval_results/" }

@@ -2,8 +2,10 @@
 
 What to write and how to write it, for posts on blog.holoviz.org or a company
 blog. Mechanics like Quarto, the post template and headers aren't covered here;
-follow the blog repo's own template. Slop patterns are in the
-[deslop skill](../deslop/SKILL.md), so read it before drafting.
+follow the blog repo's own template. Read the [deslop skill](../deslop/SKILL.md)
+before drafting: its Before drafting section has the voice this builds on, and
+its patterns cover headers over short sections, a bold label on every item, and
+endings that restate the post.
 
 ## Decide the reader and the point
 
@@ -22,31 +24,18 @@ parts, and make each part stand on its own for a reader who skipped the rest.
 
 ## Structure
 
-- Headers are for navigating a long piece. A section of two or three sentences
-  doesn't need one; fold it into its neighbor as a paragraph.
-- Numbered lists are fine for real sequences or a set of parallel items. Don't
-  put a bold label at the start of every item.
+- Numbered lists are fine for real sequences or a set of parallel items.
 - Bold a key phrase **mid-sentence**, roughly one per paragraph, so a skimmer
   still gets the point. Never bold whole sentences or openers.
 - Skip a "What's in this post" list when the headers already say it.
-- End when the content ends. A closing line can point somewhere (a repo, an
-  invitation to reply); it shouldn't restate the post.
+- A closing line can point somewhere, such as a repo or an invitation to reply.
 
 ## Voice
 
-Write in the first person, as someone reporting back from doing the work,
-including the parts that went wrong. Match the author's existing posts if
-there are any: ask for one and treat it as the voice reference, since an
-example beats any list of adjectives.
-
-- Prefer longer sentences joined with the connective that relates them
-  ("since", "so", "but") over runs of short declarative beats, but vary the
-  length, since a short sentence is fine when it lands a point and a page of
-  comma-spliced run-ons is its own tic.
-- Asides in parentheses and the occasional emoji are fine if the author uses
-  them.
-- Use the word you'd say out loud to a colleague ("doubting", not
-  "discounting").
+Report back from doing the work, in the HoloViz voice from deslop's Before
+drafting section, and match the author's existing posts if there are any: ask
+for one and treat it as the voice reference. Asides in parentheses and the
+occasional emoji are fine if the author uses them.
 
 ## Code
 
@@ -82,11 +71,8 @@ figure or rerun a result instead of starting over.
 
 ## Review loop
 
-1. Run the [deslop](../deslop/SKILL.md) scan and fix the hits.
-2. Reread the whole post, since the scanner misses restated points, invented
-   claims, and unsupported rankings.
-3. After every round of cuts, reread the neighboring sentences for a "this",
-   "that" or "one" left pointing at deleted text.
-4. Repeat until a pass finds nothing new, then have a person read it.
-5. Before publishing, check that links resolve, that version numbers and
+1. Work through the [deslop](../deslop/SKILL.md) workflow, alternating scan and
+   reread until a pass finds nothing new.
+2. Have a person read it.
+3. Before publishing, check that links resolve, that version numbers and
    "currently" claims are still true, and that anyone named has agreed to it.
