@@ -164,7 +164,8 @@ class KiloResponse:
         self.returncode = returncode
         self.timed_out = returncode == TIMEOUT_RETURNCODE
         self.code_blocks = self._extract_code_blocks()
-        self.tokens, self.cost, self.resolved_models = _extract_usage_from_events(self.events)
+        self.tokens, cost, self.resolved_models = _extract_usage_from_events(self.events)
+        self.cost: float | None = None if self.timed_out else cost
         self.instruction_reads = _extract_instruction_reads(self.events)
 
     def _extract_code_blocks(self) -> list[str]:
@@ -624,6 +625,10 @@ Examples:
     )
 
     args = parser.parse_args()
+
+    unmatched = sorted(set(args.anonymous_models) - set(args.models or []))
+    if unmatched:
+        parser.error(f"--anonymous-models not listed in --models: {', '.join(unmatched)}")
 
     if not args.queries_file.exists():
         print(f"Error: Queries file not found: {args.queries_file}")

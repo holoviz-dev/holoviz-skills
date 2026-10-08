@@ -642,9 +642,6 @@ class HistoricalDashboard(pn.viewable.Viewer):
         table["created_at"] = pd.to_datetime(table["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
         for col in ("tokens_output", "tokens_input"):
             table[col] = table[col].fillna(0).astype(int)
-        # Unknown costs (runs predating cost tracking) show blank rather than
-        # a money-formatted zero, so they aren't read as free.
-        table["cost"] = table["cost"].map(lambda v: "" if pd.isna(v) else f"${v:.4f}")
         tabulator = pn.widgets.Tabulator(
             table,
             disabled=True,
@@ -653,6 +650,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             theme="materialize",
             header_filters=True,
             selectable=False,
+            formatters={"cost": {"type": "money", "symbol": "$", "precision": 4}},
             titles={
                 "run_id": "Run",
                 "created_at": "Created",
