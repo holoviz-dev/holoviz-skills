@@ -24,7 +24,7 @@ Kilo can't read this README or the eval's docstring, and the files Kilo returns 
 graded with `cleanup_scan.py` plus a check for each helper the change should reuse.
 
 ```bash
-pixi run -e eval eval-cleanup                                   # both fixtures, both conditions
+pixi run eval-cleanup                                   # both fixtures, both conditions
 python scripts/eval_cleanup.py --fixtures cleanup_holdout --repeat 5
 python scripts/eval_cleanup.py --models kilo/kilo-auto/free --skills with
 python scripts/eval_cleanup.py --fixtures cleanup_holdout \
@@ -44,13 +44,13 @@ without-skills pass rate for a check catches up, the rule behind that check can 
 ## Quick Start
 
 ```bash
-# 1. Install dependencies
+# 1. Set up development tooling
 pixi run setup-dev
 
-# 2. Check the system is ready
+# 2. Check the eval system is ready (installs the eval environment and Playwright)
 pixi run eval-check
 
-# 3. Run the full pipeline (generate → execute → report)
+# 3. Run the full pipeline (generate → execute → report; updates local history files)
 pixi run evals
 
 # Run without screenshots (faster, no Playwright needed)
@@ -59,21 +59,21 @@ pixi run eval-no-screenshots
 # Compare the frontier (paid) and free Kilo auto tiers
 pixi run eval-multi
 
-# Run eval and merge history into eval_results/
-pixi run -e eval evals
-
 # Merge shared eval-data history and snapshots into local eval_results/
-pixi run -e eval eval-sync
+pixi run eval-sync
 
-# Run the eval_sync.py tests
-pixi run -e eval eval-test
-
-# Deploy the historical dashboard (history from eval-data; add --images DIR for plots)
-pixi run -e eval eval-deploy-dashboard
+# Run tests for the eval scripts
+pixi run eval-test
 
 # Open the historical trends dashboard
-pixi run -e eval eval-history-dashboard
+pixi run eval-history-dashboard
+
+# Deploy the historical dashboard (history from eval-data; add --images DIR for plots)
+pixi run eval-deploy-dashboard
 ```
+
+The eval tasks are defined only in the `eval` environment, so `pixi run` selects it
+automatically. Run `pixi task list` to see a list of possible tasks in the repository.
 
 ## GitHub Actions Eval Command
 
@@ -92,9 +92,9 @@ Security and scope:
 Required repository secret:
 
 - `KILO_API_KEY`: a Kilo account API key (from your profile at app.kilo.ai). If it's not
-  set the workflow runs anonymously (rate-limited to 200 requests/h per IP). If the key
-  works but is rejected with "model not found" (no free-tier access), the run is retried
-  anonymously; any other failure fails the job.
+  set the workflow runs anonymously (anonymous access is rate-limited; see Requirements).
+  If the key works but is rejected with "model not found" (no free-tier access), the run is
+  retried anonymously; any other failure fails the job.
 
 Jobs:
 
@@ -171,7 +171,7 @@ stable even as the models behind it change:
 - Individual free models appear as `*:free` entries in `kilo models kilo | grep :free`,
   but that list rotates as providers change promotional periods
 
-`pixi run eval-multi` compares the paid `kilo/kilo-auto/frontier` tier against the free
+The `eval-multi` task compares the paid `kilo/kilo-auto/frontier` tier against the free
 tier so per-run cost can be compared.
 
 When `--models` is not specified, Kilo uses its own default model. The `model` field is recorded as `"default"` in `metadata.json`, while the CLI labels it as `Default (Kilo)`.
@@ -179,17 +179,8 @@ When `--models` is not specified, Kilo uses its own default model. The `model` f
 ## Historical Dashboard
 
 The historical dashboard is intentionally separate from the query comparison view and
-focuses on trends across runs.
-
-```bash
-panel serve scripts/compare_history.py --args eval_results/ --show
-```
-
-Or using pixi:
-
-```bash
-pixi run -e eval eval-history-dashboard
-```
+focuses on trends across runs. Open it with the `eval-history-dashboard` task (Quick
+Start).
 
 It reads compact history files produced during aggregation:
 
@@ -198,8 +189,7 @@ It reads compact history files produced during aggregation:
   `run_trigger`, `pr_number`, `timed_out`, `anonymous`, and the `resolved_models` each call
   was routed to)
 
-These live on the `eval-data` branch — see below. Pull them with `pixi run -e eval eval-sync`
-before serving the dashboard on a clean checkout.
+On a clean checkout, pull the shared copies first (see Shared Eval Data below).
 
 By default the dashboard selects the 5 most recent runs that were not triggered by a PR
 comment; use the "Run source" filter and the "Runs" selector to include PR runs. Timed-out
@@ -216,7 +206,7 @@ These scripts are still independently runnable in addition to being called by `e
 |---|---|
 | `execute_generated.py` | Execute saved `generated_code.py` files and capture outputs |
 | `aggregate_metrics.py` | Read `metadata.json` files and produce the comparison report |
-| `compare_history.py` | Panel historical dashboard — `panel serve scripts/compare_history.py --args eval_results/` |
+| `compare_history.py` | Panel historical dashboard — `panel serve scripts/compare_history.py --show --args eval_results/` |
 | `eval_sync.py` | Merge eval history and snapshots from the `eval-data` branch (`--upload` is CI only) |
 | `eval_publish.py` | Deploy the historical dashboard: history from `eval-data`, plots from `--images DIR` |
 | `toggle_skills.py` | Enable or disable skill files (rename AGENTS.md / SKILL.md) |
@@ -257,26 +247,17 @@ run, so results aren't stuck on whichever machine produced them. The branch hold
 only (`runs.json`, `history_summary.json`, `runs/<run_id>/`); plot images stay in each
 run's CI artifact.
 
-```bash
-# Merge the shared history into local eval_results/ (local runs are kept)
-pixi run -e eval eval-sync
-```
+Run the `eval-sync` task (Quick Start) to merge the shared history into local
+`eval_results/`; local runs are kept. `eval-sync` always talks to the `origin` remote, so
+it fails on a fork that doesn't have the branch. Pushing (`--upload`) is restricted to CI.
 
-`eval-sync` always talks to the `origin` remote, so it fails on a fork that doesn't have the
-branch. Pushing (`--upload`) is restricted to CI.
-
-## Eval And Deploy
-
-```bash
-pixi run -e eval evals
-pixi run -e eval eval-history-dashboard
-```
+## Dashboard Deployment
 
 Deploy the dashboard with history from `eval-data`, optionally bundling plots from a local
 results directory or a downloaded run artifact:
 
 ```bash
-pixi run -e eval eval-deploy-dashboard --images eval_results
+pixi run eval-deploy-dashboard --images eval_results
 # or use local history instead of the branch
 python scripts/eval_publish.py --local-history eval_results --images eval_results
 ```
@@ -320,8 +301,8 @@ Fields:
 
 **`Model not found: kilo/kilo-auto/free`**
 Some accounts don't serve the free auto tier. The workflow retries such runs anonymously
-(rate-limited to 200 requests/h per IP) when it sees this error; if that's too slow, use a
-key from an account that offers the free tier.
+when it sees this error; anonymous access is rate-limited (see Requirements). If that's
+too slow, use a key from an account that offers the free tier.
 
 **Tokens and execution time show 0**
 Token and cost usage come from the JSON event stream `kilo run --format json` emits. It is
@@ -334,5 +315,5 @@ Check `execution.log` in the query result directory for the full traceback.
 If a `DeprecationWarning` or similar appears, the relevant SKILL.md section needs a stronger anti-pattern example. Add a `# WRONG` / `# CORRECT` code pair to the relevant skill file.
 
 **Dashboard shows "No evaluation results found"**
-Run `python scripts/eval.py` first to generate `eval_results/evaluation_results.json`,
+Run the `evals` task (Quick Start) first to generate `eval_results/evaluation_results.json`,
 then re-launch the dashboard.
