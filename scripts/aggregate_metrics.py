@@ -79,10 +79,12 @@ def _flatten_history_rows(
                         "tokens_input": metrics.get("tokens_input"),
                         "tokens_cached": metrics.get("tokens_cached"),
                         "execution_time": metrics.get("execution_time"),
+                        "cost": metrics.get("cost"),
                         "execution_success": metrics.get("execution_success"),
                         "has_code": metrics.get("has_code"),
                         "timed_out": bool(metrics.get("timed_out", False)),
                         "resolved_models": metrics.get("resolved_models", []),
+                        "anonymous": bool(metrics.get("anonymous", False)),
                     }
                 )
     return rows
@@ -165,6 +167,7 @@ def _build_run_record(
         "run_trigger": metadata.get("run_trigger", "manual"),
         "pr_number": metadata.get("pr_number"),
         "resolved_models": _collect_resolved_models(summary),
+        "anonymous_models": metadata.get("anonymous_models", []),
         "publish_target": metadata.get("publish_target", "local"),
         "models_requested": metadata.get("models_requested", []),
         "query_ids": metadata.get("query_ids", []),
@@ -214,6 +217,7 @@ def _extract_metrics(metadata: dict) -> dict:
         "has_code": metadata.get("has_code", False),
         "code_blocks_count": metadata.get("code_blocks_count", 0),
         "execution_time": metadata.get("execution_time", 0),
+        "cost": metadata.get("cost"),
         "tokens_input": metadata.get("tokens", {}).get("input", 0),
         "tokens_output": metadata.get("tokens", {}).get("output", 0),
         "tokens_total": (
@@ -225,6 +229,7 @@ def _extract_metrics(metadata: dict) -> dict:
         "execution_duration": metadata.get("execution", {}).get("execution_time", None),
         "timed_out": bool(metadata.get("timed_out", False)),
         "resolved_models": metadata.get("resolved_models", []),
+        "anonymous": bool(metadata.get("anonymous", False)),
     }
 
 
@@ -282,6 +287,8 @@ def _condition_comparison(with_skills: dict, without_skills: dict) -> dict:
             comp["time_difference"] = (
                 with_skills["execution_time"] - without_skills["execution_time"]
             )
+        if with_skills.get("cost") is not None and without_skills.get("cost") is not None:
+            comp["cost_difference"] = with_skills["cost"] - without_skills["cost"]
 
     ws_exec = with_skills.get("execution_success")
     wos_exec = without_skills.get("execution_success")
@@ -353,6 +360,9 @@ def generate_comparison_summary(metrics: dict) -> dict:
             time_diffs = [c["time_difference"] for c in comparisons if "time_difference" in c]
             if time_diffs:
                 agg["avg_time_difference"] = sum(time_diffs) / len(time_diffs)
+            cost_diffs = [c["cost_difference"] for c in comparisons if "cost_difference" in c]
+            if cost_diffs:
+                agg["avg_cost_difference"] = sum(cost_diffs) / len(cost_diffs)
 
         ws_executed = [e for e in ws_list if e.get("execution_success") is not None]
         wos_executed = [e for e in wos_list if e.get("execution_success") is not None]

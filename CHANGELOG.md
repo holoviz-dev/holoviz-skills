@@ -56,6 +56,12 @@ in-progress notes so it is skipped by the extraction.
   `mre-playwright` skill: a Playwright script that reproduces a bug only visible in the browser,
   with a screenshot per step and a programmatic check, so the same script confirms the fix.
   Routed from a new "Reproduce a browser-only bug with Playwright" Loading Table row.
+- **Cost metrics and anonymous model runs** — the eval pipeline reports per-run cost in
+  summaries, comparisons, and the history dashboard (KPI, heatmap, trend, and details table),
+  and `--anonymous-models` runs the listed models with credentials stripped from the CLI
+  subprocess so the free tier can be evaluated alongside paid models. Costs unknown for runs
+  predating cost tracking are kept as unknown: they are excluded from averages and the total
+  cost is marked partial rather than counting them as free.
 
 ### Changed
 

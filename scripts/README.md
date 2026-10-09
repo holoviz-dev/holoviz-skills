@@ -194,16 +194,19 @@ pixi run -e eval eval-history-dashboard
 It reads compact history files produced during aggregation:
 
 - `eval_results/runs.json` (run registry + metadata)
-- `eval_results/history_summary.json` (flattened trend rows, including `run_trigger`,
-  `pr_number`, `timed_out` and the `resolved_models` each call was routed to)
+- `eval_results/history_summary.json` (flattened trend rows, including `cost`,
+  `run_trigger`, `pr_number`, `timed_out`, `anonymous`, and the `resolved_models` each call
+  was routed to)
 
 These live on the `eval-data` branch — see below. Pull them with `pixi run -e eval eval-sync`
 before serving the dashboard on a clean checkout.
 
 By default the dashboard selects the 5 most recent runs that were not triggered by a PR
 comment; use the "Run source" filter and the "Runs" selector to include PR runs. Timed-out
-calls get their own status and are excluded from response-time statistics. The Overview
-shows a stacked bar of the underlying models each run's calls were routed to.
+calls get their own status and are excluded from response-time statistics. Costs are summed
+in the Overview, and runs recorded before cost tracking have an unknown cost that is excluded
+from averages (the total is labelled "partial" when any selected cost is unknown). The
+Overview shows a stacked bar of the underlying models each run's calls were routed to.
 
 ## Other Scripts
 
