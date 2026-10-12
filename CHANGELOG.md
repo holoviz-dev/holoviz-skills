@@ -14,6 +14,7 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
+- **`holoviz-skills --version`** - prints the installed package version.
 - **Shared `eval-data` branch for eval history** — CI publishes run history and run
   snapshots (JSON only) to a dedicated `eval-data` git branch after each eval run.
   `pixi run eval-sync` merges that history into a local `eval_results/` without
