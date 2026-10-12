@@ -7,6 +7,7 @@ Usage::
     holoviz-skills install --global         # install to global (~/) paths
     holoviz-skills list                     # show what's installed where
     holoviz-skills uninstall --claude-code
+    holoviz-skills --version                # show the installed version
 """
 
 from __future__ import annotations
@@ -15,6 +16,8 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
+
+from holoviz_skills import __version__
 
 # ---------------------------------------------------------------------------
 # Skill discovery
@@ -504,6 +507,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="holoviz-skills",
         description="Install HoloViz Agent Skills into AI coding tools.",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     def _add_tool_flags(p: argparse.ArgumentParser, *, include_global: bool = False) -> None:
