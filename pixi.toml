@@ -77,6 +77,8 @@ lab = { cmd = "jupyter lab", description = "Launch JupyterLab" }
 
 [feature.lint.dependencies]
 pre-commit = "*"
+# Older identify releases lack the `jupyter` tag used by ruff's pre-commit hook.
+identify = ">=2.6.20"
 ruff = "*"
 codespell = "*"
 tomli = "*"
