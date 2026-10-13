@@ -143,8 +143,8 @@ const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ramp = (t, a, b) => clamp((t - a) / (b - a));      // 0→1 over [a, b]
 const easeOut = x => 1 - (1 - x) ** 3;
 // opacity for an element visible on [a, b) with fade in/out
-const win = (t, a, b, fi = 0.4, fo = 0.4) =>
-  t < a || t >= b ? 0 : Math.min(easeOut(ramp(t, a, a + fi)), 1 - ramp(t, b - fo, b));
+const win = (t, a, b, fadeIn = 0.4, fadeOut = 0.4) =>
+  t < a || t >= b ? 0 : Math.min(easeOut(ramp(t, a, a + fadeIn)), 1 - ramp(t, b - fadeOut, b));
 
 window.duration = 30;
 window.seek = async t => { await document.fonts.ready; render(t); };
@@ -154,11 +154,16 @@ window.seek = async t => { await document.fonts.ready; render(t); };
 
 1. Grep the file for the banned APIs.
 2. Screenshot the keyframe times and a few mid-transition frames in every
-   orientation you deliver. Look for unplanned wraps, a headline running into
-   the picture, overlaps with the corner label, and text that leaves before
-   it can be read.
+   orientation you deliver, then look at the images yourself. Check for
+   unplanned wraps, a headline running into the picture, overlaps with the
+   corner label, and text that leaves before it can be read.
 3. If the recorder's machine lacks the intended font, check the longest
    headline's wrap there too.
+
+Playwright takes these screenshots the same way it records the MP4: call
+`seek(t)`, then `page.screenshot()`. A contact sheet (several frames scaled
+into one image) reviews a whole video at once. Without Playwright, use the
+session's preview tool and say which frames you couldn't check.
 
 ## Exporting to MP4
 
