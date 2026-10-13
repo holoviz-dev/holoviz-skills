@@ -7,16 +7,18 @@ These are defaults, not a template.
 
 ## Contents
 
-- [Purpose: demo or teaser](#purpose-demo-or-teaser)
-- [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
-- [Story](#story)
-- [Pacing](#pacing)
-- [Facts only](#facts-only)
-- [Style](#style)
-- [The HTML contract](#the-html-contract)
-- [Checking frames](#checking-frames)
-- [Exporting to MP4](#exporting-to-mp4)
-- [Revisions](#revisions)
+- [Making a Demo Video](#making-a-demo-video)
+  - [Contents](#contents)
+  - [Purpose: demo or teaser](#purpose-demo-or-teaser)
+  - [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
+  - [Story](#story)
+  - [Pacing](#pacing)
+  - [Facts only](#facts-only)
+  - [Style](#style)
+  - [The HTML contract](#the-html-contract)
+  - [Checking frames](#checking-frames)
+  - [Exporting to MP4](#exporting-to-mp4)
+  - [Revisions](#revisions)
 
 ## Purpose: demo or teaser
 
