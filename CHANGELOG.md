@@ -32,6 +32,12 @@ in-progress notes so it is skipped by the extraction.
 - **`outreach` sub-skill** with the **Writing a Blog Post** reference — the reader and the
   point, structure, voice, code snippets, figures, people and sources, and the review loop —
   routed from a new "Write or review a blog post" Loading Table row.
+- **Making a Demo Video** reference in `outreach` — plan a short demo video as a beat sheet
+  and four keyframes before writing anything, tell a problem/fix/close story with facts from
+  the source only, and build it as one self-contained HTML file whose frames are a pure
+  function of `t` (`window.duration`, `async window.seek(t)`), plus a Playwright + ffmpeg
+  recipe for exporting it to MP4. Routed from a new "Make a demo or promo video" Loading
+  Table row.
 - **`deslop_scan.py` reads comments and docstrings in `.py` files** — a `.py` file is now scanned
   for its comments and docstrings only, with doctest examples skipped, and `--comments` adds
   `.py` files to a directory walk. Before, a `.py` file was scanned as if the code were prose,
