@@ -7,18 +7,17 @@ These are defaults, not a template.
 
 ## Contents
 
-- [Making a Demo Video](#making-a-demo-video)
-  - [Contents](#contents)
-  - [Purpose: demo or teaser](#purpose-demo-or-teaser)
-  - [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
-  - [Story](#story)
-  - [Pacing](#pacing)
-  - [Facts only](#facts-only)
-  - [Style](#style)
-  - [The HTML contract](#the-html-contract)
-  - [Checking frames](#checking-frames)
-  - [Exporting to MP4](#exporting-to-mp4)
-  - [Revisions](#revisions)
+- [Purpose: demo or teaser](#purpose-demo-or-teaser)
+- [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
+- [Story](#story)
+- [Pacing](#pacing)
+- [Facts only](#facts-only)
+- [Style](#style)
+- [Real footage](#real-footage)
+- [The HTML contract](#the-html-contract)
+- [Checking frames](#checking-frames)
+- [Exporting to MP4](#exporting-to-mp4)
+- [Revisions](#revisions)
 
 ## Purpose: demo or teaser
 
@@ -60,7 +59,7 @@ Every screen has a **label** (PROBLEM, FIX, THE SKILL), one **headline** and one
 - **How (demos):** the few lines of real code behind the fix, which keep the
   claim honest.
 - **Conclusion:** what the tool does for the viewer ("cleanup keeps slop out
-  of your codebase") and its install command.
+  of your codebase"), with its install command.
 - **Close:** a reason, not an instruction. "Read the full post" gets ignored;
   "The full post covers 8 pitfalls and their fixes" says why.
 
@@ -75,12 +74,11 @@ take in.
 
 - **Under about 40 s**, with a new screen every 5–8 s: about a second to
   animate in, then a hold.
-- **Reveal at once.** Highlight all six phrases together; a staggered reveal
-  of ten items asks the viewer to track ten things.
+- **Reveal at once.** Highlight every flagged line together; a staggered
+  reveal of ten items asks the viewer to track ten things.
 - **Too fast means too much.** When reviewers can't keep up, cut a screen or a
   detail. Half speed doubles the length and the video is still dense.
-- A screen with a simple message can hold for less; reviewers watched one at
-  1.5x.
+- A screen with a simple message can hold for less.
 - Keep the headline and the picture in the same place on every screen, move
   one thing at a time, and run a thin progress bar along the bottom.
 
@@ -117,6 +115,53 @@ unless asked.
 - **Motion that explains:** fades, short slides, highlights, typed commands.
 - Keep the project or post name in a corner from the second screen on. Clips
   get shared without the post text.
+
+## Real footage
+
+When the demo is about something on screen (a Panel app, a widget, an
+interactive plot), show the real thing instead of redrawing it. Footage of the
+actual app is its own proof.
+
+Capture it with Playwright when it's available. Serve the app, drive it with
+the same steps a user would take, and take a screenshot after each step:
+
+```python
+import subprocess, time
+from playwright.sync_api import sync_playwright
+
+server = subprocess.Popen(["panel", "serve", "app.py", "--port", "5006"])
+time.sleep(3)  # or poll the port until it answers
+try:
+    with sync_playwright() as p:
+        page = p.chromium.launch().new_page(
+            viewport={"width": 1280, "height": 800}, device_scale_factor=2)
+        page.goto("http://localhost:5006/app")
+        page.wait_for_load_state("networkidle")
+        page.screenshot(path="step0.png")
+        page.get_by_text("Run").click()          # each step the demo shows
+        page.wait_for_load_state("networkidle")
+        page.screenshot(path="step1.png")
+finally:
+    server.terminate()
+```
+
+- **Stills over a screen recording.** One screenshot per state, embedded as
+  `data:` URIs and crossfaded or zoomed as a function of `t`, keeps the video
+  deterministic and small. Playwright's `record_video_dir` captures in real
+  time, and its timing depends on the machine. If you need continuous motion
+  (a slider sweep), embed the clip and set `video.currentTime` in `seek`,
+  awaiting the `seeked` event before returning.
+- **Make the app repeatable:** seeded or fixed data, a fixed viewport, and a
+  wait for the app to settle (`networkidle`, or a selector the app renders
+  once it's ready) before each screenshot.
+- The page shows no cursor. Draw one in the HTML, moving as a function of `t`
+  toward the element that changes, so the viewer knows where the click
+  happened.
+- Crop to the part of the app that changes, and capture at
+  `device_scale_factor=2`. A full-window screenshot shrunk into a 1080 px frame
+  makes UI text unreadable at feed size.
+- If Playwright can't run, ask the user for screenshots or a screen recording
+  of the app. Don't fake the UI with drawn rectangles and call it the app.
 
 ## The HTML contract
 
