@@ -10,6 +10,7 @@ These are defaults, not a template.
 - [Making a Demo Video](#making-a-demo-video)
   - [Contents](#contents)
   - [Purpose: demo or teaser](#purpose-demo-or-teaser)
+  - [Long-form: briefings and comparisons](#long-form-briefings-and-comparisons)
   - [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
   - [Story](#story)
   - [Pacing](#pacing)
@@ -34,6 +35,27 @@ post, ask, because reviewers read a promotional teaser as an ad.
 - **Blog teaser:** sells the post's idea. It opens with the post's title and
   subtitle, reuses the post's own examples, and mentions the tool once, near
   the end. Draft links stay out of the video; the link goes in the caption.
+
+## Long-form: briefings and comparisons
+
+A walkthrough for a team review or a customer call, or a comparison of several
+builds, can run 2–5 minutes. The length changes the structure, not the rules
+for each screen.
+
+- **A contents screen** right after the title lists each part with its start
+  time, and a numbered chapter card opens each part under the same name. Add
+  them past about 90 s or with three or more parts; a single story under that
+  needs neither.
+- **Keep the times in sync.** Retiming or inserting a screen moves every later
+  start time, so update the contents screen in the same pass.
+- **YouTube chapters:** put the same timestamps in the description, the first
+  at `0:00`, at least three of them, each chapter 10 s or longer.
+- **End on what the audience decides:** open questions for an internal review,
+  next steps for a customer, instead of an install command.
+- **Road bumps** (what broke, the fix, the lesson) suit an internal review. For
+  a customer, keep the lesson and drop the bumps.
+- **Pacing:** a new screen every 8–15 s, and a caption the viewer reads one at
+  a time can hold for 2–3 s.
 
 ## Workflow: beat sheet before the file
 
@@ -72,6 +94,15 @@ Each headline is a plain statement the viewer can check against the picture.
 Avoid garden paths: "You pay tokens for every line an agent reads…" opens
 like a feature and turns into a warning, and at feed speed nobody rereads.
 
+- **Introduce before you use.** Anything new on screen (a made-up company, a
+  second environment, a term) gets one line on why it's there before it
+  appears.
+- **Plain words for a general audience.** Replace internal codes with words
+  ("P1" becomes "fix now", `env_a` becomes "Company A") and keep product names
+  as small labels. When a real screen still shows the codes, add a legend.
+- **Frame a test as "expected"**, not "right", so a picture of the target
+  doesn't read as a result.
+
 ## Pacing
 
 Keep attention with a steady rhythm of new screens, each held long enough to
@@ -80,7 +111,9 @@ take in.
 - **Under about 40 s**, with a new screen every 5–8 s: about a second to
   animate in, then a hold.
 - **Reveal at once.** Highlight every flagged line together; a staggered
-  reveal of ten items asks the viewer to track ten things.
+  reveal of ten items asks the viewer to track ten things. That holds for
+  lists. When the viewer has to keep two cases apart (Company A, then Company
+  B), show the first in full before the second appears.
 - **Too fast means too much.** When reviewers can't keep up, cut a screen or a
   detail. Half speed doubles the length and the video is still dense.
 - A screen with a simple message can hold for less.
@@ -102,6 +135,11 @@ take in.
 - Prefer wording from the project's site, docs or post; it's already been
   reviewed.
 - Don't name a competitor unless the source does or the user asks.
+- **Measure comparisons equally.** Run every option the same number of times
+  with the same checks, and put the sample size on screen ("3 runs per
+  company"). One run against three isn't an accuracy difference.
+- **Quote aggregates over one capture.** When a screenshot's own figures differ
+  from the eval's means, quote the means.
 - Run on-screen copy through the [deslop skill](../deslop/SKILL.md). Short
   lines hide slop poorly.
 
@@ -167,6 +205,13 @@ finally:
   makes UI text unreadable at feed size.
 - If Playwright can't run, ask the user for screenshots or a screen recording
   of the app. Don't fake the UI with drawn rectangles and call it the app.
+- **Walk through a screenshot that is the subject.** Zoom to one region at a
+  time with a highlight and one caption, instead of showing the whole screen
+  and moving on.
+- **Screenshots match the numbers.** Capture from the same code and run as
+  every figure on screen, note each capture's run ID and time, and recapture
+  after any fix. Keep an older capture only where it is the evidence for the
+  old behavior.
 
 ## The HTML contract
 
@@ -377,6 +422,11 @@ a viewer scroll away or reach for the volume.
   3 s, or the loudest moment is more than 10 LU above the average. Fix the
   spec (add layers more gradually, lower a section's `gain` or a hit) until
   the warnings are gone; don't hand over a score that still prints one.
+- **Quieter for desk viewing.** A video watched at a desk or shared on a call
+  needs the music further under the picture than a feed clip, so start at
+  −20 LUFS or below and let the user raise it.
+- **Deliver the silent cut first** and add the score as a separate pass, so a
+  problem with the audio never holds up the video.
 
 ## Revisions
 

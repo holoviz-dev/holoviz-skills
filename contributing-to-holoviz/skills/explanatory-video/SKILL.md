@@ -75,6 +75,11 @@ Read the code behind every arrow.
   real class names on boxes (`SQLAgent`, `hvPlotAgent`) and paths that exist.
 - When the ordering logic is a guess from a file name (`dependency.py`), read
   enough of it to confirm, or say in the beat sheet that it is unverified.
+- **Check which way every arrow points.** Find the call: if the agents run
+  first and hand results to a coordinator, the arrows point in, not out, even
+  though the coordinator is the box in the middle. Draw a loop only where the
+  code calls back (a tool that re-runs another agent); a pipeline that only
+  passes data forward has none.
 - Data shown as a result (a chart) is illustrative. Show no numbers on it.
 
 ## Story: follow one request
