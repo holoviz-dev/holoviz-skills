@@ -84,40 +84,27 @@ SineExplorer().servable()  # run with: panel serve app.py --dev --show
 
 ```python
 import holoviews as hv
-import hvplot.pandas  # noqa
-import panel as pn
-import panel_material_ui as pmui
-import param
 
-pn.extension(throttled=True)
-
-penguins = hvplot.sampledata.penguins("pandas").dropna()
-species_list = sorted(penguins["species"].unique())
-
+# Imports, `penguins` and `species_list` as in the Panel skill's Dashboard.
 class Dashboard(pn.viewable.Viewer):
     species = param.ListSelector(default=species_list, objects=species_list)
 
     def __init__(self, **params):
         super().__init__(**params)
-        # from_param widget AFTER super() (see panel/SKILL.md)
         self._species_widget = pmui.CheckBoxGroup.from_param(self.param.species)
         dmap = hv.DynamicMap(self._render_scatter)  # method carries its own @param.depends
         self._chart_pane = pn.pane.HoloViews(
             dmap, sizing_mode="stretch_both", theme="light_minimal",
         )
-        # Build the Page once — __panel__ returns it unconditionally.
         self._page = pmui.Page(
             title="Penguins",
             sidebar=[self._species_widget],
             main=[self._chart_pane],
         )
 
-    def _filtered(self):
-        return penguins[penguins["species"].isin(self.species)]
-
     @param.depends("species")
     def _render_scatter(self):
-        df = self._filtered()
+        df = penguins[penguins["species"].isin(self.species)]
         if df.empty:
             return hv.Scatter([], kdims=["bill_length_mm"], vdims=["bill_depth_mm"]).opts(
                 responsive=True,

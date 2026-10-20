@@ -2,7 +2,7 @@
 name: deslop
 description: Strip LLM slop from prose — rhetorical tics, false-profundity constructions, AI vocabulary, and boilerplate. Use when writing or reviewing any HoloViz prose (PR descriptions, docs, blog posts, READMEs, commit messages) to remove recognizable LLM patterns.
 metadata:
-  version: "2026.10.16"
+  version: "2026.10.20"
   author: holoviz
 ---
 
@@ -49,12 +49,11 @@ python3 scripts/deslop_scan.py - <<'EOF'
 <draft text>
 EOF
 ```
-
-The scanner is a starting point, not the specification. It has false positives (a legitimate "no X, no Y" in quoted dialogue) and it cannot see the patterns that need judgment (a paragraph that gestures at profundity without tripping any regex). Add `--explain` to print the `references/patterns.md` entries for the rules that fired, followed by the patterns no regex catches, so you read only the part of the catalogue that applies.
+The scanner is a starting point, not the specification. It has false positives (a legitimate "no X, no Y" in quoted dialogue) and it cannot see the patterns that need judgment (a paragraph that gestures at profundity without tripping any regex). Add `--explain` to print the `patterns.md` entries for the rules that fired, followed by the patterns no regex catches, so you read only the part of the catalogue that applies.
 
 For on-screen text (a video, slides, a UI), scan only the full sentences, such as captions and body lines. A label and a headline pasted together read as two short beats and trip `[choppy-run]`, but they're separate elements on screen, not prose.
 
-**4. Rewrite.** Apply `references/patterns.md` hit by hit, then reread the whole thing for the patterns the scanner missed. Use Edit for files. For a conversation draft, output the rewritten text.
+**4. Rewrite.** Apply `patterns.md` hit by hit, then reread the whole thing for the patterns the scanner missed. Use Edit for files. For a conversation draft, output the rewritten text.
 
 **5. Verify, and repeat.** Re-run the scanner on the result and reread the whole piece again, because one pass is never enough: rewrites introduce their own tics (a merged sentence becomes a new "not X but Y", a cut announcement leaves two choppy beats behind), and the patterns no regex catches only show up on a fresh read. Cuts also break references, so reread the sentences around each deletion for a pronoun, "this" or "that" left pointing at something that's gone. Keep alternating scan and reread until a pass turns up nothing new. Every remaining hit needs a reason: quoted material, a false positive, or an intentional choice you flag to the user.
 

@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "2026.09.28"
+  version: "2026.10.20"
   author: holoviz
 ---
 
@@ -149,7 +149,7 @@ For new apps, use `pmui.Page` from panel-material-ui (see [Using Material UI](us
 
 ## Performance
 
-- Batch multiple updates into one redraw with `pn.io.hold()`; defer heavy components with `pn.extension(defer_load=True, loading_indicator=True)`; memoize expensive work with `@pn.cache`.
+- Defer heavy components with `pn.extension(defer_load=True, loading_indicator=True)`; memoize expensive work with `@pn.cache`.
 - **`pn.io.hold()`**: each property assignment on a widget/pane normally triggers its own redraw. When a watcher touches 3+ properties, wrap them in `with pn.io.hold(): ...` so they collapse into a single redraw instead of one per assignment.
 
   ```python

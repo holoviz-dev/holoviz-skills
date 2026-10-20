@@ -2,7 +2,7 @@
 name: hvplot
 description: Plot DataFrames and datasets using a Pandas .plot()-like API for Pandas, Polars, Xarray, DuckDB, Dask, and GeoPandas. Use when the user asks to visualize, plot, or chart tabular or multidimensional data. Do not use for element composition, streams, or custom Bokeh tools/tooltips (use HoloViews).
 metadata:
-  version: "2026.08.03"
+  version: "2026.10.20"
   author: holoviz
 ---
 
@@ -108,7 +108,7 @@ earthquakes.hvplot.points(
   - `geo=True` additionally unlocks GeoViews-only names (`"CartoMidnight"`, `"EsriWorldHillshade"`, `"EsriWorldPhysical"`, the polar/ocean sets, …) that fail without it.
   - **Never use `"CartoDB.DarkMatter"` or `"CartoDB Dark_Matter"`** — rejected in both modes.
   - Enumerate the live set with `holoviews.element.tiles.tile_sources` or `geoviews.tile_sources.tile_sources`. See https://hvplot.holoviz.org/en/docs/latest/ref/plotting_options/geographic.html#tiles
-- Do not convert to a GeoDataFrame or reproject to EPSG:3857 manually. Pass `geo=True` and hvplot handles projection.
+- Do not convert to a GeoDataFrame or reproject to EPSG:3857 manually. For a basemap under lon/lat data, `tiles=` alone projects for you and needs no geo stack; add `geo=True` only when you need GeoViews (non-Web-Mercator projections, `coastline`, GeoViews-only tile names).
 
 ```python
 import hvplot.pandas  # noqa
@@ -117,8 +117,7 @@ earthquakes = hvplot.sampledata.earthquakes("pandas")
 earthquakes.hvplot.points(
     x="lon",
     y="lat",
-    geo=True,
-    tiles="CartoDark",       # correct — do NOT use "CartoDB.DarkMatter"
+    tiles="CartoDark",       # projects lon/lat itself; do NOT use "CartoDB.DarkMatter"
     color="mag",
     cmap="viridis_r",
     clabel="Magnitude",
