@@ -14,6 +14,12 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
+- **Claude Code marketplace and `npx skills`** — `build_plugin.py` now writes
+  `.claude-plugin/marketplace.json`, so `/plugin marketplace add holoviz-dev/holoviz-skills`
+  installs every skill as one `holoviz` plugin, plus an opt-in `panel-live-server` plugin
+  that runs locally to render and screenshot Panel apps. `npx skills add` reads the same
+  file, so it offers the three routing skills instead of every nested sub-skill. The plugin's
+  version is the newest skill date in the tree, so a sub-skill edit counts as an update.
 - **Context cost in the docs** — every page notes its size in chars, words and, with
   tiktoken installed, estimated tokens, and each category page has a Context cost table
   sizing what an agent reads for every Loading Table row, routing skill included. Teams

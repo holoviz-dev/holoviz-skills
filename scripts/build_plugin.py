@@ -13,6 +13,9 @@ as GitHub release assets (which cannot be nested in folders):
   category to keep names unique when flattened
   (e.g. ``developing-with-holoviz-hvplot.zip``)
 
+It also writes ``.claude-plugin/marketplace.json`` at the repo root, which the
+Claude Code plugin marketplace and the ``npx skills`` CLI both read.
+
 Run directly::
 
     python scripts/build_plugin.py
@@ -56,6 +59,32 @@ PLUGIN_JSON_BASE: dict = {
     "repository": "https://github.com/holoviz-dev/holoviz-skills",
     "license": "BSD",
     "keywords": ["holoviz", "panel", "hvplot", "holoviews", "param", "dataviz"],
+}
+
+MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
+MARKETPLACE_NAME = "holoviz-skills"
+# Every category ships in this one plugin, so skills register as holoviz:<skill>.
+# Plugin names are permanent once people install them, so don't rename it.
+MARKETPLACE_PLUGIN = "holoviz"
+
+# Opt-in companion plugin: the MCP server the Panel skills' iterate loop uses to
+# render, validate and screenshot what the agent built. It ships separately from
+# the skills because it runs code locally, which installing instructions shouldn't.
+PANEL_LIVE_SERVER_PLUGIN: dict = {
+    "name": "panel-live-server",
+    "source": "./",
+    "strict": False,
+    "description": (
+        "MCP server that renders, validates and screenshots Panel apps and plots so the "
+        "agent can see what it built. Runs Python locally; pairs with developing-with-holoviz."
+    ),
+    "keywords": ["panel", "mcp", "screenshot", "holoviz"],
+    "mcpServers": {
+        "panel-live-server": {
+            "command": "uvx",
+            "args": ["--from", "panel-live-server[pydata]", "pls", "mcp"],
+        }
+    },
 }
 
 
@@ -302,6 +331,63 @@ def build_plugin(stage: bool = False) -> list[Path]:
 
 
 # ---------------------------------------------------------------------------
+# Marketplace
+# ---------------------------------------------------------------------------
+
+
+def _tree_version(category_dir: Path) -> str | None:
+    """Newest ``metadata.version`` in a category, so a sub-skill edit bumps the plugin.
+
+    The routing skill's own version only moves when the router itself changes,
+    and CalVer dates compare correctly as strings.
+    """
+    versions = [v for md in category_dir.rglob("SKILL.md") if (v := _read_version(md))]
+    return max(versions) if versions else None
+
+
+def build_marketplace(stage: bool = False) -> Path:
+    """Write ``.claude-plugin/marketplace.json``: every skill in one plugin, plus the MCP.
+
+    Two installers read it. Claude Code uses it for
+    ``/plugin marketplace add holoviz-dev/holoviz-skills``, and ``npx skills add``
+    takes the ``skills`` paths it declares instead of searching the repo, which
+    would otherwise also offer every nested sub-skill as a standalone skill that
+    can't work without its routing skill.
+    """
+    skill_dirs = find_skill_dirs(REPO_ROOT)
+    skills_plugin = {
+        "name": MARKETPLACE_PLUGIN,
+        "source": "./",
+        "strict": False,
+        "description": _combined_manifest(skill_dirs)["description"],
+        "skills": [f"./{d.name}" for d in skill_dirs],
+        "keywords": PLUGIN_JSON_BASE["keywords"],
+    }
+    if versions := [v for d in skill_dirs if (v := _tree_version(d))]:
+        skills_plugin["version"] = max(versions)
+    plugins = [skills_plugin, PANEL_LIVE_SERVER_PLUGIN]
+
+    marketplace = {
+        "name": MARKETPLACE_NAME,
+        "owner": {"name": "HoloViz", "email": "developers@holoviz.org"},
+        "metadata": {
+            "description": "Agent skills for Panel, hvPlot, HoloViews and Param, plus the "
+            "Panel Live Server MCP for rendering and screenshotting what the agent builds."
+        },
+        "plugins": plugins,
+    }
+    MARKETPLACE_JSON.parent.mkdir(exist_ok=True)
+    MARKETPLACE_JSON.write_text(
+        json.dumps(marketplace, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    rel = MARKETPLACE_JSON.relative_to(REPO_ROOT)
+    print(f"build_plugin: wrote {rel}  ({len(plugins)} plugins)")
+    if stage:
+        _git_stage(MARKETPLACE_JSON)
+    return MARKETPLACE_JSON
+
+
+# ---------------------------------------------------------------------------
 # Zip builds
 # ---------------------------------------------------------------------------
 
@@ -374,6 +460,7 @@ def build_zips(stage: bool = False) -> list[Path]:
 def main(stage: bool = False) -> int:
     plugin_out = build_plugin(stage=stage)
     zip_out = build_zips(stage=stage)
+    build_marketplace(stage=stage)
     total = len(plugin_out) + len(zip_out)
     print(f"\nbuild_plugin: done — {total} file(s) written to artifacts/")
     return 0 if total > 0 else 1

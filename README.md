@@ -23,6 +23,24 @@ uvx holoviz-skills install developing --global --claude-code   # ~/.claude/skill
 
 `pip install holoviz-skills` gives you the same `holoviz-skills` command.
 
+**As a Claude Code plugin:**
+
+```text
+/plugin marketplace add holoviz-dev/holoviz-skills
+/plugin install holoviz@holoviz-skills
+/plugin install panel-live-server@holoviz-skills   # optional: lets the agent render and screenshot Panel apps
+```
+
+The `holoviz` plugin brings all three skills; to install just one, use uvx or npx. `panel-live-server` runs Python on your machine to render what the agent builds, which is why it's a separate plugin you opt into.
+
+**With the skills.sh CLI:**
+
+```bash
+npx skills add holoviz-dev/holoviz-skills --skill developing-with-holoviz
+```
+
+`npx skills update` follows the GitHub `main` branch, while `uvx holoviz-skills@latest update` follows PyPI releases, so two machines can differ by whatever has merged since the last release.
+
 ### Keeping skills current
 
 ```bash
