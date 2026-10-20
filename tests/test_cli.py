@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -142,3 +143,32 @@ def test_doctor_reports_an_interpreter_it_cannot_run(project, tmp_path, capsys):
 
     assert cli.main(["doctor", "--python", str(missing)]) == 1
     assert f"couldn't query {missing}" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("holoviews", ["1.21.0", None], ids=["installed", "missing"])
+def test_doctor_shows_hv_show_versions_with_holoviews(project, monkeypatch, capsys, holoviews):
+    assert cli.main(["install", "developing", "--claude-code"]) == 0
+    versions = {name: None for name in cli.LIBRARIES} | {"panel": "1.5.0", "holoviews": holoviews}
+    monkeypatch.setattr(cli, "_library_versions", lambda python, names: versions)
+    monkeypatch.setattr(cli, "_show_versions", lambda python: "  holoviews : 1.21.0")
+    capsys.readouterr()
+
+    assert cli.main(["doctor", "--python", "python"]) == 0
+    out = capsys.readouterr().out
+    assert ("hv.show_versions()" in out) is (holoviews is not None)
+
+
+def test_doctor_passes_when_hv_show_versions_fails(project, monkeypatch, capsys):
+    """The report is informational, so it can't fail an otherwise healthy check."""
+    assert cli.main(["install", "developing", "--claude-code"]) == 0
+    versions = {name: None for name in cli.LIBRARIES} | {"panel": "1.5.0", "holoviews": "1.21.0"}
+    monkeypatch.setattr(cli, "_library_versions", lambda python, names: versions)
+
+    def broken(python):
+        raise subprocess.CalledProcessError(1, python)
+
+    monkeypatch.setattr(cli, "_show_versions", broken)
+    capsys.readouterr()
+
+    assert cli.main(["doctor", "--python", "python"]) == 0
+    assert "couldn't run it" in capsys.readouterr().out

@@ -20,7 +20,9 @@ in-progress notes so it is skipped by the extraction.
 - **`holoviz-skills update` and `doctor`** — `update` re-installs what's installed and says
   which skills changed, and `install` and `list` show the same per-skill version changes.
   `doctor` reports stale copies, the HoloViz library versions in the project's environment
-  rather than uvx's, and any `compatibility` requirement they miss.
+  rather than uvx's, and any `compatibility` requirement they miss. When HoloViews is
+  installed, it also prints `hv.show_versions()` from that environment, ready to paste into
+  an issue.
 - **CLI tests** — `pixi run test-cli` covers skill selection, install, update, doctor and
   symlinked skills, which had no tests before.
 - **`holoviz-skills --version`** - prints the installed package version.

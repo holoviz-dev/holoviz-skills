@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import textwrap
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -509,6 +510,18 @@ def _library_versions(python: str, names: list[str]) -> dict[str, str | None]:
     return json.loads(result.stdout)
 
 
+def _show_versions(python: str) -> str:
+    """``hv.show_versions()`` run in the project's interpreter, indented for the report."""
+    result = subprocess.run(
+        [python, "-c", "import holoviews as hv; hv.show_versions()"],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=True,
+    )
+    return textwrap.indent(result.stdout.rstrip(), "  ")
+
+
 def _satisfies(found: str, op: str, wanted: str) -> bool:
     def numbers(version: str) -> tuple[int, ...]:
         m = re.match(r"\d+(?:\.\d+)*", version)
@@ -661,6 +674,14 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         return 1
     listed = ", ".join(f"{n} {v}" for n, v in versions.items() if v)
     print(f"  {listed}" if listed else "  none of the HoloViz libraries are installed")
+
+    if versions.get("holoviews"):
+        print("\nhv.show_versions(), to paste into a HoloViz issue:")
+        # Informational only, so a failure here doesn't fail the check.
+        try:
+            print(_show_versions(python))
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"  couldn't run it: {e}")
 
     print("\nCompatibility:")
     if not requirements:
