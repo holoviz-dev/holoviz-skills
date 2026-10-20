@@ -86,6 +86,13 @@ in-progress notes so it is skipped by the extraction.
   reading the result aloud or getting a second reviewer.
 - **Data-story routing row** now loads `hvplot/SKILL.md` with its reference, and the
   `holoviews` Skill Map entry no longer names its reference.
+- **`cleanup` keeps single-use constants whose name earns it** — the skill used to say
+  "keep it inline" with exceptions as an afterthought, which agents read as inline
+  everything. It now lists when a single-use name helps (a number's meaning, an outside limit,
+  a setting meant to be changed, a long or computed value) and inlines only a name that
+  restates where it's used. `cleanup_scan.py` already flagged only that case; its message now
+  points tunables at `# cleanup: ignore`. The skill also suggests import-linter contracts for
+  layering rules.
 - **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline now
   drives the Kilo Code CLI (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier, with
   `eval-multi` comparing it against the paid `kilo/kilo-auto/frontier` tier. Configure a
