@@ -21,6 +21,7 @@ nav = [
       { "Iterating on Panel Apps" = "developing-with-holoviz/panel/iterating-on-panel-apps.md" },
       { "Building Custom Components" = "developing-with-holoviz/panel/building-custom-components.md" },
       { "Using Material UI" = "developing-with-holoviz/panel/using-material-ui.md" },
+      { "Theming Material UI" = "developing-with-holoviz/panel/theming-material-ui.md" },
       { "Using Pytest Playwright" = "developing-with-holoviz/panel/using-pytest-playwright.md" },
       { "Reviewing Panel Apps" = "developing-with-holoviz/panel/reviewing-panel-apps.md" },
       { "Converting Designs to Material UI" = "developing-with-holoviz/panel/converting-designs-to-material-ui.md" },
@@ -48,18 +49,33 @@ nav = [
   ] },
   { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",
-    { "Cleanup" = "contributing-to-holoviz/cleanup.md" },
+    { "Cleanup" = [
+      "contributing-to-holoviz/cleanup/index.md",
+      { "Scripts" = [
+        { "Cleanup Scan" = "contributing-to-holoviz/cleanup/cleanup_scan.md" },
+      ] },
+    ] },
     { "Deslop" = [
       "contributing-to-holoviz/deslop/index.md",
+      { "Pattern catalogue" = "contributing-to-holoviz/deslop/patterns.md" },
       { "Scripts" = [
         { "Deslop Scan" = "contributing-to-holoviz/deslop/deslop_scan.md" },
       ] },
     ] },
     { "Documentation" = "contributing-to-holoviz/documentation.md" },
-    { "Minimal Examples" = "contributing-to-holoviz/minimal-example.md" },
+    { "Minimal Examples" = [
+      "contributing-to-holoviz/minimal-example/index.md",
+      { "Reproducing Browser Bugs" = "contributing-to-holoviz/minimal-example/reproducing-browser-bugs.md" },
+    ] },
     { "Outreach" = [
       "contributing-to-holoviz/outreach/index.md",
+      { "Making a Demo Video" = "contributing-to-holoviz/outreach/making-a-demo-video.md" },
+      { "Making an Explanatory Video" = "contributing-to-holoviz/outreach/making-an-explanatory-video.md" },
       { "Writing a Blog Post" = "contributing-to-holoviz/outreach/writing-a-blog-post.md" },
+      { "Scripts" = [
+        { "Make Music" = "contributing-to-holoviz/outreach/make_music.md" },
+        { "Make Sfx" = "contributing-to-holoviz/outreach/make_sfx.md" },
+      ] },
     ] },
     { "PR Descriptions" = "contributing-to-holoviz/pr-description.md" },
     { "Testing" = "contributing-to-holoviz/testing.md" },

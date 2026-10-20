@@ -90,6 +90,7 @@ REFERENCE_ORDER: dict[str, list[str]] = {
         "iterating-on-panel-apps",
         "building-custom-components",
         "using-material-ui",
+        "theming-material-ui",
         "using-pytest-playwright",
         "reviewing-panel-apps",
     ],

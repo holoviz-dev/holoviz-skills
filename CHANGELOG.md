@@ -93,6 +93,12 @@ in-progress notes so it is skipped by the extraction.
 
 ### Changed
 
+- **Theming split out of Using Material UI** — `using-material-ui.md` was 28,000 chars and
+  the only file over the new size warning, and the dashboard row, the busiest in the Loading
+  Table, loaded all of its palette, typography, font, icon, brand and chart-theming sections
+  for apps that rarely theme. Those sections moved, unchanged, to `theming-material-ui.md`,
+  loaded by a new theming row and by the design-conversion and data-story rows, which need
+  them. Links to `#chart-theming` now point at the new file.
 - **Dashboard example and its docs screenshot** — the Revenue KPI reads in thousands, since
   `Trend` showed `5.698e+5` for anything over 100,000, and both charts label dates by month with
   the year once below, where "Mar 2025May 2025…" ran together. The docs build now waits for

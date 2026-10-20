@@ -227,16 +227,19 @@ Decide splits by **user story / trigger**, because the routing skill matches a
 user's need to a file. Concretely:
 
 - **Merge two references when they answer the same "I want to…".** Splitting
-  layout from theming, or a build-loop from its review checklist, just creates
-  two reads for one intent. (e.g. `applying-` + `branding-material-ui` →
-  `using-material-ui`; `structuring-` + `scaling-panel-apps` →
-  `designing-panel-architecture`.)
+  a build-loop from its review checklist just creates two reads for one intent.
+  (e.g. `structuring-` + `scaling-panel-apps` → `designing-panel-architecture`.)
 - **Keep them separate when the trigger differs.** "Build a new app" vs "migrate
   an existing one" vs "test it" are distinct moments — merging them forces
   irrelevant material into context and muddies routing.
+- **Split a merged file back out when it outgrows the size warning and one part
+  serves a different need.** `using-material-ui` once held building and theming
+  together; at 28,000 chars, the Loading Table's busiest row (dashboards, which
+  rarely theme) was paying for palettes and fonts, so theming moved to
+  `theming-material-ui` and only the rows that theme load it.
 
-When you merge, give the combined file a grouped TOC (e.g. "Building:" then
-"Theming:") so the broadened scope stays scannable.
+When you merge, give the combined file a grouped TOC (a label per original
+file, then its sections) so the broadened scope stays scannable.
 
 ### Naming references
 

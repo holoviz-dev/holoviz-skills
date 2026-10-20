@@ -4,7 +4,7 @@ description: Maintain, contribute to, and write about HoloViz packages. Use when
 user-invocable: true
 argument-hint: "[review PR | write tests | write docs | PR description | minimal example | browser repro | deslop | blog post | demo video | explanatory video]"
 metadata:
-  version: "2026.10.15"
+  version: "2026.10.20"
   author: holoviz
 ---
 
