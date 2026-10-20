@@ -1,6 +1,6 @@
 ---
 name: outreach
-description: Writing about and showing HoloViz work for readers outside a PR or the docs, such as a post on blog.holoviz.org or a company blog, or a short demo video for YouTube or LinkedIn. Use when drafting, structuring, or reviewing a blog post, or when planning or building a demo video.
+description: Writing about and showing HoloViz work for readers outside a PR or the docs, such as a post on blog.holoviz.org or a company blog, a short demo video for YouTube or LinkedIn, or a codebase explainer video for new contributors. Use when drafting, structuring, or reviewing a blog post, or when planning or building a demo or explainer video.
 metadata:
   version: "2026.10.15"
   author: holoviz
@@ -14,3 +14,4 @@ This skill covers writing about and showing HoloViz work for an outside audience
 
 - [Writing a Blog Post](writing-a-blog-post.md): choosing the reader and the point, structure, voice, code, figures, people and sources, and the review loop.
 - [Making a Demo Video](making-a-demo-video.md): demo or blog teaser, beat sheet before the file, labeled screens with no garden paths, pacing and attention, facts only, readable style, the deterministic `window.seek(t)` HTML contract, exporting to MP4, and handling revisions.
+- [Making an Explanatory Video](making-an-explanatory-video.md): a codebase walkthrough for new contributors, built on the demo's HTML contract and export: one layer and five boxes, every arrow checked against the source, one request traced end to end on a fixed stage, progressive disclosure, and an ending that shows where new code goes.

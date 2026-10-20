@@ -45,6 +45,8 @@ repos:
         entry: python scripts/check_routing.py
         language: system
         pass_filenames: false
+        # Show the size warnings, which don't fail the hook, on a passing run too.
+        verbose: true
         files: \.md$
       - id: check-deslop-catalogue
         name: check deslop rules match the pattern catalogue

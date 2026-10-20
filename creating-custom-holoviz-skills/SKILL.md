@@ -153,7 +153,9 @@ After the frontmatter, write Markdown. Key principles:
   core instructions.
 - **Keep it under ~500 lines.** If you're exceeding that, split detailed
   references into separate files that the agent loads on demand (see
-  Resource files below).
+  Resource files below). The `check skill routing and links` hook warns when a
+  SKILL.md passes 20,000 chars or a reference passes 25,000, which is the cue
+  to split by user need (see Splitting references).
 - **Be opinionated.** State the correct way to do things, don't enumerate
   alternatives. Agents follow confident instructions better than menus.
 - **Explain why.** LLMs follow reasoning better than bare directives. Instead

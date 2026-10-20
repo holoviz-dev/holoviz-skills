@@ -21,6 +21,9 @@ in-progress notes so it is skipped by the extraction.
   guessing.
 - **Row budget** — `check_routing.py` fails a Loading Table row that loads more than
   80,000 chars, so a reference added to a busy row has to displace something.
+- **Size warnings** — `check_routing.py` also warns, without failing, about a SKILL.md over
+  20,000 chars or a reference over 25,000, with a hint on how to split it. The pre-commit
+  hook runs verbose so the warning shows on a passing commit.
 - **Install a subset of skills** — `install`, `uninstall` and `update` take skill names or
   unique prefixes (`holoviz-skills install developing`), since library users and HoloViz
   maintainers want different skills.
@@ -90,6 +93,16 @@ in-progress notes so it is skipped by the extraction.
 
 ### Changed
 
+- **Dashboard example and its docs screenshot** — the Revenue KPI reads in thousands, since
+  `Trend` showed `5.698e+5` for anything over 100,000, and both charts label dates by month with
+  the year once below, where "Mar 2025May 2025…" ran together. The docs build now waits for
+  each `.pn-loading` overlay to clear before taking the screenshot, instead of a fixed 3 s that
+  captured the KPI cards before `defer_load` filled them.
+- **Explanatory videos moved into `outreach`** — `explanatory-video` was a sub-skill of its
+  own that read `outreach/making-a-demo-video.md` for its HTML contract and export, so it's
+  now `outreach/making-an-explanatory-video.md` beside the reference it builds on. The
+  routing row loads the same files as before. Cowork installs lose the separate
+  `holoviz-skills:explanatory-video` skill on their next update.
 - **Installs skip `test_*.py`**, which test the skills' scripts and are no use to an agent.
 - **`install` and `uninstall` handle symlinked skills** — `npx skills` installs a skill as a
   symlink to its own copy, which made both commands crash, since `shutil.rmtree` refuses
