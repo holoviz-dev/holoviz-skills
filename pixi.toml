@@ -107,6 +107,7 @@ pytest = "*"
 [feature.eval.pypi-dependencies]
 playwright = "*"
 outerbounds = "*"
+astral = "*"
 
 [feature.eval.tasks]
 _eval-setup = { cmd = "playwright install chromium", description = "Install Playwright browser for screenshots" }

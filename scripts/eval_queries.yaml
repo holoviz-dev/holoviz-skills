@@ -13,19 +13,19 @@
 # executed by anything currently.
 
 queries:
-  - id: hvplot_interactive_scatter
-    prompt: |
-      Create an interactive scatter plot with hvplot from a pandas DataFrame
-      containing columns 'x', 'y', and 'category'. Include hover tooltips
-      that show all column values when hovering over points.
-    expected_output: static_plot
-    timeout: 600
-    category: hvplot_interactivity
-
   - id: hvplot_earthquake_plot
     prompt: |
       I'm working with the earthquake dataset from the sampledata module.
       Create an hvplot map visualization using a dark CartoDB tile basemap, colored by magnitude.
     expected_output: static_plot
     timeout: 600
-    category: hvplot_interactivity
+    category: hvplot
+
+  - id: panel_sunset_app
+    prompt: |
+      Create a sunrise/sunset app using the astral package with holoviz.
+      It should take a lat / lon and then create an area chart with a red vertical line marking the current date time.
+      Do not try to create an env.
+    expected_output: panel_app
+    timeout: 600
+    category: panel
