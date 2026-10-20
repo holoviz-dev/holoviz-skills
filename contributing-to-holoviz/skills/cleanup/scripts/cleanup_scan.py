@@ -156,7 +156,10 @@ def check_single_use_constants(
             # parameter's name already says what the value is there. Zero reads
             # is likely public API used outside the scanned files.
             if reads[name] == 1 and name in named_reads:
-                message = f"{name} is read once, as a value the parameter name explains; inline it"
+                message = (
+                    f"{name} is read once, as a value the parameter name explains; inline it, "
+                    "or ignore it with a reason if it's a setting meant to be changed here"
+                )
                 hits.append(Hit(path, node.lineno, "single-use-constant", message))
     return hits
 
