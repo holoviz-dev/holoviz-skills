@@ -1,16 +1,17 @@
 # Evaluation queries for testing HoloViz skills
 # Each query tests whether SKILL.md files improve the agent's responses
 #
-# Coverage note: only the hvplot skill has queries below. scripts/README.md
-# lists what the other skills have.
+# Coverage note: the hvplot and panel skills have queries below. scripts/README.md
+# lists what the other skills have (and how to add more).
 #
 # NOTE: `expected_output` and `category` fields below are NOT read or
 # enforced by scripts/eval.py (see load_queries/run_generation, which only use
 # `id`, `prompt`, and `timeout`). They are documentation-only / reserved for
-# future use. `expected_output: static_plot` is the only value that lines up
-# with what `execute_generated.py` can actually save today (HoloViews
-# `Dimensioned` or Bokeh `Model` objects); a `panel_app` value would not be
-# executed by anything currently.
+# future use. `execute_generated.py` can now save and screenshot:
+#   - static_plot: HoloViews `Dimensioned`, Bokeh `Model`, or matplotlib figure
+#   - panel_app:   Panel `Viewable` / `Viewer` object (`pn.io.save` + screenshot)
+# Do not call `pn.serve(...)` in generated code — the executor runs the file to
+# completion, so a blocking server call hits the execution timeout.
 
 queries:
   - id: hvplot_earthquake_plot
