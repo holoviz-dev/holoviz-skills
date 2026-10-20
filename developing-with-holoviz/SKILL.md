@@ -4,7 +4,7 @@ description: Route to HoloViz sub-skills. Use for ANY task involving interactive
 user-invocable: true
 argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component]"
 metadata:
-  version: "2026.08.13"
+  version: "2026.10.20"
   author: holoviz
 ---
 
@@ -36,7 +36,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Quick exploratory plots from DataFrames / xarray | `skills/hvplot/SKILL.md` |
 | Compose a layered, faceted view to compare a metric across groups | `skills/hvplot/SKILL.md` + `skills/hvplot/composing-exploratory-plots.md` |
 | Make a chart explanatory for an audience (one message, presentation-ready) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` |
-| Build a data story / graphic article (charts + narrative) | `skills/hvplot/distilling-explanatory-plots.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/data-storytelling.md` |
+| Build a data story / graphic article (charts + narrative) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/data-storytelling.md` |
 | Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` |
 | Convert a design / screenshot / React app into a Material UI (pmui) app | `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/converting-designs-to-material-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
 | Keep an existing React/JSX UI and serve it as the app, embedding Panel components inside it | `skills/panel/SKILL.md` + `skills/panel/building-custom-components.md` + `skills/panel/wrapping-react-apps.md` |
@@ -60,5 +60,5 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 |---|---|
 | [param](skills/param/SKILL.md) | `@param.depends`, `watch=True`, `.watch()`, parameter types, dependent parameters |
 | [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
-| [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, session defaults (`hv.opts.defaults`), hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections. Carries the Decluttering Plots reference. |
+| [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, session defaults (`hv.opts.defaults`), hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections, decluttering plots |
 | [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, defaults, templates, serving, performance, plotting gotchas; 13 topic references indexed in its own References section |

@@ -72,6 +72,17 @@ in-progress notes so it is skipped by the extraction.
 
 ### Changed
 
+- **hvPlot basemaps** — Geographic Plots no longer tells agents to pass `geo=True` for a
+  basemap, which contradicted the HoloViews tile guidance and pulled in GeoViews for nothing;
+  the earthquakes example drops it too.
+- **Less duplicated guidance in co-loaded files** — `pn.io.hold()` is taught once, in the
+  `panel` skill, with `param` keeping a one-line pointer, and `plotting-in-panel.md`'s
+  DynamicMap example no longer repeats the Panel skill's imports and data setup. Both pairs
+  load together on the dashboard and plot-embedding rows.
+- **`deslop` catalogue moved to `deslop/patterns.md`**, flat beside its SKILL.md like every
+  other reference, instead of a `references/` subfolder.
+- **Data-story routing row** now loads `hvplot/SKILL.md` with its reference, and the
+  `holoviews` Skill Map entry no longer names its reference.
 - **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline now
   drives the Kilo Code CLI (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier, with
   `eval-multi` comparing it against the paid `kilo/kilo-auto/frontier` tier. Configure a
