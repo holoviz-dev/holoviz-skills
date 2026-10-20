@@ -5,6 +5,7 @@ Usage::
     holoviz-skills install --help           # show all tool flags
     holoviz-skills install                  # auto-detect tools
     holoviz-skills install --global         # install to global (~/) paths
+    holoviz-skills install developing --claude-code  # one skill (name or prefix)
     holoviz-skills list                     # show what's installed where
     holoviz-skills uninstall --claude-code
     holoviz-skills --version                # show the installed version
@@ -69,6 +70,29 @@ def _find_skill_dirs(root: Path) -> list[Path]:
         and not d.name.startswith("_")
         and (d / "SKILL.md").exists()
     )
+
+
+def _select_skills(skill_dirs: list[Path], names: list[str]) -> list[Path] | None:
+    """Filter ``skill_dirs`` to ``names``, matching full names or unique prefixes
+    (``developing`` → ``developing-with-holoviz``); all if empty, None on a bad name."""
+    if not names:
+        return skill_dirs
+    available = {d.name: d for d in skill_dirs}
+    selected: dict[str, Path] = {}
+    bad: list[str] = []
+    for name in names:
+        matches = [n for n in available if n == name] or [
+            n for n in available if n.startswith(name)
+        ]
+        if len(matches) == 1:
+            selected[matches[0]] = available[matches[0]]
+        else:
+            bad.append(f"{name} ({'ambiguous' if matches else 'unknown'})")
+    if bad:
+        print(f"Bad skill name(s): {', '.join(bad)}", file=sys.stderr)
+        print(f"Available: {', '.join(available)}", file=sys.stderr)
+        return None
+    return list(selected.values())
 
 
 # ---------------------------------------------------------------------------
@@ -400,7 +424,9 @@ def _key_attr(key: str) -> str:
 def cmd_install(args: argparse.Namespace) -> int:
     tools = _make_tools(use_global=args.use_global)
     skills_root = _skills_root()
-    skill_dirs = _find_skill_dirs(skills_root)
+    skill_dirs = _select_skills(_find_skill_dirs(skills_root), args.skills)
+    if skill_dirs is None:
+        return 2
     print(f"Source: {skills_root}\n")
 
     # Which tools to install for.
@@ -485,7 +511,10 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def cmd_uninstall(args: argparse.Namespace) -> int:
     tools = _make_tools(use_global=args.use_global)
-    skill_names = [d.name for d in _find_skill_dirs(_skills_root())]
+    skill_dirs = _select_skills(_find_skill_dirs(_skills_root()), args.skills)
+    if skill_dirs is None:
+        return 2
+    skill_names = [d.name for d in skill_dirs]
 
     requested = [key for key in tools if getattr(args, _key_attr(key), False)]
     if not requested:
@@ -511,6 +540,13 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     def _add_tool_flags(p: argparse.ArgumentParser, *, include_global: bool = False) -> None:
+        p.add_argument(
+            "skills",
+            nargs="*",
+            metavar="SKILL",
+            help="Skill(s) to act on by name or unique prefix, e.g. developing, "
+            "contributing (default: all; see `holoviz-skills list`)",
+        )
         if include_global:
             p.add_argument(
                 "--global",
