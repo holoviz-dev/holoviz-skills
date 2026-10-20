@@ -81,6 +81,9 @@ in-progress notes so it is skipped by the extraction.
   load together on the dashboard and plot-embedding rows.
 - **`deslop` catalogue moved to `deslop/patterns.md`**, flat beside its SKILL.md like every
   other reference, instead of a `references/` subfolder.
+- **`deslop` catches what the Deslopping AI prose post covers** — the catalogue adds passive
+  voice that hides the actor and tables where a sentence would do, and the Report step suggests
+  reading the result aloud or getting a second reviewer.
 - **Data-story routing row** now loads `hvplot/SKILL.md` with its reference, and the
   `holoviews` Skill Map entry no longer names its reference.
 - **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline now

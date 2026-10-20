@@ -452,6 +452,10 @@ Reread for these after working through the scanner hits.
 
 **Sections that restate themselves.** The same thing at section scale: a section's last sentence repeats its heading or its opening line. *If a sentence promises content, delete the promise and keep the content. … If the announcement has nothing behind it, the whole sentence goes.* Check the last sentence of every section against its first, and cut it unless it adds a case the first didn't cover.
 
+**Passive voice that hides who did it.** *Mistakes were made*, *the decision was taken*: the sentence has an actor and leaves them out. Name who did it, or own it in the first person.
+
+**A table where a sentence would do.** Two rows, or cells of one or two words, laid out as a table because a table looks thorough. Write the sentence.
+
 **Uniform sentence length.** Every sentence between 12 and 20 words. Human prose varies more, including sentences of three words and of fifty.
 
 **Confidence that outruns the evidence.** Hedges deleted where they belonged, certainty added where the author had none.

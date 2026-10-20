@@ -56,7 +56,7 @@ The scanner is a starting point, not the specification. It has false positives (
 
 **5. Verify, and repeat.** Re-run the scanner on the result and reread the whole piece again, because one pass is never enough: rewrites introduce their own tics (a merged sentence becomes a new "not X but Y", a cut announcement leaves two choppy beats behind), and the patterns no regex catches only show up on a fresh read. Cuts also break references, so reread the sentences around each deletion for a pronoun, "this" or "that" left pointing at something that's gone. Keep alternating scan and reread until a pass turns up nothing new. Every remaining hit needs a reason: quoted material, a false positive, or an intentional choice you flag to the user.
 
-**6. Report.** Say what you cut and, briefly, what you deliberately left. Do not paste the scanner output at the user.
+**6. Report.** Say what you cut and, briefly, what you deliberately left. Do not paste the scanner output at the user. Suggest the author read it aloud or have someone else review it before it goes out, since triplets and restatements are obvious when spoken and the scanner can't hear rhythm.
 
 ## Rewrite principles
 
