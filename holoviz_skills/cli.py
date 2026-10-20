@@ -2,11 +2,14 @@
 
 Usage::
 
+    uvx holoviz-skills install              # auto-detect tools, nothing to pre-install
     holoviz-skills install --help           # show all tool flags
-    holoviz-skills install                  # auto-detect tools
     holoviz-skills install --global         # install to global (~/) paths
     holoviz-skills install developing --claude-code  # one skill (name or prefix)
-    holoviz-skills list                     # show what's installed where
+    holoviz-skills list                     # show what's installed where, and if it's current
+    holoviz-skills update                   # re-install what's installed, showing what changed
+    holoviz-skills doctor                   # stale copies, library versions, compatibility
+    holoviz-skills agents-md                # add a short pointer to AGENTS.md
     holoviz-skills uninstall --claude-code
     holoviz-skills --version                # show the installed version
 """
@@ -14,7 +17,11 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import json
+import os
+import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -93,6 +100,49 @@ def _select_skills(skill_dirs: list[Path], names: list[str]) -> list[Path] | Non
         print(f"Available: {', '.join(available)}", file=sys.stderr)
         return None
     return list(selected.values())
+
+
+# ---------------------------------------------------------------------------
+# Skill metadata
+# ---------------------------------------------------------------------------
+
+_FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
+_VERSION_RE = re.compile(r'^\s+version:\s*["\']?([0-9][0-9.]*)["\']?\s*$', re.MULTILINE)
+_DESCRIPTION_RE = re.compile(r"^description:\s*(.+)$", re.MULTILINE)
+
+
+def _frontmatter(skill_md: Path) -> str:
+    if not skill_md.is_file():
+        return ""
+    m = _FRONTMATTER_RE.match(skill_md.read_text(encoding="utf-8"))
+    return m.group(0) if m else ""
+
+
+def _versions(skill_dir: Path) -> dict[str, str | None]:
+    """``metadata.version`` of every SKILL.md in a skill tree, keyed by skill name.
+
+    Each sub-skill is versioned on its own, so the routing skill's version alone
+    can't say whether an installed copy is current.
+    """
+    versions: dict[str, str | None] = {}
+    for skill_md in sorted(skill_dir.rglob("SKILL.md")):
+        m = _VERSION_RE.search(_frontmatter(skill_md))
+        versions[skill_md.parent.name] = m.group(1) if m else None
+    return versions
+
+
+def _version_changes(old: dict[str, str | None], new: dict[str, str | None]) -> list[str]:
+    """``"panel 2026.09.28 → 2026.10.15"`` for each skill whose version differs."""
+    return [
+        f"{name} {old.get(name) or '—'} → {new.get(name) or 'removed'}"
+        for name in sorted(old.keys() | new.keys())
+        if old.get(name) != new.get(name)
+    ]
+
+
+def _short_description(skill_dir: Path) -> str:
+    m = _DESCRIPTION_RE.search(_frontmatter(skill_dir / "SKILL.md"))
+    return m.group(1).strip().strip("\"'").split(". ")[0] if m else ""
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +227,7 @@ class Tool:
             print(f"  {self.name}: nothing to remove")
             return 0
         for entry in entries:
-            shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
+            entry.unlink() if entry.is_symlink() or not entry.is_dir() else shutil.rmtree(entry)
             if verbose:
                 print(f"    - {entry.name}")
         if not any(self.install_path.iterdir()):
@@ -191,20 +241,27 @@ class Tool:
 
 
 def _install_dirs(skill_dirs: list[Path], dest: Path, verbose: bool) -> int:
-    """Copy full skill directory trees (Claude Code style)."""
+    """Copy full skill directory trees, reporting which skills changed in each."""
     dest.mkdir(parents=True, exist_ok=True)
     count = 0
     for skill_dir in skill_dirs:
         target = dest / skill_dir.name
-        if target.exists():
+        old = _versions(target) if target.is_dir() else {}
+        # `npx skills` installs symlinks to its own copy: replace the link, not what it
+        # points to (rmtree refuses symlinks anyway).
+        if target.is_symlink():
+            target.unlink()
+        elif target.exists():
             shutil.rmtree(target)
         shutil.copytree(
             skill_dir,
             target,
-            ignore=shutil.ignore_patterns(".DS_Store", ".gitkeep", "__pycache__"),
+            ignore=shutil.ignore_patterns(".DS_Store", ".gitkeep", "__pycache__", "test_*.py"),
         )
         if verbose:
-            print(f"    + {skill_dir.name}/")
+            changes = _version_changes(old, _versions(target))
+            status = "new" if not old else "; ".join(changes) or "unchanged"
+            print(f"    + {skill_dir.name}/  ({status})")
         count += 1
     return count
 
@@ -506,6 +563,8 @@ def cmd_list(args: argparse.Namespace) -> int:
         print(f"  {name:<{name_w}}  {proj:<{proj_w}}  {glob:<{glob_w}}  {status:<{stat_w}}")
 
     print()
+    if _print_installed(_installed_locations(skill_dirs), skill_dirs):
+        print("Run `holoviz-skills update` to bring these in line with this release.\n")
     return 0
 
 
@@ -523,6 +582,231 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
 
     for key in requested:
         tools[key].uninstall(skill_names)
+    return 0
+
+
+def _installed_locations(skill_dirs: list[Path]) -> list[tuple[str, Path, list[Path]]]:
+    """``(tool names, install path, our skill copies there)`` for each path holding any.
+
+    Keyed by path, not tool, because several tools share ``.agents/skills``.
+    """
+    found: dict[Path, tuple[list[str], list[Path]]] = {}
+    for use_global in (False, True):
+        for tool in _make_tools(use_global=use_global).values():
+            copies = [tool.install_path / d.name for d in skill_dirs]
+            copies = [c for c in copies if c.is_dir()]
+            if copies:
+                names, _ = found.setdefault(tool.install_path, ([], copies))
+                if tool.name not in names:
+                    names.append(tool.name)
+    return [(", ".join(names), path, copies) for path, (names, copies) in found.items()]
+
+
+def _print_installed(locations: list[tuple[str, Path, list[Path]]], skill_dirs: list[Path]) -> int:
+    """Print each installed copy against this release; return how many differ."""
+    if not locations:
+        return 0
+    source = {d.name: d for d in skill_dirs}
+    differing = 0
+    print("Installed copies, compared with this release:")
+    for names, path, copies in locations:
+        print(f"  {path}  [{names}]")
+        for copy in copies:
+            changes = _version_changes(_versions(copy), _versions(source[copy.name]))
+            differing += bool(changes)
+            state = "differs: " + "; ".join(changes) if changes else "up to date"
+            print(f"    {copy.name}: {state}")
+    print()
+    return differing
+
+
+def cmd_update(args: argparse.Namespace) -> int:
+    skill_dirs = _select_skills(_find_skill_dirs(_skills_root()), args.skills)
+    if skill_dirs is None:
+        return 2
+    source = {d.name: d for d in skill_dirs}
+    tools = _make_tools(use_global=args.use_global)
+    requested = [key for key in tools if getattr(args, _key_attr(key), False)]
+    only = {tools[key].install_path for key in requested}
+
+    total = 0
+    for names, path, copies in _installed_locations(skill_dirs):
+        if only and path not in only:
+            continue
+        print(f"Updating {path}  [{names}]")
+        total += _install_dirs([source[c.name] for c in copies], path, verbose=True)
+        print()
+    if not total:
+        print("No installed HoloViz skills to update. Install some first, e.g.")
+        print("  holoviz-skills install developing --claude-code")
+        return 1
+    print(f"Done — {total} skill(s) refreshed from holoviz-skills {__version__}.")
+    print("For the newest release instead: uvx holoviz-skills@latest update")
+    return 0
+
+
+# ---- doctor ----
+
+# Libraries the skills teach; doctor reports their versions in the user's env.
+LIBRARIES = (
+    "panel",
+    "panel-material-ui",
+    "holoviews",
+    "hvplot",
+    "param",
+    "bokeh",
+    "datashader",
+    "geoviews",
+    "lumen",
+)
+_COMPATIBILITY_RE = re.compile(r"^compatibility:\s*(.+)$", re.MULTILINE)
+_REQUIREMENT_RE = re.compile(r"\b([A-Za-z][A-Za-z0-9_.-]*)\s*(>=|<=|==|!=|>|<)\s*([0-9][0-9.]*)")
+_VERSIONS_SNIPPET = """
+import importlib.metadata as md, json, sys
+found = {}
+for name in sys.argv[1:]:
+    try:
+        found[name] = md.version(name)
+    except md.PackageNotFoundError:
+        found[name] = None
+print(json.dumps(found))
+"""
+
+
+def _project_python(explicit: str | None) -> str:
+    """The interpreter of the user's project rather than the one running this CLI.
+
+    Under ``uvx`` this CLI runs in a throwaway environment without the user's
+    libraries, so an activated virtualenv or conda env wins, then ``python`` on PATH.
+    """
+    if explicit:
+        return explicit
+    for var in ("VIRTUAL_ENV", "CONDA_PREFIX"):
+        prefix = os.environ.get(var)
+        if not prefix or Path(prefix).resolve() == Path(sys.prefix).resolve():
+            continue
+        for rel in ("bin/python", "Scripts/python.exe", "python.exe"):
+            if (Path(prefix) / rel).exists():
+                return str(Path(prefix) / rel)
+    return shutil.which("python3") or shutil.which("python") or sys.executable
+
+
+def _library_versions(python: str, names: list[str]) -> dict[str, str | None] | None:
+    try:
+        result = subprocess.run(
+            [python, "-c", _VERSIONS_SNIPPET, *names],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
+        return json.loads(result.stdout)
+    except (OSError, subprocess.SubprocessError, ValueError) as e:
+        print(f"  couldn't query {python}: {e}")
+        return None
+
+
+def _satisfies(found: str, op: str, wanted: str) -> bool:
+    def numbers(version: str) -> tuple[int, ...]:
+        m = re.match(r"\d+(?:\.\d+)*", version)
+        return tuple(int(x) for x in m.group(0).split(".")) if m else ()
+
+    a, b = numbers(found), numbers(wanted)
+    width = max(len(a), len(b))
+    a, b = a + (0,) * (width - len(a)), b + (0,) * (width - len(b))
+    return {">=": a >= b, "<=": a <= b, "==": a == b, "!=": a != b, ">": a > b, "<": a < b}[op]
+
+
+def _requirements(skill_dir: Path) -> list[tuple[str, str, str, str]]:
+    """``(skill, package, op, version)`` from every ``compatibility:`` field in a tree."""
+    found = []
+    for skill_md in sorted(skill_dir.rglob("SKILL.md")):
+        m = _COMPATIBILITY_RE.search(_frontmatter(skill_md))
+        if m:
+            name = skill_md.parent.name
+            found.extend((name, *req) for req in _REQUIREMENT_RE.findall(m.group(1)))
+    return found
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    skill_dirs = _find_skill_dirs(_skills_root())
+    print(f"holoviz-skills {__version__}\n")
+
+    locations = _installed_locations(skill_dirs)
+    problems = _print_installed(locations, skill_dirs)
+    if not locations:
+        print("No HoloViz skills installed. Run `holoviz-skills install`; it detects your tools.\n")
+        problems += 1
+    elif problems:
+        print("Run `holoviz-skills update` to refresh the copies that differ.\n")
+
+    trees = [copy for _, _, copies in locations for copy in copies] or skill_dirs
+    requirements = list(dict.fromkeys(r for tree in trees for r in _requirements(tree)))
+    names = list(dict.fromkeys([*LIBRARIES, *(pkg for _, pkg, _, _ in requirements)]))
+    python = _project_python(args.python)
+    print(f"Libraries in {python} (pass --python to check another):")
+    versions = _library_versions(python, names)
+    if versions is None:
+        return 1
+    listed = ", ".join(f"{n} {v}" for n, v in versions.items() if v)
+    print(f"  {listed}" if listed else "  none of the HoloViz libraries are installed")
+
+    print("\nCompatibility:")
+    if not requirements:
+        print("  no skill declares a `compatibility` requirement")
+    for skill, pkg, op, wanted in requirements:
+        found = versions.get(pkg)
+        if found is None:
+            print(f"  skip {skill} needs {pkg}{op}{wanted}; {pkg} isn't installed")
+            continue
+        ok = _satisfies(found, op, wanted)
+        problems += not ok
+        print(f"  {'ok  ' if ok else 'FAIL'} {skill} needs {pkg}{op}{wanted}, found {found}")
+    return 1 if problems else 0
+
+
+# ---- agents-md ----
+
+AGENTS_START = "<!-- holoviz-skills:start -->"
+AGENTS_END = "<!-- holoviz-skills:end -->"
+# One line per skill for an always-loaded instructions file: when to load it,
+# not what it contains, so the pointer stays a few dozen tokens.
+AGENTS_HINTS = {
+    "developing-with-holoviz": "when writing code with Panel, hvPlot, HoloViews or Param "
+    "(plots, dashboards, data apps)",
+    "contributing-to-holoviz": "when changing, reviewing, testing or documenting a HoloViz "
+    "package, or writing a blog post or demo about one",
+    "creating-custom-holoviz-skills": "when adding or editing a skill in the holoviz-skills repo",
+}
+
+
+def cmd_agents_md(args: argparse.Namespace) -> int:
+    skill_dirs = _select_skills(_find_skill_dirs(_skills_root()), args.skills)
+    if skill_dirs is None:
+        return 2
+    block = "\n".join(
+        [
+            AGENTS_START,
+            "## HoloViz skills",
+            "",
+            "Load the matching skill before starting:",
+            "",
+            *(
+                f"- `{d.name}`: {AGENTS_HINTS.get(d.name) or _short_description(d)}"
+                for d in skill_dirs
+            ),
+            AGENTS_END,
+        ]
+    )
+    path = Path(args.file)
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    existing = re.compile(re.escape(AGENTS_START) + r".*?" + re.escape(AGENTS_END), re.DOTALL)
+    if existing.search(text):
+        text, verb = existing.sub(lambda _: block, text, count=1), "Updated"
+    else:
+        text, verb = (text.rstrip() + "\n\n" if text.strip() else "") + block + "\n", "Added"
+    path.write_text(text, encoding="utf-8")
+    print(f"{verb} the HoloViz skills pointer in {path} ({len(block):,} chars, read each session).")
     return 0
 
 
@@ -585,19 +869,47 @@ def main(argv: list[str] | None = None) -> int:
     _add_tool_flags(p_uninstall, include_global=True)
 
     # list
-    sub.add_parser("list", help="Show installed skills and detected tools")
+    sub.add_parser("list", help="Show installed skills, detected tools, and stale copies")
+
+    # update
+    p_update = sub.add_parser(
+        "update", help="Re-install the skills you have installed, showing what changed"
+    )
+    _add_tool_flags(p_update, include_global=True)
+
+    # doctor
+    p_doctor = sub.add_parser(
+        "doctor", help="Check installed skills against your HoloViz library versions"
+    )
+    p_doctor.add_argument(
+        "--python", help="Interpreter of the project to check (default: the active environment)"
+    )
+
+    # agents-md
+    p_agents = sub.add_parser(
+        "agents-md", help="Add a few-line pointer to the skills in AGENTS.md or another file"
+    )
+    p_agents.add_argument(
+        "skills", nargs="*", metavar="SKILL", help="Skill(s) to point to (default: all)"
+    )
+    p_agents.add_argument(
+        "--file", default="AGENTS.md", help="File to update (default: AGENTS.md; e.g. CLAUDE.md)"
+    )
 
     args = parser.parse_args(argv)
 
-    if args.command == "install":
-        return cmd_install(args)
-    elif args.command == "uninstall":
-        return cmd_uninstall(args)
-    elif args.command == "list":
-        return cmd_list(args)
-    else:
+    commands = {
+        "install": cmd_install,
+        "uninstall": cmd_uninstall,
+        "list": cmd_list,
+        "update": cmd_update,
+        "doctor": cmd_doctor,
+        "agents-md": cmd_agents_md,
+    }
+    if args.command not in commands:
         parser.print_help()
         return 0
+    return commands[args.command](args)
 
 
 if __name__ == "__main__":

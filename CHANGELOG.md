@@ -14,6 +14,15 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
+- **Install a subset of skills** — `install`, `uninstall` and `update` take skill names or
+  unique prefixes (`holoviz-skills install developing`), since library users and HoloViz
+  maintainers want different skills.
+- **`holoviz-skills update`, `doctor` and `agents-md`** — `update` re-installs what's
+  installed and says which skills changed, and `install` and `list` show the same per-skill
+  version changes. `doctor` reports stale copies, the HoloViz library versions in the
+  project's environment rather than uvx's, and any `compatibility` requirement they miss.
+  `agents-md` adds a few-line pointer to `AGENTS.md` (or `--file CLAUDE.md`), for teams wary
+  of putting the skills themselves in an always-loaded file.
 - **`holoviz-skills --version`** - prints the installed package version.
 - **Shared `eval-data` branch for eval history** — CI publishes run history and run
   snapshots (JSON only) to a dedicated `eval-data` git branch after each eval run.
@@ -72,6 +81,10 @@ in-progress notes so it is skipped by the extraction.
 
 ### Changed
 
+- **Installs skip `test_*.py`**, which test the skills' scripts and are no use to an agent.
+- **`install` and `uninstall` handle symlinked skills** — `npx skills` installs a skill as a
+  symlink to its own copy, which made both commands crash, since `shutil.rmtree` refuses
+  symlinks. They now replace or remove the link and leave the copy it points to alone.
 - **hvPlot basemaps** — Geographic Plots no longer tells agents to pass `geo=True` for a
   basemap, which contradicted the HoloViews tile guidance and pulled in GeoViews for nothing;
   the earthquakes example drops it too.
