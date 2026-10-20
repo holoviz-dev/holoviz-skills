@@ -816,8 +816,13 @@ def generate_example_screenshots(examples: list[Example], skill_dir: Path) -> di
             for ex in examples:
                 url = f"http://localhost:5099/{ex.slug}"
                 try:
-                    page.goto(url, timeout=10000)
-                    page.wait_for_timeout(3000)
+                    page.goto(url, wait_until="networkidle", timeout=30000)
+                    # With defer_load or loading_indicator, each component shows a
+                    # .pn-loading overlay until it renders, and a fixed wait can beat it.
+                    page.wait_for_function(
+                        "() => !document.querySelector('.pn-loading')", timeout=30000
+                    )
+                    page.wait_for_timeout(500)  # let canvases finish painting
 
                     screenshot_dir = ASSETS_DIR / "examples"
                     screenshot_dir.mkdir(parents=True, exist_ok=True)

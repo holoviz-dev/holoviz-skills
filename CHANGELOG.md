@@ -93,6 +93,11 @@ in-progress notes so it is skipped by the extraction.
 
 ### Changed
 
+- **Dashboard example and its docs screenshot** — the Revenue KPI reads in thousands, since
+  `Trend` showed `5.698e+5` for anything over 100,000, and both charts label dates by month with
+  the year once below, where "Mar 2025May 2025…" ran together. The docs build now waits for
+  each `.pn-loading` overlay to clear before taking the screenshot, instead of a fixed 3 s that
+  captured the KPI cards before `defer_load` filled them.
 - **Explanatory videos moved into `outreach`** — `explanatory-video` was a sub-skill of its
   own that read `outreach/making-a-demo-video.md` for its HTML contract and export, so it's
   now `outreach/making-an-explanatory-video.md` beside the reference it builds on. The
