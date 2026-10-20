@@ -16,6 +16,10 @@ tracked files and reports:
 * a Loading Table row whose files, routing skill included, add up to more than
   ``ROW_BUDGET_CHARS``.
 
+It also warns, without failing, about a ``SKILL.md`` longer than
+``SKILL_MD_WARN_CHARS`` or a reference longer than ``REFERENCE_WARN_CHARS``, with a
+hint on how to split it.
+
 Exit status: 0 clean, 1 problems found. Stdlib-only, matching the other
 scripts in this folder.
 """
@@ -33,6 +37,11 @@ from build_stubs import MD_PATH_RE, find_broken_links, loading_table_rows
 # row means trimming something else in it. Characters keep the check stdlib-only;
 # the docs show token estimates for the same rows. Lower it as rows get trimmed.
 ROW_BUDGET_CHARS = 80_000
+# A file over these gets a warning, not a failure, since a long file can be the right
+# call. A SKILL.md loads whenever its skill does, and an agent may read only the start
+# of a long reference. Roughly four characters make a token.
+SKILL_MD_WARN_CHARS = 20_000
+REFERENCE_WARN_CHARS = 25_000
 
 
 def tracked_files(root: Path) -> set[PurePosixPath]:
@@ -58,14 +67,35 @@ def owning_skill(path: PurePosixPath, tracked: set[PurePosixPath]) -> PurePosixP
     return None
 
 
-def check(root: Path) -> list[str]:
-    tracked = tracked_files(root)
+def skill_markdown(root: Path, tracked: set[PurePosixPath]) -> list[PurePosixPath]:
+    """Tracked ``.md`` files under a skill directory, the ones agents get pointed at."""
     skill_roots = {p.parts[0] for p in tracked if p.name == "SKILL.md" and len(p.parts) == 2}
-    markdown = sorted(
+    return sorted(
         p
         for p in tracked
         if p.suffix == ".md" and p.parts[0] in skill_roots and (root / p).exists()
     )
+
+
+def size_warnings(root: Path) -> list[str]:
+    warnings = []
+    for path in skill_markdown(root, tracked_files(root)):
+        size = len((root / path).read_text(encoding="utf-8"))
+        if path.name == "SKILL.md":
+            limit, hint = SKILL_MD_WARN_CHARS, "move detail into a reference it links to"
+        else:
+            limit, hint = REFERENCE_WARN_CHARS, "split it into references by user need"
+        if size > limit:
+            warnings.append(
+                f"warning: {path} is {size:,} chars (~{size // 4:,} tokens), over the "
+                f"{limit:,} guideline; {hint} (see creating-custom-holoviz-skills)"
+            )
+    return warnings
+
+
+def check(root: Path) -> list[str]:
+    tracked = tracked_files(root)
+    markdown = skill_markdown(root, tracked)
     problems = []
 
     for path in markdown:
@@ -119,6 +149,8 @@ def check(root: Path) -> list[str]:
 
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
+    for warning in size_warnings(root):
+        print(warning)
     problems = check(root)
     for problem in problems:
         print(problem)
