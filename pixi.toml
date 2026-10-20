@@ -69,9 +69,11 @@ docs-build = { cmd = "zensical build", depends-on = [
 
 [feature.dev.dependencies]
 jupyterlab = "*"
+pytest = "*"
 
 [feature.dev.tasks]
 lab = { cmd = "jupyter lab", description = "Launch JupyterLab" }
+test-cli = { cmd = "pytest tests", description = "Run the holoviz-skills CLI tests" }
 
 # =================== LINT ====================
 

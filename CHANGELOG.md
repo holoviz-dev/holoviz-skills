@@ -21,6 +21,8 @@ in-progress notes so it is skipped by the extraction.
   which skills changed, and `install` and `list` show the same per-skill version changes.
   `doctor` reports stale copies, the HoloViz library versions in the project's environment
   rather than uvx's, and any `compatibility` requirement they miss.
+- **CLI tests** — `pixi run test-cli` covers skill selection, install, update, doctor and
+  symlinked skills, which had no tests before.
 - **`holoviz-skills --version`** - prints the installed package version.
 - **Shared `eval-data` branch for eval history** — CI publishes run history and run
   snapshots (JSON only) to a dedicated `eval-data` git branch after each eval run.
