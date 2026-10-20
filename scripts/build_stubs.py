@@ -20,7 +20,8 @@ the site navigation always reflects the current repo contents.
 Run this before ``zensical build`` / ``zensical serve``.  The pixi tasks in
 pixi.toml wire this up automatically.
 
-This script is deliberately self-contained (stdlib only) so it runs in any
+This script is deliberately self-contained (stdlib only, with playwright for
+screenshots and tiktoken for token counts as optional extras) so it runs in any
 environment where Zensical runs.
 """
 
@@ -34,6 +35,7 @@ import subprocess
 import sys
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -115,6 +117,14 @@ SHORTCUT_LINK_RE = re.compile(r"(?<!\\)\[([^\[\]]+)\](?![(\[:])")
 # pointers emitted in lint violation messages. The lookbehind keeps it off URL
 # paths (``https://…/x.md``) and dotted names.
 CODE_DOCREF_RE = re.compile(r"(?<![\w/.-])([a-z0-9][a-z0-9_-]*\.md)")
+# A routing skill's Loading Table, up to the next section.
+LOADING_TABLE_RE = re.compile(r"^## Loading Table\n(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+# A file path in backticks, the way a Loading Table row names each file to read.
+MD_PATH_RE = re.compile(r"`([^`\s]+\.md)`")
+# Used for the docs' token estimates, and named in the text that explains them.
+TOKEN_ENCODING = "o200k_base"
+
+TokenCounter = Callable[[str], int]
 
 
 # ---------------------------------------------------------------------------
@@ -320,11 +330,37 @@ def extract_version(text: str) -> str | None:
     return m.group(1) if m else None
 
 
-def inject_version_note(text: str, version: str | None) -> str:
-    """Insert an italic ``*Skill version X.Y.Z*`` line just after the first H1."""
-    if not version:
+def loading_table_rows(skill_md: str) -> list[tuple[str, list[str]]]:
+    """``(user need, paths)`` for each Loading Table row that names a file."""
+    match = LOADING_TABLE_RE.search(skill_md)
+    rows = []
+    for line in match.group(1).splitlines() if match else []:
+        if paths := MD_PATH_RE.findall(line):
+            rows.append((line.strip().strip("|").split("|", 1)[0].strip(), paths))
+    return rows
+
+
+def text_stats(text: str, count: TokenCounter | None) -> str:
+    """``12,345 chars · 1,890 words · 3,100 estimated tokens``; tokens only with tiktoken."""
+    parts = [f"{len(text):,} chars", f"{len(text.split()):,} words"]
+    if count:
+        parts.append(f"{count(text):,} estimated tokens")
+    return " · ".join(parts)
+
+
+def file_stats(path: Path, count: TokenCounter | None) -> str:
+    """Size of the raw file an agent reads, frontmatter included."""
+    return text_stats(path.read_text(encoding="utf-8"), count)
+
+
+def inject_version_note(text: str, version: str | None, stats: str | None = None) -> str:
+    """Insert an italic note (skill version, file size) just after the first H1."""
+    parts = [f"Skill version {version}"] if version else []
+    if stats:
+        parts.append(stats)
+    if not parts:
         return text
-    note = f"*Skill version {version}*"
+    note = f"*{' · '.join(parts)}*"
     lines = text.split("\n")
     for i, line in enumerate(lines):
         s = line.strip()
@@ -444,11 +480,19 @@ class SubSkill:
 class Category:
     """A top-level directory containing a routing SKILL.md and sub-skills."""
 
-    def __init__(self, dirname: str, title: str, description: str, version: str | None = None):
+    def __init__(
+        self,
+        dirname: str,
+        title: str,
+        description: str,
+        version: str | None = None,
+        router: Path | None = None,
+    ):
         self.dirname = dirname
         self.title = title
         self.description = description
         self.version = version
+        self.router = router  # the routing SKILL.md
         self.children: list[SubSkill] = []
 
 
@@ -534,11 +578,70 @@ def ordered_sections(
 
 
 # ---------------------------------------------------------------------------
+# Context cost
+# ---------------------------------------------------------------------------
+
+
+def make_token_counter() -> TokenCounter | None:
+    """Return a token counter, or None when tiktoken isn't installed.
+
+    Every agent host tokenizes differently and Claude's tokenizer isn't public,
+    so the counts use tiktoken's ``o200k_base`` as a vendor-neutral estimate:
+    right for comparing files and Loading Table rows, not for exact budgets.
+    """
+    try:
+        import tiktoken
+    except ImportError:  # cleanup: ignore[silent-except] optional; None means no token counts
+        print("build_stubs: tiktoken not installed — pages show chars and words only")
+        return None
+    encoding = tiktoken.get_encoding(TOKEN_ENCODING)
+    return lambda text: len(encoding.encode(text, disallowed_special=()))
+
+
+def generate_cost_md(router: Path, count: TokenCounter | None) -> str:
+    """Docs section sizing what an agent reads for each Loading Table row.
+
+    A row's size is the routing file plus every file the row lists, since the
+    routing skill tells the agent to read all of them before answering.
+    """
+    raw = router.read_text(encoding="utf-8")
+    rows = []
+    for need, paths in loading_table_rows(raw):
+        files = [router.parent / p for p in dict.fromkeys(paths) if (router.parent / p).is_file()]
+        if not files:
+            continue
+        combined = "\n".join([raw, *(f.read_text(encoding="utf-8") for f in files)])
+        rows.append(f"| {need} | {len(files)} | {text_stats(combined, count)} |")
+
+    estimate = (
+        f"Token counts are estimates from tiktoken's `{TOKEN_ENCODING}` encoding; other "
+        "tokenizers, Claude's included, count differently, so compare them as relative sizes. "
+        if count
+        else ""
+    )
+    description = extract_description(raw) or ""
+    return "\n".join(
+        [
+            "## Context cost",
+            "",
+            f"{estimate}Until a task matches, an agent holds only this skill's description "
+            f"({text_stats(description, count)}); on a match it reads the routing file "
+            f"({text_stats(raw, count)}) and then every file listed for the matching need.",
+            "",
+            "| Need | Files | Routing file + files |",
+            "|---|---|---|",
+            *rows,
+            "",
+        ]
+    )
+
+
+# ---------------------------------------------------------------------------
 # Index page generation
 # ---------------------------------------------------------------------------
 
 
-def generate_index_md(cat: Category) -> str:
+def generate_index_md(cat: Category, count: TokenCounter | None = None) -> str:
     """Create a docs-facing index page for a category section."""
     children = ordered_children(cat)
     lines = [
@@ -557,6 +660,8 @@ def generate_index_md(cat: Category) -> str:
         else:
             lines.append(f"| [{child.title}]({child.slug}.md) | {desc} |")
     lines.append("")
+    if cat.router:
+        lines.append(generate_cost_md(cat.router, count))
     return "\n".join(lines)
 
 
@@ -757,6 +862,7 @@ def build() -> int:
     if not all_skills:
         print("build_stubs: no SKILL.md files found — nothing to generate.")
         return 0
+    count = make_token_counter()
 
     # ---- Classify each SKILL.md ----
     # First pass: figure out which top-level dirs have sub-skills.
@@ -780,7 +886,7 @@ def build() -> int:
             title = extract_h1_title(root_cleaned) or slug_to_title(tld)
             desc = extract_description(root_raw) or ""
 
-            cat = Category(tld, title, desc, extract_version(root_raw))
+            cat = Category(tld, title, desc, extract_version(root_raw), roots[0] if roots else None)
 
             for child_md in children:
                 raw = child_md.read_text(encoding="utf-8")
@@ -899,8 +1005,10 @@ def build() -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Section index page (docs-facing, not the routing skill).
+        router_stats = file_stats(cat.router, count) if cat.router else None
         index_md = inject_source_meta(
-            inject_version_note(generate_index_md(cat), cat.version), f"{cat.dirname}/SKILL.md"
+            inject_version_note(generate_index_md(cat, count), cat.version, router_stats),
+            f"{cat.dirname}/SKILL.md",
         )
         (out_dir / "index.md").write_text(index_md, encoding="utf-8")
         print(f"build_stubs: {cat.dirname}/  ->  docs/{cat.dirname}/index.md")
@@ -915,8 +1023,9 @@ def build() -> int:
                 skill_dir.mkdir(parents=True, exist_ok=True)
 
                 dest = skill_dir / "index.md"
+                stats = file_stats(child.source, count)
                 content = inject_source_meta(
-                    inject_version_note(child.cleaned, child.version), str(rel_src)
+                    inject_version_note(child.cleaned, child.version, stats), str(rel_src)
                 )
                 dest.write_text(content, encoding="utf-8")
                 print(f"build_stubs: {rel_src}  ->  docs/{cat.dirname}/{child.slug}/index.md")
@@ -926,7 +1035,10 @@ def build() -> int:
                     ref_dest = skill_dir / f"{ref.slug}.md"
                     ref_rel_src = ref.source.relative_to(REPO_ROOT)
                     ref_content = inject_source_meta(
-                        inject_version_note(ref.cleaned, ref.version), str(ref_rel_src)
+                        inject_version_note(
+                            ref.cleaned, ref.version, file_stats(ref.source, count)
+                        ),
+                        str(ref_rel_src),
                     )
                     ref_dest.write_text(ref_content, encoding="utf-8")
                     print(
@@ -964,8 +1076,9 @@ def build() -> int:
             else:
                 # Flat page (no references or examples).
                 dest = out_dir / f"{child.slug}.md"
+                stats = file_stats(child.source, count)
                 content = inject_source_meta(
-                    inject_version_note(child.cleaned, child.version), str(rel_src)
+                    inject_version_note(child.cleaned, child.version, stats), str(rel_src)
                 )
                 dest.write_text(content, encoding="utf-8")
                 print(f"build_stubs: {rel_src}  ->  docs/{cat.dirname}/{child.slug}.md")
@@ -974,7 +1087,10 @@ def build() -> int:
     for st in standalones.values():
         dest = DOCS_DIR / f"{st.slug}.md"
         rel_src = st.source.relative_to(REPO_ROOT)
-        content = inject_source_meta(inject_version_note(st.cleaned, st.version), str(rel_src))
+        stats = file_stats(st.source, count)
+        content = inject_source_meta(
+            inject_version_note(st.cleaned, st.version, stats), str(rel_src)
+        )
         dest.write_text(content, encoding="utf-8")
         print(f"build_stubs: {rel_src}  ->  docs/{st.slug}.md")
         page_count += 1

@@ -12,7 +12,9 @@ tracked files and reports:
   check the docs build warns with (``build_stubs.find_broken_links``);
 * a sub-skill ``SKILL.md`` missing from its routing skill's Loading Table;
 * any other ``.md`` under ``skills/`` that neither the Loading Table nor its
-  sub-skill's ``SKILL.md`` names.
+  sub-skill's ``SKILL.md`` names;
+* a Loading Table row whose files, routing skill included, add up to more than
+  ``ROW_BUDGET_CHARS``.
 
 Exit status: 0 clean, 1 problems found. Stdlib-only, matching the other
 scripts in this folder.
@@ -20,14 +22,17 @@ scripts in this folder.
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
-from build_stubs import find_broken_links
+from build_stubs import MD_PATH_RE, find_broken_links, loading_table_rows
 
-MD_PATH_RE = re.compile(r"`([^`\s]+\.md)`")
+# What an agent reads for one Loading Table row before answering: the routing
+# skill plus every file the row lists. A row over this fails, so growing a busy
+# row means trimming something else in it. Characters keep the check stdlib-only;
+# the docs show token estimates for the same rows. Lower it as rows get trimmed.
+ROW_BUDGET_CHARS = 80_000
 
 
 def tracked_files(root: Path) -> set[PurePosixPath]:
@@ -42,8 +47,7 @@ def tracked_files(root: Path) -> set[PurePosixPath]:
 
 
 def loading_table_paths(skill_md: str) -> list[str]:
-    match = re.search(r"^## Loading Table\n(.*?)(?=^## |\Z)", skill_md, re.MULTILINE | re.DOTALL)
-    return MD_PATH_RE.findall(match.group(1)) if match else []
+    return [path for _, paths in loading_table_rows(skill_md) for path in paths]
 
 
 def owning_skill(path: PurePosixPath, tracked: set[PurePosixPath]) -> PurePosixPath | None:
@@ -84,6 +88,15 @@ def check(root: Path) -> list[str]:
         for path in sorted(listed):
             if path not in tracked:
                 problems.append(f"{routing}: Loading Table names {path}, which doesn't exist")
+
+        for need, paths in loading_table_rows(text):
+            files = [base / p for p in dict.fromkeys(paths) if (root / base / p).exists()]
+            size = len(text) + sum(len((root / f).read_text(encoding="utf-8")) for f in files)
+            if size > ROW_BUDGET_CHARS:
+                problems.append(
+                    f"{routing}: Loading Table row {need!r} loads {size:,} chars, "
+                    f"over the {ROW_BUDGET_CHARS:,} budget"
+                )
 
         for path in markdown:
             if base / "skills" not in path.parents or path in listed:
