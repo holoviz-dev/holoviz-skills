@@ -9,7 +9,6 @@ Usage::
     holoviz-skills list                     # show what's installed where, and if it's current
     holoviz-skills update                   # re-install what's installed, showing what changed
     holoviz-skills doctor                   # stale copies, library versions, compatibility
-    holoviz-skills agents-md                # add a short pointer to AGENTS.md
     holoviz-skills uninstall --claude-code
     holoviz-skills --version                # show the installed version
 """
@@ -108,7 +107,6 @@ def _select_skills(skill_dirs: list[Path], names: list[str]) -> list[Path] | Non
 
 _FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
 _VERSION_RE = re.compile(r'^\s+version:\s*["\']?([0-9][0-9.]*)["\']?\s*$', re.MULTILINE)
-_DESCRIPTION_RE = re.compile(r"^description:\s*(.+)$", re.MULTILINE)
 
 
 def _frontmatter(skill_md: Path) -> str:
@@ -138,11 +136,6 @@ def _version_changes(old: dict[str, str | None], new: dict[str, str | None]) -> 
         for name in sorted(old.keys() | new.keys())
         if old.get(name) != new.get(name)
     ]
-
-
-def _short_description(skill_dir: Path) -> str:
-    m = _DESCRIPTION_RE.search(_frontmatter(skill_dir / "SKILL.md"))
-    return m.group(1).strip().strip("\"'").split(". ")[0] if m else ""
 
 
 # ---------------------------------------------------------------------------
@@ -765,51 +758,6 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 1 if problems else 0
 
 
-# ---- agents-md ----
-
-AGENTS_START = "<!-- holoviz-skills:start -->"
-AGENTS_END = "<!-- holoviz-skills:end -->"
-# One line per skill for an always-loaded instructions file: when to load it,
-# not what it contains, so the pointer stays a few dozen tokens.
-AGENTS_HINTS = {
-    "developing-with-holoviz": "when writing code with Panel, hvPlot, HoloViews or Param "
-    "(plots, dashboards, data apps)",
-    "contributing-to-holoviz": "when changing, reviewing, testing or documenting a HoloViz "
-    "package, or writing a blog post or demo about one",
-    "creating-custom-holoviz-skills": "when adding or editing a skill in the holoviz-skills repo",
-}
-
-
-def cmd_agents_md(args: argparse.Namespace) -> int:
-    skill_dirs = _select_skills(_find_skill_dirs(_skills_root()), args.skills)
-    if skill_dirs is None:
-        return 2
-    block = "\n".join(
-        [
-            AGENTS_START,
-            "## HoloViz skills",
-            "",
-            "Load the matching skill before starting:",
-            "",
-            *(
-                f"- `{d.name}`: {AGENTS_HINTS.get(d.name) or _short_description(d)}"
-                for d in skill_dirs
-            ),
-            AGENTS_END,
-        ]
-    )
-    path = Path(args.file)
-    text = path.read_text(encoding="utf-8") if path.exists() else ""
-    existing = re.compile(re.escape(AGENTS_START) + r".*?" + re.escape(AGENTS_END), re.DOTALL)
-    if existing.search(text):
-        text, verb = existing.sub(lambda _: block, text, count=1), "Updated"
-    else:
-        text, verb = (text.rstrip() + "\n\n" if text.strip() else "") + block + "\n", "Added"
-    path.write_text(text, encoding="utf-8")
-    print(f"{verb} the HoloViz skills pointer in {path} ({len(block):,} chars, read each session).")
-    return 0
-
-
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -885,17 +833,6 @@ def main(argv: list[str] | None = None) -> int:
         "--python", help="Interpreter of the project to check (default: the active environment)"
     )
 
-    # agents-md
-    p_agents = sub.add_parser(
-        "agents-md", help="Add a few-line pointer to the skills in AGENTS.md or another file"
-    )
-    p_agents.add_argument(
-        "skills", nargs="*", metavar="SKILL", help="Skill(s) to point to (default: all)"
-    )
-    p_agents.add_argument(
-        "--file", default="AGENTS.md", help="File to update (default: AGENTS.md; e.g. CLAUDE.md)"
-    )
-
     args = parser.parse_args(argv)
 
     commands = {
@@ -904,7 +841,6 @@ def main(argv: list[str] | None = None) -> int:
         "list": cmd_list,
         "update": cmd_update,
         "doctor": cmd_doctor,
-        "agents-md": cmd_agents_md,
     }
     if args.command not in commands:
         parser.print_help()

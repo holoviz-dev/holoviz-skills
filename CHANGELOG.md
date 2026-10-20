@@ -17,28 +17,10 @@ in-progress notes so it is skipped by the extraction.
 - **Install a subset of skills** — `install`, `uninstall` and `update` take skill names or
   unique prefixes (`holoviz-skills install developing`), since library users and HoloViz
   maintainers want different skills.
-- **`holoviz-skills update`, `doctor` and `agents-md`** — `update` re-installs what's
-  installed and says which skills changed, and `install` and `list` show the same per-skill
-  version changes. `doctor` reports stale copies, the HoloViz library versions in the
-  project's environment rather than uvx's, and any `compatibility` requirement they miss.
-  `agents-md` adds a few-line pointer to `AGENTS.md` (or `--file CLAUDE.md`), for teams wary
-  of putting the skills themselves in an always-loaded file.
-- **`explanatory-video` sub-skill** - codebase walkthrough videos for new
-  contributors under `contributing-to-holoviz`: one layer, a fixed stage,
-  progressive disclosure, every arrow checked against the source. Reuses the
-  demo video's HTML contract and MP4 export.
-- **`outreach/scripts/make_sfx.py`** - generates original, deterministic UI
-  sound effects (numpy only) for demo and explainer videos, documented in
-  `making-a-demo-video.md` under "Generated sound effects".
-- **`outreach/scripts/make_music.py`** - renders an original background score
-  from a JSON spec derived from the video's beat sheet: sections on the
-  video's times, a motif per on-screen concept, a payoff swell, ducking under
-  sound effects. Documented in `making-a-demo-video.md` under "Generated
-  music".
-- **Loudness safety for generated audio** - `outreach/scripts/_mastering.py`
-  levels both scripts' output by loudness (BS.1770-style LUFS), holds peaks
-  under -1.5 dBFS with a look-ahead limiter, and `make_music.py` warns on
-  sudden rises, so generated audio can't clip or startle.
+- **`holoviz-skills update` and `doctor`** — `update` re-installs what's installed and says
+  which skills changed, and `install` and `list` show the same per-skill version changes.
+  `doctor` reports stale copies, the HoloViz library versions in the project's environment
+  rather than uvx's, and any `compatibility` requirement they miss.
 - **`holoviz-skills --version`** - prints the installed package version.
 - **Shared `eval-data` branch for eval history** — CI publishes run history and run
   snapshots (JSON only) to a dedicated `eval-data` git branch after each eval run.

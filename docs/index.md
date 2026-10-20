@@ -37,11 +37,7 @@ uvx holoviz-skills doctor          # stale copies, your HoloViz library versions
 
 ### AGENTS.md
 
-Don't paste the skills into `AGENTS.md`: that file loads on every task, while installed skills load only when needed. If your tool doesn't pick skills up on its own, add a few-line pointer instead:
-
-```bash
-uvx holoviz-skills agents-md       # or --file CLAUDE.md
-```
+Don't paste the skills into `AGENTS.md`: that file loads on every task, while installed skills load only when one is needed.
 
 ### All tool flags
 
