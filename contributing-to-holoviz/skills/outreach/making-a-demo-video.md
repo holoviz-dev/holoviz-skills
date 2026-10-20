@@ -7,17 +7,23 @@ These are defaults, not a template.
 
 ## Contents
 
-- [Purpose: demo or teaser](#purpose-demo-or-teaser)
-- [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
-- [Story](#story)
-- [Pacing](#pacing)
-- [Facts only](#facts-only)
-- [Style](#style)
-- [Real footage](#real-footage)
-- [The HTML contract](#the-html-contract)
-- [Checking frames](#checking-frames)
-- [Exporting to MP4](#exporting-to-mp4)
-- [Revisions](#revisions)
+- [Making a Demo Video](#making-a-demo-video)
+  - [Contents](#contents)
+  - [Purpose: demo or teaser](#purpose-demo-or-teaser)
+  - [Long-form: briefings and comparisons](#long-form-briefings-and-comparisons)
+  - [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
+  - [Story](#story)
+  - [Pacing](#pacing)
+  - [Facts only](#facts-only)
+  - [Style](#style)
+  - [Real footage](#real-footage)
+  - [The HTML contract](#the-html-contract)
+  - [Checking frames](#checking-frames)
+  - [Exporting to MP4](#exporting-to-mp4)
+  - [Generated sound effects](#generated-sound-effects)
+  - [Generated music](#generated-music)
+    - [Loudness](#loudness)
+  - [Revisions](#revisions)
 
 ## Purpose: demo or teaser
 
@@ -29,6 +35,27 @@ post, ask, because reviewers read a promotional teaser as an ad.
 - **Blog teaser:** sells the post's idea. It opens with the post's title and
   subtitle, reuses the post's own examples, and mentions the tool once, near
   the end. Draft links stay out of the video; the link goes in the caption.
+
+## Long-form: briefings and comparisons
+
+A walkthrough for a team review or a customer call, or a comparison of several
+builds, can run 2–5 minutes. The length changes the structure, not the rules
+for each screen.
+
+- **A contents screen** right after the title lists each part with its start
+  time, and a numbered chapter card opens each part under the same name. Add
+  them past about 90 s or with three or more parts; a single story under that
+  needs neither.
+- **Keep the times in sync.** Retiming or inserting a screen moves every later
+  start time, so update the contents screen in the same pass.
+- **YouTube chapters:** put the same timestamps in the description, the first
+  at `0:00`, at least three of them, each chapter 10 s or longer.
+- **End on what the audience decides:** open questions for an internal review,
+  next steps for a customer, instead of an install command.
+- **Road bumps** (what broke, the fix, the lesson) suit an internal review. For
+  a customer, keep the lesson and drop the bumps.
+- **Pacing:** a new screen every 8–15 s, and a caption the viewer reads one at
+  a time can hold for 2–3 s.
 
 ## Workflow: beat sheet before the file
 
@@ -67,6 +94,15 @@ Each headline is a plain statement the viewer can check against the picture.
 Avoid garden paths: "You pay tokens for every line an agent reads…" opens
 like a feature and turns into a warning, and at feed speed nobody rereads.
 
+- **Introduce before you use.** Anything new on screen (a made-up company, a
+  second environment, a term) gets one line on why it's there before it
+  appears.
+- **Plain words for a general audience.** Replace internal codes with words
+  ("P1" becomes "fix now", `env_a` becomes "Company A") and keep product names
+  as small labels. When a real screen still shows the codes, add a legend.
+- **Frame a test as "expected"**, not "right", so a picture of the target
+  doesn't read as a result.
+
 ## Pacing
 
 Keep attention with a steady rhythm of new screens, each held long enough to
@@ -75,7 +111,9 @@ take in.
 - **Under about 40 s**, with a new screen every 5–8 s: about a second to
   animate in, then a hold.
 - **Reveal at once.** Highlight every flagged line together; a staggered
-  reveal of ten items asks the viewer to track ten things.
+  reveal of ten items asks the viewer to track ten things. That holds for
+  lists. When the viewer has to keep two cases apart (Company A, then Company
+  B), show the first in full before the second appears.
 - **Too fast means too much.** When reviewers can't keep up, cut a screen or a
   detail. Half speed doubles the length and the video is still dense.
 - A screen with a simple message can hold for less.
@@ -97,6 +135,11 @@ take in.
 - Prefer wording from the project's site, docs or post; it's already been
   reviewed.
 - Don't name a competitor unless the source does or the user asks.
+- **Measure comparisons equally.** Run every option the same number of times
+  with the same checks, and put the sample size on screen ("3 runs per
+  company"). One run against three isn't an accuracy difference.
+- **Quote aggregates over one capture.** When a screenshot's own figures differ
+  from the eval's means, quote the means.
 - Run on-screen copy through the [deslop skill](../deslop/SKILL.md). Short
   lines hide slop poorly.
 
@@ -162,6 +205,13 @@ finally:
   makes UI text unreadable at feed size.
 - If Playwright can't run, ask the user for screenshots or a screen recording
   of the app. Don't fake the UI with drawn rectangles and call it the app.
+- **Walk through a screenshot that is the subject.** Zoom to one region at a
+  time with a highlight and one caption, instead of showing the whole screen
+  and moving on.
+- **Screenshots match the numbers.** Capture from the same code and run as
+  every figure on screen, note each capture's run ID and time, and recapture
+  after any fix. Keep an older capture only where it is the evidence for the
+  old behavior.
 
 ## The HTML contract
 
@@ -197,18 +247,45 @@ window.seek = async t => { await document.fonts.ready; render(t); };
 
 ## Checking frames
 
+Check after every edit, not once before export: a fix on one screen often
+breaks its neighbour, and the user shouldn't be the one who finds it.
+
 1. Grep the file for the banned APIs.
-2. Screenshot the keyframe times and a few mid-transition frames in every
-   orientation you deliver, then look at the images yourself. Check for
-   unplanned wraps, a headline running into the picture, overlaps with the
-   corner label, and text that leaves before it can be read.
-3. If the recorder's machine lacks the intended font, check the longest
+2. Screenshot each scene's settled frame (just before it fades out) and a
+   few mid-transition frames in every orientation you deliver, then look at
+   the images yourself. Check the layout:
+   - unplanned wraps, and a headline running into the picture;
+   - text crossing a shape's outline, such as a label sitting on a Venn
+     circle's stroke, or text spilling out of the region it belongs to;
+   - chips, boxes or labels touching their neighbours, and anything clipped
+     at the stage edge;
+   - collisions with the corner label, the draft tag and the progress bar;
+   - a moving element (a packet, a cursor) passing over text;
+   - text that leaves before it can be read.
+3. Read each still as the target viewer, with the sound off. Check the
+   message:
+   - can they say what the screen claims without the narration?
+   - would the audience know every term? An account executive doesn't know
+     CI/CD or lock files; say what it does for the customer instead;
+   - does a label imply something false? An axis titled "codes without AI
+     help" next to a Conda chip says Conda writes code;
+   - is every claim in the sources? Flag commercial claims (licensing,
+     pricing) for the user to confirm.
+4. If the recorder's machine lacks the intended font, check the longest
    headline's wrap there too.
+5. After fixing, re-shoot the same frames before moving on, and repeat until
+   a pass finds nothing. Show the user a contact sheet of the settled frames
+   with each cut.
 
 Playwright takes these screenshots the same way it records the MP4: call
 `seek(t)`, then `page.screenshot()`. A contact sheet (several frames scaled
 into one image) reviews a whole video at once. Without Playwright, use the
 session's preview tool and say which frames you couldn't check.
+
+Re-render only the frames of scenes that changed: render frames to numbered
+images, then encode them in one ffmpeg pass. Splitting the frame range across
+a few parallel Playwright processes keeps each command inside a sandbox's
+time limit on long videos.
 
 ## Exporting to MP4
 
@@ -254,9 +331,102 @@ same states for `seek(t)`. Neither has its own timeline, and the two can't
 drift. Nimbus Sans and DejaVu Sans Mono share metrics with Helvetica and Menlo,
 which keeps line breaks the same as in the browser. Show the user stills first.
 
-**Music,** if asked: you can't hear what you generate, and the user has to
-check it. A platform library track (LinkedIn, YouTube) usually fits better and
-avoids licensing questions. Keep it around −16 to −20 LUFS.
+**Music,** if asked: generate a score that follows the video (see
+[Generated music](#generated-music)). You can't hear it, so the user has to
+check it; if they'd rather have a produced track, a platform library track
+(LinkedIn, YouTube) avoids licensing questions. Keep it around −16 to −20
+LUFS.
+
+## Generated sound effects
+
+When the user asks for sound, generate effects with
+[`scripts/make_sfx.py`](scripts/make_sfx.py) rather than downloading them.
+They're original, carry the repository's license and need no credit, and the
+script writes the same WAV for the same arguments, so commit the script call,
+not the audio.
+
+```bash
+python scripts/make_sfx.py --list                 # names and what each is for
+python scripts/make_sfx.py --out sfx/             # every sound + all-sounds.wav
+python scripts/make_sfx.py bubble --pitch -2      # retune after feedback
+```
+
+- **Each effect marks an event already on screen** (a box appearing, a token
+  landing), timed to that frame. Sound never carries meaning the picture
+  doesn't, since feeds autoplay muted.
+- **Cue them from the timeline.** Keep a list of `(sound, t, gain)` built from
+  the same named times the animation uses, and mix it with ffmpeg at export.
+  The audio then shares one clock with `seek(t)` and can't drift.
+- **You can't hear the output.** Hand the user `all-sounds.wav` first and
+  change parameters from their words ("softer", "lower"); don't describe a
+  sound as pleasant.
+
+## Generated music
+
+Write a score spec from the beat sheet and render it with
+[`scripts/make_music.py`](scripts/make_music.py). The music is unique to the
+video because it's built from the video's own timeline, and it's original, so
+it carries the repository's license like the sound effects. Commit the spec
+next to the HTML, not the WAV.
+
+```bash
+python scripts/make_music.py --example > score.json   # start from the example
+python scripts/make_music.py score.json --out music.wav
+```
+
+The script prints the loudness of each section and warns when a section
+doesn't start on a bar line. Map the video to the spec like this:
+
+- **Tempo from the beat sheet.** Pick `bpm` so every section time lands on a
+  bar line, and fix any warning by changing the tempo, not the picture's
+  times. Beats every 10–14 s with times on even seconds fit 120 BPM with
+  `"feel": "half"` (it reads as a relaxed 60).
+- **One `section` per beat-sheet change,** with `t` from the same named times
+  the animation uses.
+- **A motif per concept** in `motifs` (scale degrees, or `"pulse"` for a low
+  repeating root), added to `layers` from the section where that concept
+  first appears on screen. Progressive disclosure on screen becomes the
+  arrangement building up.
+- **The payoff gets `"layers": "all"`, `"swell": true` and a few dB of
+  `gain`,** so it's the first time the full arrangement plays and the loudest
+  section in the printout. Keep the opening quiet with a negative `gain`.
+- **The close gets `"resolve": true`,** which holds the tonic under the final
+  card while the music fades over the last 3 s.
+- **`hits`** are `[sound, t, LU]` from `make_sfx.py`, at the frames of
+  on-screen events. The number is how far above the music just before the
+  hit it lands (default 3, capped at 6), and the music ducks under each one.
+- **Mood picks `key`, `mode` and `texture`.** Explainers suit major or
+  `lydian` with `texture` around 0.5 (tape wobble, warm filter, vinyl
+  crackle); a launch demo suits `major` or `mixolydian` with less texture.
+- Change `seed` for a different take with the same structure.
+
+Hand the user the WAV with the section printout and change the spec from their
+words; you can't judge whether it sounds good.
+
+### Loudness
+
+Both scripts master their output through `scripts/_mastering.py`, so nothing
+they write clips or startles: a sudden loud moment is the fastest way to make
+a viewer scroll away or reach for the volume.
+
+- **Peaks stay under −1.5 dBFS.** A look-ahead limiter holds every sample
+  under the ceiling, with headroom for the MP4 encoder.
+- **The music is set by loudness, not peak:** `loudness` in the spec
+  (default −20 LUFS integrated), inside the −16 to −20 range for a bed
+  under a video. Sound effects are each levelled to the same loudness
+  (`--loudness`, default −16 LUFS for their loudest 400 ms), so a short tap
+  and a long chime sound equally loud.
+- **Layers fade in over their first bars**, so a new instrument doesn't
+  arrive at full level.
+- **`make_music.py` warns** when the music gets more than 6 LU louder within
+  3 s, or the loudest moment is more than 10 LU above the average. Fix the
+  spec (add layers more gradually, lower a section's `gain` or a hit) until
+  the warnings are gone; don't hand over a score that still prints one.
+- **Quieter for desk viewing.** A video watched at a desk or shared on a call
+  needs the music further under the picture than a feed clip, so start at
+  −20 LUFS or below and let the user raise it.
+- **Deliver the silent cut first** and add the score as a separate pass, so a
+  problem with the audio never holds up the video.
 
 ## Revisions
 
