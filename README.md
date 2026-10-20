@@ -9,7 +9,7 @@ Agent Skills are folders of instructions, scripts, and references that teach age
 
 ## Documentation
 
-Visit **[https://holoviz-dev.github.io/holoviz-skills/](https://holoviz-dev.github.io/holoviz-skills/)** for the full list of skills and usage instructions. There, there are Copy Markdown icons at the top of each skill page to paste a skill directly into any AI chat if you prefer that over installing.
+Visit **[https://holoviz-dev.github.io/holoviz-skills/](https://holoviz-dev.github.io/holoviz-skills/)** for the full list of skills and usage instructions. There, there are Copy Markdown icons at the top of each skill page to paste a skill directly into any AI chat if you prefer that over installing. Each category page also has a Context cost table showing how much an agent reads for each kind of task.
 
 ## Installation
 

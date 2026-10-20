@@ -16,7 +16,7 @@ Agent Skills are folders of instructions, scripts, and references that teach AI 
 
 ## Using Skills
 
-Agent Skills are supported by a growing number of AI coding tools.
+Agent Skills are supported by a growing number of AI coding tools. Each category page lists how much an agent reads for each kind of task under **Context cost**, so you can see what the skills cost before installing them.
 
 **With uv**, nothing to install first:
 

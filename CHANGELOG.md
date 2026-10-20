@@ -14,6 +14,13 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
+- **Context cost in the docs** — every page notes its size in chars, words and, with
+  tiktoken installed, estimated tokens, and each category page has a Context cost table
+  sizing what an agent reads for every Loading Table row, routing skill included. Teams
+  weighing whether the skills are worth the context can read the numbers instead of
+  guessing.
+- **Row budget** — `check_routing.py` fails a Loading Table row that loads more than
+  80,000 chars, so a reference added to a busy row has to displace something.
 - **Install a subset of skills** — `install`, `uninstall` and `update` take skill names or
   unique prefixes (`holoviz-skills install developing`), since library users and HoloViz
   maintainers want different skills.
