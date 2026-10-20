@@ -36,9 +36,10 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Quick exploratory plots from DataFrames / xarray | `skills/hvplot/SKILL.md` |
 | Compose a layered, faceted view to compare a metric across groups | `skills/hvplot/SKILL.md` + `skills/hvplot/composing-exploratory-plots.md` |
 | Make a chart explanatory for an audience (one message, presentation-ready) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` |
-| Build a data story / graphic article (charts + narrative) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/data-storytelling.md` |
+| Build a data story / graphic article (charts + narrative) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/theming-material-ui.md` + `skills/panel/data-storytelling.md` |
 | Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` |
-| Convert a design / screenshot / React app into a Material UI (pmui) app | `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/converting-designs-to-material-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
+| Theme a pmui app — palette, typography, web fonts, icons, brand assets, chart colors and fonts | `skills/panel/SKILL.md` + `skills/panel/theming-material-ui.md` |
+| Convert a design / screenshot / React app into a Material UI (pmui) app | `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/converting-designs-to-material-ui.md` + `skills/panel/theming-material-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
 | Keep an existing React/JSX UI and serve it as the app, embedding Panel components inside it | `skills/panel/SKILL.md` + `skills/panel/building-custom-components.md` + `skills/panel/wrapping-react-apps.md` |
 | HoloViews elements, opts, tooltips, formatters, tools | `skills/holoviews/SKILL.md` |
 | Remove chart junk / clean a plot — hide or autohide toolbar, disable wheel-zoom, one-axis gridlines, share axes, place legend | `skills/holoviews/SKILL.md` + `skills/holoviews/decluttering-plots.md` |
@@ -61,4 +62,4 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | [param](skills/param/SKILL.md) | `@param.depends`, `watch=True`, `.watch()`, parameter types, dependent parameters |
 | [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
 | [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, session defaults (`hv.opts.defaults`), hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections, decluttering plots |
-| [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, defaults, templates, serving, performance, plotting gotchas; 13 topic references indexed in its own References section |
+| [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, defaults, templates, serving, performance, plotting gotchas; 14 topic references indexed in its own References section |

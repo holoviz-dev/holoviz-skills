@@ -33,7 +33,7 @@ pn.pane.HoloViews(
 ```
 
 - `responsive=True` and `height=N` go in the **hvPlot call**, never via `.opts()` and never via `hv.opts.defaults` — hvPlot writes its own `width=700` onto the element unless one of `responsive`/`aspect`/`frame_width`/`frame_height` is passed to the call, and that per-object value outranks any session default. See [Session Defaults](../holoviews/SKILL.md#session-defaults) for what *can* be defaulted.
-- `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`. (Inside a `pmui.Page`/`ThemeToggle`, plots auto-theme — see [Using Material UI](using-material-ui.md#chart-theming).)
+- `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`. (Inside a `pmui.Page`/`ThemeToggle`, plots auto-theme — see [Theming Material UI](theming-material-ui.md#chart-theming).)
 - `linked_axes=False` prevents axis linking when combining charts with different axis types in a Layout (`+`). Pair with `.opts(shared_axes=False)` on the Layout itself.
 - `sizing_mode="stretch_width"` is required for responsive HoloViews plots.
 

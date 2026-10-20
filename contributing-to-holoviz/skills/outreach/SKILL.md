@@ -2,7 +2,7 @@
 name: outreach
 description: Writing about and showing HoloViz work for readers outside a PR or the docs, such as a post on blog.holoviz.org or a company blog, a short demo video for YouTube or LinkedIn, or a codebase explainer video for new contributors. Use when drafting, structuring, or reviewing a blog post, or when planning or building a demo or explainer video.
 metadata:
-  version: "2026.10.15"
+  version: "2026.10.20"
   author: holoviz
 ---
 
