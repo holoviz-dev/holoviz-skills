@@ -13,13 +13,28 @@ Visit **[https://holoviz-dev.github.io/holoviz-skills/](https://holoviz-dev.gith
 
 ## Installation
 
+**With uv**, nothing to install first:
+
 ```bash
-pip install holoviz-skills
-holoviz-skills install        # auto-detects tools on your machine
-holoviz-skills install --global  # install to global (~/) paths instead
+uvx holoviz-skills install developing     # Panel, hvPlot, HoloViews, Param; auto-detects your tools
+uvx holoviz-skills install contributing   # for HoloViz maintainers
+uvx holoviz-skills install developing --global --claude-code   # ~/.claude/skills, every project
 ```
 
-Or target a specific tool:
+`pip install holoviz-skills` gives you the same `holoviz-skills` command.
+
+### Keeping skills current
+
+```bash
+uvx holoviz-skills@latest update   # re-install what you have, listing which skills changed
+uvx holoviz-skills doctor          # stale copies, your HoloViz library versions, compatibility
+```
+
+### AGENTS.md
+
+Don't paste the skills into `AGENTS.md`: that file loads on every task, while installed skills load only when one is needed.
+
+### All tool flags
 
 ```bash
 holoviz-skills install --claude-code   # .claude/skills/
@@ -36,6 +51,7 @@ holoviz-skills install --kiro          # .kiro/skills/
 holoviz-skills install --kilo-code     # .kilo/skills/            (Kilo Code)
 holoviz-skills install --mistral-vibe  # .vibe/skills/
 ```
+
 ## Evaluation
 
 The `scripts/` directory contains an automated evaluation system that measures whether the skills improve Copilot's code generation quality. See [`scripts/README.md`](scripts/README.md) for details.

@@ -64,3 +64,7 @@ ignore = []
 
 [tool.ruff.lint.isort]
 known-first-party = ["holoviz-skills"]
+
+[tool.pytest.ini_options]
+# The CLI tests import holoviz_skills from the checkout without installing it.
+pythonpath = ["."]

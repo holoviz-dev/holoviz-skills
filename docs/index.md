@@ -16,15 +16,30 @@ Agent Skills are folders of instructions, scripts, and references that teach AI 
 
 ## Using Skills
 
-Agent Skills are supported by a growing number of AI coding tools. The quickest way to install them is via the CLI:
+Agent Skills are supported by a growing number of AI coding tools.
+
+**With uv**, nothing to install first:
 
 ```bash
-pip install holoviz-skills
-holoviz-skills install        # auto-detects tools on your machine
-holoviz-skills install --global  # install to global (~/) paths instead
+uvx holoviz-skills install developing     # Panel, hvPlot, HoloViews, Param; auto-detects your tools
+uvx holoviz-skills install contributing   # for HoloViz maintainers
+uvx holoviz-skills install developing --global --claude-code   # ~/.claude/skills, every project
 ```
 
-Or target a specific tool:
+`pip install holoviz-skills` gives you the same `holoviz-skills` command.
+
+### Keeping skills current
+
+```bash
+uvx holoviz-skills@latest update   # re-install what you have, listing which skills changed
+uvx holoviz-skills doctor          # stale copies, your HoloViz library versions, compatibility
+```
+
+### AGENTS.md
+
+Don't paste the skills into `AGENTS.md`: that file loads on every task, while installed skills load only when one is needed.
+
+### All tool flags
 
 ```bash
 holoviz-skills install --claude-code   # .claude/skills/

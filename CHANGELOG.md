@@ -14,22 +14,17 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
-- **`explanatory-video` sub-skill** - codebase walkthrough videos for new
-  contributors under `contributing-to-holoviz`: one layer, a fixed stage,
-  progressive disclosure, every arrow checked against the source. Reuses the
-  demo video's HTML contract and MP4 export.
-- **`outreach/scripts/make_sfx.py`** - generates original, deterministic UI
-  sound effects (numpy only) for demo and explainer videos, documented in
-  `making-a-demo-video.md` under "Generated sound effects".
-- **`outreach/scripts/make_music.py`** - renders an original background score
-  from a JSON spec derived from the video's beat sheet: sections on the
-  video's times, a motif per on-screen concept, a payoff swell, ducking under
-  sound effects. Documented in `making-a-demo-video.md` under "Generated
-  music".
-- **Loudness safety for generated audio** - `outreach/scripts/_mastering.py`
-  levels both scripts' output by loudness (BS.1770-style LUFS), holds peaks
-  under -1.5 dBFS with a look-ahead limiter, and `make_music.py` warns on
-  sudden rises, so generated audio can't clip or startle.
+- **Install a subset of skills** — `install`, `uninstall` and `update` take skill names or
+  unique prefixes (`holoviz-skills install developing`), since library users and HoloViz
+  maintainers want different skills.
+- **`holoviz-skills update` and `doctor`** — `update` re-installs what's installed and says
+  which skills changed, and `install` and `list` show the same per-skill version changes.
+  `doctor` reports stale copies, the HoloViz library versions in the project's environment
+  rather than uvx's, and any `compatibility` requirement they miss. When HoloViews is
+  installed, it also prints `hv.show_versions()` from that environment, ready to paste into
+  an issue.
+- **CLI tests** — `pixi run test-cli` covers skill selection, install, update, doctor and
+  symlinked skills, which had no tests before.
 - **`holoviz-skills --version`** - prints the installed package version.
 - **Shared `eval-data` branch for eval history** — CI publishes run history and run
   snapshots (JSON only) to a dedicated `eval-data` git branch after each eval run.
@@ -88,6 +83,10 @@ in-progress notes so it is skipped by the extraction.
 
 ### Changed
 
+- **Installs skip `test_*.py`**, which test the skills' scripts and are no use to an agent.
+- **`install` and `uninstall` handle symlinked skills** — `npx skills` installs a skill as a
+  symlink to its own copy, which made both commands crash, since `shutil.rmtree` refuses
+  symlinks. They now replace or remove the link and leave the copy it points to alone.
 - **hvPlot basemaps** — Geographic Plots no longer tells agents to pass `geo=True` for a
   basemap, which contradicted the HoloViews tile guidance and pulled in GeoViews for nothing;
   the earthquakes example drops it too.
