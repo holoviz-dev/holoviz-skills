@@ -4,17 +4,19 @@ Automated system to measure whether SKILL.md files improve Kilo Code's responses
 
 ## Coverage
 
-`scripts/eval_queries.yaml` currently defines 2 queries: `hvplot_earthquake_plot`
-(a static `hvplot` plot) and `panel_sunset_app` (an interactive `panel` app). They
-cover the `hvplot` and `panel` skills. The runner does not enforce which skill a
-query exercises; the association is by convention, via each query's `category`.
+`scripts/eval_queries.yaml` currently defines 3 queries: `hvplot_earthquake_plot`
+(a static `hvplot` plot), `panel_sunset_app` (an interactive `panel` app), and
+`holoviews_topographic_hillshading` (a static `holoviews` `GridMatrix`). They cover
+the `hvplot`, `panel`, and `holoviews` skills. The runner does not enforce which
+skill a query exercises; the association is by convention, via each query's
+`category`.
 
 `cleanup` has its own eval, `eval_cleanup.py` (see below), because `eval.py` executes generated plots and a
 code review has nothing to execute. The other skills (both routing skills,
-`param`, `holoviews` and its references, `documentation`,
-`minimal-example`, `outreach`, `pr-description`, `testing`,
-`creating-custom-holoviz-skills`) have no eval coverage yet. Contributions adding
-queries for other skills are welcome — see "Adding Queries" below.
+`param`, `documentation`, `minimal-example`, `outreach`, `pr-description`,
+`testing`, `creating-custom-holoviz-skills`) have no eval coverage yet.
+Contributions adding queries for other skills are welcome — see "Adding Queries"
+below.
 
 ## Cleanup Eval
 
