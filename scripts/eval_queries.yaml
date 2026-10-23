@@ -33,16 +33,10 @@ queries:
 
   - id: holoviews_topographic_hillshading
     prompt: |
-      Create a HoloViews Matplotlib visualization of topographic hillshading using
-      matplotlib's bundled jacksboro_fault_dem.npz elevation sample. Build a
-      GridMatrix with vertical exaggeration values 0.1, 1, and 10 as the columns
-      and blend modes None, hsv, overlay, and soft as the rows. The None row
-      should show grayscale hillshade intensity images; the other rows should
-      show RGB images shaded with the gist_earth colormap. Light the terrain
-      from the northwest at 45 degrees. Scale dx and dy to metres with the 111200
-      factor and apply the cosine-of-ymin correction to dx. Label the grid axes,
-      do not share axes between cells, and do not download data. Return the
-      GridMatrix object without calling show() or starting a server.
+      Create a compact, static HoloViews figure of topographic hillshading from matplotlib's bundled jacksboro_fault_dem.npz elevation sample, using matplotlib's LightSource.
+      Compare several vertical exaggeration levels, from subtle to strong, across grayscale and colored blend modes such as HSV, overlay, and soft light.
+      Arrange the comparison as one matrix, with blend modes across columns and exaggeration levels down rows; keep the terrain images prominent and use shared outer axes and concise labels rather than fully labeled, separately titled panels.
+      Do not download data or start a server.
     expected_output: static_plot
     timeout: 600
     category: holoviews
