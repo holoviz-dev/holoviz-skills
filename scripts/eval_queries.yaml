@@ -1,8 +1,8 @@
 # Evaluation queries for testing HoloViz skills
 # Each query tests whether SKILL.md files improve the agent's responses
 #
-# Coverage note: the hvplot and panel skills have queries below. scripts/README.md
-# lists what the other skills have (and how to add more).
+# Coverage note: the hvplot, panel, and holoviews skills have queries below.
+# scripts/README.md lists what the other skills have (and how to add more).
 #
 # NOTE: `expected_output` and `category` fields below are NOT read or
 # enforced by scripts/eval.py (see load_queries/run_generation, which only use
@@ -30,3 +30,19 @@ queries:
     expected_output: panel_app
     timeout: 600
     category: panel
+
+  - id: holoviews_topographic_hillshading
+    prompt: |
+      Create a HoloViews Matplotlib visualization of topographic hillshading using
+      matplotlib's bundled jacksboro_fault_dem.npz elevation sample. Build a
+      GridMatrix with vertical exaggeration values 0.1, 1, and 10 as the columns
+      and blend modes None, hsv, overlay, and soft as the rows. The None row
+      should show grayscale hillshade intensity images; the other rows should
+      show RGB images shaded with the gist_earth colormap. Light the terrain
+      from the northwest at 45 degrees. Scale dx and dy to metres with the 111200
+      factor and apply the cosine-of-ymin correction to dx. Label the grid axes,
+      do not share axes between cells, and do not download data. Return the
+      GridMatrix object without calling show() or starting a server.
+    expected_output: static_plot
+    timeout: 600
+    category: holoviews
