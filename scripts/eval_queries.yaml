@@ -1,31 +1,42 @@
 # Evaluation queries for testing HoloViz skills
 # Each query tests whether SKILL.md files improve the agent's responses
 #
-# Coverage note: only the hvplot skill has queries below. scripts/README.md
-# lists what the other skills have.
+# Coverage note: the hvplot, panel, and holoviews skills have queries below.
+# scripts/README.md lists what the other skills have (and how to add more).
 #
 # NOTE: `expected_output` and `category` fields below are NOT read or
 # enforced by scripts/eval.py (see load_queries/run_generation, which only use
 # `id`, `prompt`, and `timeout`). They are documentation-only / reserved for
-# future use. `expected_output: static_plot` is the only value that lines up
-# with what `execute_generated.py` can actually save today (HoloViews
-# `Dimensioned` or Bokeh `Model` objects); a `panel_app` value would not be
-# executed by anything currently.
+# future use. `execute_generated.py` can now save and screenshot:
+#   - static_plot: HoloViews `Dimensioned`, Bokeh `Model`, or matplotlib figure
+#   - panel_app:   Panel `Viewable` / `Viewer` object (`pn.io.save` + screenshot)
+# Do not call `pn.serve(...)` in generated code — the executor runs the file to
+# completion, so a blocking server call hits the execution timeout.
 
 queries:
-  - id: hvplot_interactive_scatter
-    prompt: |
-      Create an interactive scatter plot with hvplot from a pandas DataFrame
-      containing columns 'x', 'y', and 'category'. Include hover tooltips
-      that show all column values when hovering over points.
-    expected_output: static_plot
-    timeout: 600
-    category: hvplot_interactivity
-
   - id: hvplot_earthquake_plot
     prompt: |
       I'm working with the earthquake dataset from the sampledata module.
       Create an hvplot map visualization using a dark CartoDB tile basemap, colored by magnitude.
     expected_output: static_plot
     timeout: 600
-    category: hvplot_interactivity
+    category: hvplot
+
+  - id: panel_sunset_app
+    prompt: |
+      Create a sunrise/sunset app using the astral package with holoviz.
+      It should take a lat / lon and then create an area chart with a red vertical line marking the current date time.
+      Do not try to create an env.
+    expected_output: panel_app
+    timeout: 600
+    category: panel
+
+  - id: holoviews_topographic_hillshading
+    prompt: |
+      Create a compact, static HoloViews figure of topographic hillshading from matplotlib's bundled jacksboro_fault_dem.npz elevation sample, using matplotlib's LightSource.
+      Compare several vertical exaggeration levels, from subtle to strong, across grayscale and colored blend modes such as HSV, overlay, and soft light.
+      Arrange the comparison as one matrix, with blend modes across columns and exaggeration levels down rows; keep the terrain images prominent and use shared outer axes and concise labels rather than fully labeled, separately titled panels.
+      Do not download data or start a server.
+    expected_output: static_plot
+    timeout: 600
+    category: holoviews

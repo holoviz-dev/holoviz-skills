@@ -4,14 +4,19 @@ Automated system to measure whether SKILL.md files improve Kilo Code's responses
 
 ## Coverage
 
-`scripts/eval_queries.yaml` currently defines only 2 queries (`hvplot_earthquake_plot`,
-`hvplot_interactive_scatter`), both testing the `hvplot` skill. `cleanup` has its own
-eval, `eval_cleanup.py` (see below), because `eval.py` executes generated plots and a
-code review has nothing to execute. None of the other skills (both routing skills,
-`param`, `panel` and its references, `holoviews` and its references, `documentation`,
-`minimal-example`, `outreach`, `pr-description`, `testing`,
-`creating-custom-holoviz-skills`) have any eval coverage yet. Contributions adding
-queries for other skills are welcome — see "Adding Queries" below.
+`scripts/eval_queries.yaml` currently defines 3 queries: `hvplot_earthquake_plot`
+(a static `hvplot` plot), `panel_sunset_app` (an interactive `panel` app), and
+`holoviews_topographic_hillshading` (a static `holoviews` `GridMatrix`). They cover
+the `hvplot`, `panel`, and `holoviews` skills. The runner does not enforce which
+skill a query exercises; the association is by convention, via each query's
+`category`.
+
+`cleanup` has its own eval, `eval_cleanup.py` (see below), because `eval.py` executes generated plots and a
+code review has nothing to execute. The other skills (both routing skills,
+`param`, `documentation`, `minimal-example`, `outreach`, `pr-description`,
+`testing`, `creating-custom-holoviz-skills`) have no eval coverage yet.
+Contributions adding queries for other skills are welcome — see "Adding Queries"
+below.
 
 ## Cleanup Eval
 
@@ -224,7 +229,7 @@ eval_results/
 │   │       ├── metadata.json       # Model, tokens, timing, execution result
 │   │       ├── generated_code.py   # Extracted code block
 │   │       ├── execution.log       # stdout/stderr from code run
-│   │       ├── plot_output.html    # Saved plot (if generated)
+│   │       ├── plot_output.html    # Saved output: plot or Panel app (if generated)
 │   │       └── screenshot.png      # Visual screenshot (if captured)
 │   └── without_skills/
 │       └── (same structure)
@@ -288,14 +293,28 @@ Fields:
 - `id` — unique slug; lowercase letters, numbers, underscores, or hyphens only
 - `prompt` — the question/task sent to Kilo
 - `timeout` — per-query Kilo timeout in seconds (capped at 900)
-- `expected_output` — **not currently read or enforced by `eval.py`**; only
-  `static_plot` outputs are actually supported by `execute_generated.py` (it
-  can save HoloViews `Dimensioned` objects and Bokeh `Model` objects to
-  `plot_output.html`). A `panel_app` value has no execution path today (no
-  `servable()`/Panel-app handling exists) and will not do anything if used.
-  This field exists for human documentation / future use only.
+- `expected_output` — **not currently read or enforced by `eval.py`**. It records
+  what the query should produce so `execute_generated.py` can be extended to check
+  it. Supported values:
+  - `static_plot` — HoloViews `Dimensioned`, Bokeh `Model`, or matplotlib figure;
+    saved to `plot_output.html` / `plot_output.png`.
+  - `panel_app` — Panel `Viewable` / `Viewer` object (e.g. what `servable()`
+    returns or a `Viewer` subclass instance); rendered with `pn.io.save` to
+    `plot_output.html` and screenshotted. Do not call `pn.serve(...)` in generated
+    code — the executor runs the file to completion, so a blocking server call
+    times out.
+  This field and `category` exist for human documentation / future use.
 - `category` — optional grouping tag, also **not currently read or used** by
   `eval.py`. Documentation only, for future use.
+
+### Per-query dependencies
+
+If a query needs a package the eval environment doesn't already have (e.g.
+`astral` for `panel_sunset_app`), add it to `[feature.eval.pypi-dependencies]` in
+`pixi.toml` and run `pixi lock`. It is then installed only for the `eval`
+environment — never for `default`, `docs`, `lint`, or `build`, so it never becomes
+a dependency of the library. Add the import to `check_dependencies()` in
+`scripts/test_setup.py` so `eval-check` fails early if it is missing.
 
 ## Troubleshooting
 
@@ -310,6 +329,17 @@ saved as `events.jsonl` in the query's result directory; inspect it if this happ
 
 **Code execution fails**
 Check `execution.log` in the query result directory for the full traceback.
+
+**`Warning: Could not detect or save plot output`**
+The executor found no HoloViews, Bokeh, matplotlib, or Panel object to save. If a
+`panel_app`/Panel query is expected to save output, make sure the app exposes a
+Panel object (`Viewable`, or a `Viewer` whose `__panel__` returns one) rather than
+only serving it.
+
+**Panel/app query times out**
+Generated code that ends with `pn.serve(...)` or `pn.serve(app, show=True)` starts
+a blocking server the executor waits on until the timeout. Ask for a `servable()`
+app instead, or raise `--timeout` / `timeout:` for apps that need longer to render.
 
 **Warning in execution.log**
 If a `DeprecationWarning` or similar appears, the relevant SKILL.md section needs a stronger anti-pattern example. Add a `# WRONG` / `# CORRECT` code pair to the relevant skill file.
