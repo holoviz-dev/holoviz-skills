@@ -2,7 +2,7 @@
 name: panel
 description: Build interactive dashboards, tools, and data apps with HoloViz Panel. Use when the user needs widgets, layouts, templates, or reactive server-side Python web applications. Do not use for standalone plots without widgets (use hvPlot).
 metadata:
-  version: "2026.09.28"
+  version: "2026.10.20"
   author: holoviz
 ---
 
@@ -37,7 +37,8 @@ Read these for specialized topics. Each is a standalone document you can load on
 - [Designing Panel Architecture](designing-panel-architecture.md) — composing larger apps (State/DataStore/View/App, `param.ClassSelector`, cross-object `@param.depends`, `from_data`, `pn.rx`) and runtime/scale (per-session model, `pn.state` scheduling, URL state sync, generator streaming, caching tiers, `nthreads`, profiling)
 - [Building Custom Components](building-custom-components.md) — Python-vs-JS decision ladder; pure-Python `Viewer`/`PyComponent`; JSComponent, ReactComponent, AnyWidgetComponent, MaterialUIComponent; CDN selection, event handling, state sync lifecycle
 - [Wrapping React Apps](wrapping-react-apps.md) — making an existing React/JSX UI the whole app: shell/app class split, `model.useState` as the only transport, `Child` embedding of Panel components, request/response param pairs, shadow-DOM CSS rules, `_importmap` externals, `panel compile` and the dev-vs-production bundle trap
-- [Using Material UI](using-material-ui.md) — building pmui apps (`pmui.Page`, `Container`/`Grid` layouts, centering, component gotchas) and theming (`theme_config` palette, typography, icons, brand assets, chart theming)
+- [Using Material UI](using-material-ui.md) — building pmui apps: `pmui.Page`, `Container`/`Grid` layouts, centering, component gotchas
+- [Theming Material UI](theming-material-ui.md) — `theme_config` palette, typography, web fonts, component overrides, icons, brand assets, chart colors and plot fonts
 - [Migrating to Material UI](migrating-to-material-ui.md) — converting an existing plain-Panel app to pmui: template→Page, widget swaps, pane/interaction upgrades, what to leave alone
 - [Converting Designs to Material UI](converting-designs-to-material-ui.md) — workflow for turning a screenshot/design/React app into a pmui app: capture references, map to components, build component-first with mock data, assemble, theme last
 - [Plotting in Panel](plotting-in-panel.md) — embedding plots from any library: HoloViews/hvPlot (DynamicMap zoom/pan, responsive sizing), Matplotlib, Plotly, ECharts, Bokeh toolbar tools
@@ -149,7 +150,7 @@ For new apps, use `pmui.Page` from panel-material-ui (see [Using Material UI](us
 
 ## Performance
 
-- Batch multiple updates into one redraw with `pn.io.hold()`; defer heavy components with `pn.extension(defer_load=True, loading_indicator=True)`; memoize expensive work with `@pn.cache`.
+- Defer heavy components with `pn.extension(defer_load=True, loading_indicator=True)`; memoize expensive work with `@pn.cache`.
 - **`pn.io.hold()`**: each property assignment on a widget/pane normally triggers its own redraw. When a watcher touches 3+ properties, wrap them in `with pn.io.hold(): ...` so they collapse into a single redraw instead of one per assignment.
 
   ```python

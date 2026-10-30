@@ -21,7 +21,7 @@ Options:
     --json           emit JSON instead of a text report
     --context N      characters of match text to show (default 90)
     --comments       include .py files when walking directories
-    --explain        print the references/patterns.md entries for the rules that
+    --explain        print the patterns.md entries for the rules that
                      fired, then the patterns no regex catches
     --check-catalogue
                      exit 1 if a rule has no catalogue entry or an entry names
@@ -56,9 +56,7 @@ I = re.IGNORECASE  # noqa: E741
 
 TEXT_SUFFIXES = {".md", ".markdown", ".rst", ".txt"}
 
-CATALOGUE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "references", "patterns.md"
-)
+CATALOGUE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "patterns.md")
 
 # These fire on ordinary comments and docstrings: a why-comment ends in its
 # reason (", since ...", "instead of ..."), docstrings open with the same verb

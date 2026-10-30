@@ -14,22 +14,33 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
-- **`explanatory-video` sub-skill** - codebase walkthrough videos for new
-  contributors under `contributing-to-holoviz`: one layer, a fixed stage,
-  progressive disclosure, every arrow checked against the source. Reuses the
-  demo video's HTML contract and MP4 export.
-- **`outreach/scripts/make_sfx.py`** - generates original, deterministic UI
-  sound effects (numpy only) for demo and explainer videos, documented in
-  `making-a-demo-video.md` under "Generated sound effects".
-- **`outreach/scripts/make_music.py`** - renders an original background score
-  from a JSON spec derived from the video's beat sheet: sections on the
-  video's times, a motif per on-screen concept, a payoff swell, ducking under
-  sound effects. Documented in `making-a-demo-video.md` under "Generated
-  music".
-- **Loudness safety for generated audio** - `outreach/scripts/_mastering.py`
-  levels both scripts' output by loudness (BS.1770-style LUFS), holds peaks
-  under -1.5 dBFS with a look-ahead limiter, and `make_music.py` warns on
-  sudden rises, so generated audio can't clip or startle.
+- **Claude Code marketplace and `npx skills`** — `build_plugin.py` now writes
+  `.claude-plugin/marketplace.json`, so `/plugin marketplace add holoviz-dev/holoviz-skills`
+  installs every skill as one `holoviz` plugin, plus an opt-in `panel-live-server` plugin
+  that runs locally to render and screenshot Panel apps. `npx skills add` reads the same
+  file, so it offers the three routing skills instead of every nested sub-skill. The plugin's
+  version is the newest skill date in the tree, so a sub-skill edit counts as an update.
+- **Context cost in the docs** — every page notes its size in chars, words and, with
+  tiktoken installed, estimated tokens, and each category page has a Context cost table
+  sizing what an agent reads for every Loading Table row, routing skill included. Teams
+  weighing whether the skills are worth the context can read the numbers instead of
+  guessing.
+- **Row budget** — `check_routing.py` fails a Loading Table row that loads more than
+  80,000 chars, so a reference added to a busy row has to displace something.
+- **Size warnings** — `check_routing.py` also warns, without failing, about a SKILL.md over
+  20,000 chars or a reference over 25,000, with a hint on how to split it. The pre-commit
+  hook runs verbose so the warning shows on a passing commit.
+- **Install a subset of skills** — `install`, `uninstall` and `update` take skill names or
+  unique prefixes (`holoviz-skills install developing`), since library users and HoloViz
+  maintainers want different skills.
+- **`holoviz-skills update` and `doctor`** — `update` re-installs what's installed and says
+  which skills changed, and `install` and `list` show the same per-skill version changes.
+  `doctor` reports stale copies, the HoloViz library versions in the project's environment
+  rather than uvx's, and any `compatibility` requirement they miss. When HoloViews is
+  installed, it also prints `hv.show_versions()` from that environment, ready to paste into
+  an issue.
+- **CLI tests** — `pixi run test-cli` covers skill selection, install, update, doctor and
+  symlinked skills, which had no tests before.
 - **`holoviz-skills --version`** - prints the installed package version.
 - **Shared `eval-data` branch for eval history** — CI publishes run history and run
   snapshots (JSON only) to a dedicated `eval-data` git branch after each eval run.
@@ -88,6 +99,47 @@ in-progress notes so it is skipped by the extraction.
 
 ### Changed
 
+- **Theming split out of Using Material UI** — `using-material-ui.md` was 28,000 chars and
+  the only file over the new size warning, and the dashboard row, the busiest in the Loading
+  Table, loaded all of its palette, typography, font, icon, brand and chart-theming sections
+  for apps that rarely theme. Those sections moved, unchanged, to `theming-material-ui.md`,
+  loaded by a new theming row and by the design-conversion and data-story rows, which need
+  them. Links to `#chart-theming` now point at the new file.
+- **Dashboard example and its docs screenshot** — the Revenue KPI reads in thousands, since
+  `Trend` showed `5.698e+5` for anything over 100,000, and both charts label dates by month with
+  the year once below, where "Mar 2025May 2025…" ran together. The docs build now waits for
+  each `.pn-loading` overlay to clear before taking the screenshot, instead of a fixed 3 s that
+  captured the KPI cards before `defer_load` filled them.
+- **Explanatory videos moved into `outreach`** — `explanatory-video` was a sub-skill of its
+  own that read `outreach/making-a-demo-video.md` for its HTML contract and export, so it's
+  now `outreach/making-an-explanatory-video.md` beside the reference it builds on. The
+  routing row loads the same files as before. Cowork installs lose the separate
+  `holoviz-skills:explanatory-video` skill on their next update.
+- **Installs skip `test_*.py`**, which test the skills' scripts and are no use to an agent.
+- **`install` and `uninstall` handle symlinked skills** — `npx skills` installs a skill as a
+  symlink to its own copy, which made both commands crash, since `shutil.rmtree` refuses
+  symlinks. They now replace or remove the link and leave the copy it points to alone.
+- **hvPlot basemaps** — Geographic Plots no longer tells agents to pass `geo=True` for a
+  basemap, which contradicted the HoloViews tile guidance and pulled in GeoViews for nothing;
+  the earthquakes example drops it too.
+- **Less duplicated guidance in co-loaded files** — `pn.io.hold()` is taught once, in the
+  `panel` skill, with `param` keeping a one-line pointer, and `plotting-in-panel.md`'s
+  DynamicMap example no longer repeats the Panel skill's imports and data setup. Both pairs
+  load together on the dashboard and plot-embedding rows.
+- **`deslop` catalogue moved to `deslop/patterns.md`**, flat beside its SKILL.md like every
+  other reference, instead of a `references/` subfolder.
+- **`deslop` catches what the Deslopping AI prose post covers** — the catalogue adds passive
+  voice that hides the actor and tables where a sentence would do, and the Report step suggests
+  reading the result aloud or getting a second reviewer.
+- **Data-story routing row** now loads `hvplot/SKILL.md` with its reference, and the
+  `holoviews` Skill Map entry no longer names its reference.
+- **`cleanup` keeps single-use constants whose name earns it** — the skill used to say
+  "keep it inline" with exceptions as an afterthought, which agents read as inline
+  everything. It now lists when a single-use name helps (a number's meaning, an outside limit,
+  a setting meant to be changed, a long or computed value) and inlines only a name that
+  restates where it's used. `cleanup_scan.py` already flagged only that case; its message now
+  points tunables at `# cleanup: ignore`. The skill also suggests import-linter contracts for
+  layering rules.
 - **Eval backend switched from GitHub Copilot to Kilo Code** — the evaluation pipeline now
   drives the Kilo Code CLI (`@kilocode/cli`) on the free `kilo/kilo-auto/free` tier, with
   `eval-multi` comparing it against the paid `kilo/kilo-auto/frontier` tier. Configure a

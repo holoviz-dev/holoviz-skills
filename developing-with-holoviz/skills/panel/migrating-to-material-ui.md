@@ -125,7 +125,7 @@ the params that trip this are tabled in
 - Two swaps are worth making:
   - **Text:** `pn.pane.Markdown` → `pmui.Typography`. Typography renders markdown, so headings and bullet lists carry over unchanged; use `variant=` (`h4`, `body2`, …) for Material text styling.
   - **Alerts:** `pn.pane.Alert` → `pmui.Alert`. **Note: `pmui.Alert` is technically a layout, not a pane** — it lives in `reference/layouts/`, takes positional children like other pmui layouts (`pmui.Alert("...", severity="warning")`), and can wrap arbitrary content rather than just a string. So you'll find it under Layouts, not Panes, when you look it up.
-- Everything else stays `pn.pane.*` — there is no pmui version and you should not invent one. They drop into `pmui.Page` and pmui layouts untouched, and pick up theme-aware styling automatically inside a Page (see [Using Material UI](using-material-ui.md#chart-theming) for plot theming):
+- Everything else stays `pn.pane.*` — there is no pmui version and you should not invent one. They drop into `pmui.Page` and pmui layouts untouched, and pick up theme-aware styling automatically inside a Page (see [Theming Material UI](theming-material-ui.md#chart-theming) for plot theming):
   - **Plot panes:** `pn.pane.HoloViews`, `pn.pane.DeckGL`, `pn.pane.ECharts`, `pn.pane.Plotly`, `pn.pane.Matplotlib`, `pn.pane.Bokeh`, `pn.pane.Vega`.
   - **Media / embed:** `pn.pane.Image`, `pn.pane.Audio`, `pn.pane.Video`, `pn.pane.HTML`, `pn.pane.IFrame`.
   - **Data displays:** `pn.pane.DataFrame`, `pn.widgets.Tabulator`.

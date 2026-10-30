@@ -33,7 +33,7 @@ pn.pane.HoloViews(
 ```
 
 - `responsive=True` and `height=N` go in the **hvPlot call**, never via `.opts()` and never via `hv.opts.defaults` — hvPlot writes its own `width=700` onto the element unless one of `responsive`/`aspect`/`frame_width`/`frame_height` is passed to the call, and that per-object value outranks any session default. See [Session Defaults](../holoviews/SKILL.md#session-defaults) for what *can* be defaulted.
-- `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`. (Inside a `pmui.Page`/`ThemeToggle`, plots auto-theme — see [Using Material UI](using-material-ui.md#chart-theming).)
+- `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`. (Inside a `pmui.Page`/`ThemeToggle`, plots auto-theme — see [Theming Material UI](theming-material-ui.md#chart-theming).)
 - `linked_axes=False` prevents axis linking when combining charts with different axis types in a Layout (`+`). Pair with `.opts(shared_axes=False)` on the Layout itself.
 - `sizing_mode="stretch_width"` is required for responsive HoloViews plots.
 
@@ -84,40 +84,27 @@ SineExplorer().servable()  # run with: panel serve app.py --dev --show
 
 ```python
 import holoviews as hv
-import hvplot.pandas  # noqa
-import panel as pn
-import panel_material_ui as pmui
-import param
 
-pn.extension(throttled=True)
-
-penguins = hvplot.sampledata.penguins("pandas").dropna()
-species_list = sorted(penguins["species"].unique())
-
+# Imports, `penguins` and `species_list` as in the Panel skill's Dashboard.
 class Dashboard(pn.viewable.Viewer):
     species = param.ListSelector(default=species_list, objects=species_list)
 
     def __init__(self, **params):
         super().__init__(**params)
-        # from_param widget AFTER super() (see panel/SKILL.md)
         self._species_widget = pmui.CheckBoxGroup.from_param(self.param.species)
         dmap = hv.DynamicMap(self._render_scatter)  # method carries its own @param.depends
         self._chart_pane = pn.pane.HoloViews(
             dmap, sizing_mode="stretch_both", theme="light_minimal",
         )
-        # Build the Page once — __panel__ returns it unconditionally.
         self._page = pmui.Page(
             title="Penguins",
             sidebar=[self._species_widget],
             main=[self._chart_pane],
         )
 
-    def _filtered(self):
-        return penguins[penguins["species"].isin(self.species)]
-
     @param.depends("species")
     def _render_scatter(self):
-        df = self._filtered()
+        df = penguins[penguins["species"].isin(self.species)]
         if df.empty:
             return hv.Scatter([], kdims=["bill_length_mm"], vdims=["bill_depth_mm"]).opts(
                 responsive=True,

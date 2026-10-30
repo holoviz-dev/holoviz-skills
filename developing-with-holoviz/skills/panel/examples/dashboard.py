@@ -18,7 +18,7 @@ import pandas as pd
 import panel as pn
 import panel_material_ui as pmui
 import param
-from bokeh.models import NumeralTickFormatter
+from bokeh.models import DatetimeTickFormatter, NumeralTickFormatter
 
 pn.extension("tabulator", throttled=True, defer_load=True, loading_indicator=True)
 
@@ -114,11 +114,20 @@ def generate_sales_data():
 REGION_COLORS = {"North": "#ff7f0e", "South": "#2ca02c", "East": "#1f77b4", "West": "#d62728"}
 
 KPI_TOOLTIPS = {
-    "revenue": "Total revenue across the current selection.",
+    "revenue": "Total revenue across the current selection, in thousands of dollars.",
     "units": "Total units sold across the current selection.",
     "margin": "Gross margin = (Revenue − Cost) / Revenue.",
     "aov": "Average revenue per record in the current selection.",
 }
+
+
+def month_ticks() -> DatetimeTickFormatter:
+    """Month names on a date axis, with the year once under the first tick.
+
+    Full "Mar 2025" labels run together on a half-width chart. Each plot gets its
+    own formatter, since a Bokeh model can belong to only one session's document.
+    """
+    return DatetimeTickFormatter(months="%b", context="%Y")
 
 
 class SalesDashboard(pn.viewable.Viewer):
@@ -143,7 +152,7 @@ class SalesDashboard(pn.viewable.Viewer):
         # KPI Trend indicators — create once, update data via watcher
         trend_opts = dict(sizing_mode="stretch_width", height=120, plot_type="area")
         self._revenue_trend = pn.indicators.Trend(
-            name="Revenue",
+            name="Revenue ($K)",
             plot_color="#1565c0",
             **trend_opts,
         )
@@ -420,6 +429,7 @@ class SalesDashboard(pn.viewable.Viewer):
                 ],
                 xlabel="Date",
                 ylabel="Revenue ($)",
+                xformatter=month_ticks(),
                 yformatter=NumeralTickFormatter(format="$0,0"),
                 gridstyle={"grid_line_alpha": 0.3},
                 show_grid=True,
@@ -466,6 +476,7 @@ class SalesDashboard(pn.viewable.Viewer):
             ],
             xlabel="Date",
             ylabel="Cumulative Revenue ($)",
+            xformatter=month_ticks(),
             yformatter=NumeralTickFormatter(format="$0,0"),
             gridstyle={"grid_line_alpha": 0.3},
             show_grid=True,
@@ -519,8 +530,10 @@ class SalesDashboard(pn.viewable.Viewer):
         ).round(1)
         monthly["aov"] = (monthly["revenue"] / monthly["units"]).round(2)
 
-        self._revenue_trend.data = {"x": monthly["date"], "y": monthly["revenue"]}
-        self._revenue_trend.value = int(df["revenue"].sum())
+        # In thousands: Trend formats its value with Bokeh's BasicTickFormatter,
+        # which switches to scientific notation from 100,000 (5.698e+5).
+        self._revenue_trend.data = {"x": monthly["date"], "y": monthly["revenue"] / 1000}
+        self._revenue_trend.value = round(df["revenue"].sum() / 1000, 1)
 
         self._units_trend.data = {"x": monthly["date"], "y": monthly["units"]}
         self._units_trend.value = int(df["units"].sum())

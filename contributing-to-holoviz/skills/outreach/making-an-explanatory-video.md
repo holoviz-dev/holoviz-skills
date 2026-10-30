@@ -1,12 +1,4 @@
----
-name: explanatory-video
-description: Plan and build a short explanatory video (up to 3 minutes) that walks a new contributor through how a HoloViz codebase fits together, as an animated diagram of its main pieces and where they live. Use when the user wants a codebase walkthrough, architecture explainer, onboarding video, or "how X works inside" video for a HoloViz repo such as Lumen, Panel or hvPlot.
-metadata:
-  version: "2026.10.15"
-  author: holoviz
----
-
-# Explanatory Video
+# Making an Explanatory Video
 
 A codebase explainer for someone about to open their first PR. A demo sells an
 outcome; an explainer builds a mental map, so the viewer finishes knowing which
@@ -29,7 +21,7 @@ contract and MP4 export as a demo.
 
 ## References
 
-- [Making a Demo Video](../outreach/making-a-demo-video.md): the `window.seek(t)`
+- [Making a Demo Video](making-a-demo-video.md): the `window.seek(t)`
   HTML contract, checking frames and exporting to MP4. An explainer uses all
   three unchanged; don't restate them here.
 - [deslop](../deslop/SKILL.md): run every caption through it.

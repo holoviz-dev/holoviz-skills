@@ -2,7 +2,7 @@
 name: param
 description: Define Python classes with typed, validated, reactive parameters using Param. Use when building classes with constrained attributes, reactive dependencies between values, or dynamic option cascading. Load alongside the Panel skill for any Panel app using Parameterized classes.
 metadata:
-  version: "2026.08.03"
+  version: "2026.10.20"
   author: holoviz
 ---
 
@@ -99,7 +99,7 @@ class CountrySelector(param.Parameterized):
 
 - `obj.param.update(**kwargs)` applies multiple changes atomically on **one** Parameterized object — a Param class, or any Panel widget/pane, since those are Parameterized too. A watcher on both params fires **once with two events**, not twice, so write the callback as `def cb(*events)`.
 - `obj.param.update()` used as a **context manager sets values temporarily and restores the originals on exit** — `with slider.param.update(value=9): ...` leaves `value` back at its previous value afterwards, and the restore fires watchers a second time. It is a scoped override, *not* a way to batch assignments written inside the block; those still notify one at a time. Use the keyword form above to batch.
-- `pn.io.hold()` is the Panel-side complement and a *different layer*: it holds events on the Bokeh **Document** so the browser receives one combined update instead of several. It does not affect Param watcher dispatch — use it to stop UI flicker while mutating several components, and `.param.update()` to batch Param events. Works as a context manager or a decorator.
+- `.param.update()` batches *Param* events only. Batching what the browser receives is a different layer, `pn.io.hold()` (see the `panel` skill); neither does the other's job.
 - Use the most specific type (`param.Integer` not `Number`, `param.Selector` not `String`). Specificity drives widget selection in Panel's `.from_param()`.
 - `softbounds` suggests a range for UI sliders without hard enforcement. `step` hints the increment. `label` overrides the display name. `precedence` controls ordering (lower = first).
 - `param.List(item_type=str)` validates contents. `param.Dict` does not validate values.
@@ -138,12 +138,6 @@ slider.param.update(value=5, end=20)
 with slider.param.update(value=9):
     ...              # slider.value == 9 in here
 # slider.value is back to 5, and the restore fires watchers again
-
-# Panel-side: one combined update to the browser, no flicker.
-# Orthogonal to the above — this does not batch Param watcher calls.
-with pn.io.hold():
-    slider.value = 7
-    slider.end = 30
 ```
 
 For the `param.Event` + `Button.from_param()` + `@param.depends(watch=True)` button pattern, see the declarative example under [.watch() vs @param.depends vs .link()](#watch-vs-paramdepends-vs-link).

@@ -2,7 +2,7 @@
 name: cleanup
 description: Code quality guidelines for HoloViz packages. Use when writing, changing, refactoring, or reviewing code in any HoloViz repository.
 metadata:
-  version: "2026.10.01"
+  version: "2026.10.20"
   author: holoviz
 ---
 
@@ -26,7 +26,7 @@ Review the change against the whole repo, not just the diff. The diff can't show
    - For each new function, search the repo for one that already does the same job. The existing helper may have a name you wouldn't guess, so search for what it does as well as for likely names, using a semantic codebase index if one is available.
    - For each comment, check that what it claims is true.
    - For each `try`/`except`, say how the code inside could fail and what the caller sees when it does. If it can't fail, remove the `except`.
-   - List the constants and helpers that are used only once.
+   - List the constants and helpers that are used only once, and for each, whether its name says something its value and call site don't.
    - For each fix, say whether it's where the problem starts or where it showed up. When a traceback points at a caller, an agent tends to patch the caller, like adding `.strip()` wherever a helper's output is used, instead of fixing the helper once. A PR that touches five files to work around a problem may have a two-line fix elsewhere.
 2. Run `python3 scripts/cleanup_scan.py <package dir>` over the whole package, since it counts a constant's reads across every file it's given. It flags the findings a parser can see: file order, single-use constants, standard-library imports inside functions, docstrings that only repeat the name, blind excepts, and handlers that turn a failure into `None`. Fix each hit, or mark one that's right as written with `# cleanup: ignore[rule-id]` and the reason.
 3. Delete first: dead guards, single-use constants whose name adds nothing, and wrappers that only reword an error. Each deletion shrinks what the rest of the review has to cover.
@@ -41,7 +41,7 @@ Review the change against the whole repo, not just the diff. The diff can't show
 
 - If the repo already has a helper that does the job, call it. If it has the same flaw as the new code, fix it there and drop the new copy, leaving one helper to maintain instead of two.
 - Keep each piece of knowledge in one place: a regex that parses an error message, a mapping of option names, a list of supported backends. Copies drift apart, and the next agent can't tell which one is the source of truth.
-- Keep a value or helper that's used once inline: `timeout_seconds: float = 60` in the signature, not a module-level `QUERY_TIMEOUT = 60` used only as that default. Pull it out when a second caller needs it, or when the name explains something the value can't, like a compiled regex named for what it matches.
+- A constant used once earns its name when the name says something the value can't: what a number means (`RETRY_BACKOFF = 1.5`), a limit set outside the code (an API's page size), a setting a maintainer is expected to change, or a value too long or computed to read well inline, like a compiled regex named for what it matches. Inline it when the name only restates where it's used, like a module-level `QUERY_TIMEOUT = 60` that exists to be the default of `timeout_seconds`, since `timeout_seconds: float = 60` in the signature says the same thing where a reader looks first. Pull a value or helper out once a second caller needs it.
 - Share cross-backend or cross-variant logic via a mixin or helper, but extract only what every caller has in common. A shared helper full of per-caller branches is harder to follow than the copies it replaced.
 
 ## Errors and Guards
@@ -77,6 +77,7 @@ def missing_table(error: Exception) -> str | None:
 ## Code Style
 
 - Leave formatting and style enforcement (including type hint syntax) to linters and pre-commit hooks. Run via `pixi run lint`. If you keep flagging something by hand that a rule could catch, such as `BLE001` for blind excepts or `PLC0415` for imports inside functions, suggest enabling the rule in the repo's ruff config. An agent can skip an instruction, but it can't merge past a failing check.
+- Write a layering rule ("`utils` doesn't import the UI modules") as an [import-linter](https://import-linter.readthedocs.io/) contract instead of a review comment. The contract catches imports deferred into a function too, and an agent can't merge past it.
 - Put imports at the top of the file. A reader then sees a module's dependencies in one place, and an agent doesn't add a second copy further down. Standard-library and required-dependency imports always go at the top. Import an optional or slow-loading dependency inside the function that uses it, to keep the package importable without it and fast to import. A deferred import that breaks a circular import gets a comment naming the cycle, and often means the function belongs in another module. If the repo selects `PLC0415`, mark each deferred import with `# noqa: PLC0415` and that reason.
 - Prefer direct attribute access when the attribute is known to exist. `getattr` with a default is appropriate when the attribute may be absent (e.g. checking across class hierarchies or optional mixins) and the caller handles the fallback.
 - Order file contents: imports, constants, functions (or a `utils` module), then classes. With a fixed order, a reader knows where to look and finds the existing constant or helper instead of defining a second one.

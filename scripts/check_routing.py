@@ -12,7 +12,13 @@ tracked files and reports:
   check the docs build warns with (``build_stubs.find_broken_links``);
 * a sub-skill ``SKILL.md`` missing from its routing skill's Loading Table;
 * any other ``.md`` under ``skills/`` that neither the Loading Table nor its
-  sub-skill's ``SKILL.md`` names.
+  sub-skill's ``SKILL.md`` names;
+* a Loading Table row whose files, routing skill included, add up to more than
+  ``ROW_BUDGET_CHARS``.
+
+It also warns, without failing, about a ``SKILL.md`` longer than
+``SKILL_MD_WARN_CHARS`` or a reference longer than ``REFERENCE_WARN_CHARS``, with a
+hint on how to split it.
 
 Exit status: 0 clean, 1 problems found. Stdlib-only, matching the other
 scripts in this folder.
@@ -20,14 +26,22 @@ scripts in this folder.
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
-from build_stubs import find_broken_links
+from build_stubs import MD_PATH_RE, find_broken_links, loading_table_rows
 
-MD_PATH_RE = re.compile(r"`([^`\s]+\.md)`")
+# What an agent reads for one Loading Table row before answering: the routing
+# skill plus every file the row lists. A row over this fails, so growing a busy
+# row means trimming something else in it. Characters keep the check stdlib-only;
+# the docs show token estimates for the same rows. Lower it as rows get trimmed.
+ROW_BUDGET_CHARS = 80_000
+# A file over these gets a warning, not a failure, since a long file can be the right
+# call. A SKILL.md loads whenever its skill does, and an agent may read only the start
+# of a long reference. Roughly four characters make a token.
+SKILL_MD_WARN_CHARS = 20_000
+REFERENCE_WARN_CHARS = 25_000
 
 
 def tracked_files(root: Path) -> set[PurePosixPath]:
@@ -42,8 +56,7 @@ def tracked_files(root: Path) -> set[PurePosixPath]:
 
 
 def loading_table_paths(skill_md: str) -> list[str]:
-    match = re.search(r"^## Loading Table\n(.*?)(?=^## |\Z)", skill_md, re.MULTILINE | re.DOTALL)
-    return MD_PATH_RE.findall(match.group(1)) if match else []
+    return [path for _, paths in loading_table_rows(skill_md) for path in paths]
 
 
 def owning_skill(path: PurePosixPath, tracked: set[PurePosixPath]) -> PurePosixPath | None:
@@ -54,14 +67,35 @@ def owning_skill(path: PurePosixPath, tracked: set[PurePosixPath]) -> PurePosixP
     return None
 
 
-def check(root: Path) -> list[str]:
-    tracked = tracked_files(root)
+def skill_markdown(root: Path, tracked: set[PurePosixPath]) -> list[PurePosixPath]:
+    """Tracked ``.md`` files under a skill directory, the ones agents get pointed at."""
     skill_roots = {p.parts[0] for p in tracked if p.name == "SKILL.md" and len(p.parts) == 2}
-    markdown = sorted(
+    return sorted(
         p
         for p in tracked
         if p.suffix == ".md" and p.parts[0] in skill_roots and (root / p).exists()
     )
+
+
+def size_warnings(root: Path) -> list[str]:
+    warnings = []
+    for path in skill_markdown(root, tracked_files(root)):
+        size = len((root / path).read_text(encoding="utf-8"))
+        if path.name == "SKILL.md":
+            limit, hint = SKILL_MD_WARN_CHARS, "move detail into a reference it links to"
+        else:
+            limit, hint = REFERENCE_WARN_CHARS, "split it into references by user need"
+        if size > limit:
+            warnings.append(
+                f"warning: {path} is {size:,} chars (~{size // 4:,} tokens), over the "
+                f"{limit:,} guideline; {hint} (see creating-custom-holoviz-skills)"
+            )
+    return warnings
+
+
+def check(root: Path) -> list[str]:
+    tracked = tracked_files(root)
+    markdown = skill_markdown(root, tracked)
     problems = []
 
     for path in markdown:
@@ -85,6 +119,15 @@ def check(root: Path) -> list[str]:
             if path not in tracked:
                 problems.append(f"{routing}: Loading Table names {path}, which doesn't exist")
 
+        for need, paths in loading_table_rows(text):
+            files = [base / p for p in dict.fromkeys(paths) if (root / base / p).exists()]
+            size = len(text) + sum(len((root / f).read_text(encoding="utf-8")) for f in files)
+            if size > ROW_BUDGET_CHARS:
+                problems.append(
+                    f"{routing}: Loading Table row {need!r} loads {size:,} chars, "
+                    f"over the {ROW_BUDGET_CHARS:,} budget"
+                )
+
         for path in markdown:
             if base / "skills" not in path.parents or path in listed:
                 continue
@@ -106,6 +149,8 @@ def check(root: Path) -> list[str]:
 
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
+    for warning in size_warnings(root):
+        print(warning)
     problems = check(root)
     for problem in problems:
         print(problem)

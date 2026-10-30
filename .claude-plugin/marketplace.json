@@ -1,0 +1,55 @@
+{
+  "name": "holoviz-skills",
+  "owner": {
+    "name": "HoloViz",
+    "email": "developers@holoviz.org"
+  },
+  "metadata": {
+    "description": "Agent skills for Panel, hvPlot, HoloViews and Param, plus the Panel Live Server MCP for rendering and screenshotting what the agent builds."
+  },
+  "plugins": [
+    {
+      "name": "holoviz",
+      "source": "./",
+      "strict": false,
+      "description": "Every HoloViz Agent Skill in one plugin — Panel, hvPlot, HoloViews, Param, and more. Bundles contributing-to-holoviz, creating-custom-holoviz-skills, developing-with-holoviz.",
+      "skills": [
+        "./contributing-to-holoviz",
+        "./creating-custom-holoviz-skills",
+        "./developing-with-holoviz"
+      ],
+      "keywords": [
+        "holoviz",
+        "panel",
+        "hvplot",
+        "holoviews",
+        "param",
+        "dataviz"
+      ],
+      "version": "2026.10.20"
+    },
+    {
+      "name": "panel-live-server",
+      "source": "./",
+      "strict": false,
+      "description": "MCP server that renders, validates and screenshots Panel apps and plots so the agent can see what it built. Runs Python locally; pairs with developing-with-holoviz.",
+      "keywords": [
+        "panel",
+        "mcp",
+        "screenshot",
+        "holoviz"
+      ],
+      "mcpServers": {
+        "panel-live-server": {
+          "command": "uvx",
+          "args": [
+            "--from",
+            "panel-live-server[pydata]",
+            "pls",
+            "mcp"
+          ]
+        }
+      }
+    }
+  ]
+}
