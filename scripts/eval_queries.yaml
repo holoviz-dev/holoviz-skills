@@ -40,3 +40,15 @@ queries:
     expected_output: static_plot
     timeout: 600
     category: holoviews
+
+  - id: panel_gapminder_app
+    prompt: |
+      Recreate the classic Gapminder "Life expectancy vs. GDP" visualization as a single Panel app.
+      It should be an animated bubble chart of life expectancy against GDP per capita,
+      with bubble size showing population and color showing continent, stepping
+      through the years 1952-2007.
+      Use only HoloViz libraries and load the data from
+      https://raw.githubusercontent.com/plotly/datasets/master/gapminderDataFiveYear.csv.
+    expected_output: panel_app
+    timeout: 600
+    category: panel
