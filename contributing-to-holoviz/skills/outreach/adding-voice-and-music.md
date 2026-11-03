@@ -24,7 +24,10 @@ Write a narration spec and render it with
 Qwen3-TTS models through `faster-qwen3-tts`. Every speaker has one reference
 take, and the Base model clones it for every line. Start from the voice this
 skill ships, `"measured"`: a calm, quietly confident developer presenting at
-a conference, the same clip on every machine.
+a conference, the same clip on every machine. `"casual"` is the shipped
+female voice (a senior developer showing a colleague a trick, about 189 Hz);
+it reads slower, and the same script ran about 8% longer. When the user
+wants to compare voices, render the spec once with each and keep both cuts.
 
 ```json
 {
@@ -32,7 +35,7 @@ a conference, the same clip on every machine.
             "speakers": {"narrator": {"voice": "measured"}}},
   "lead": 0.4, "tail": 0.5, "loudness": -16,
   "timeline": {"bar": 0.1, "gap": 0.3, "pad": 0.7},
-  "lexicon": {"hvPlot": "H V plot", "HoloViz": "holo viz"},
+  "lexicon": {"hvPlot": "aitch vee plot", "HoloViz": "holo viz"},
   "lines": [
     {"id": "open", "scene": "open", "text": "This diff does a lot, so let's look at what we can trim."},
     {"id": "keep", "scene": "keep", "text": "The docs already prefer speakers, so let's keep that one and let the other four go."}
@@ -104,12 +107,19 @@ python scripts/make_voice.py narration.json --pick 3                # steadiest 
   the picture can't move, such as footage cut to a fixed length.
 - **Write one walkthrough, not a line per screen.** Each line picks up from
   the last ("Start with…", "Then there are two spots…", "After that…",
-  "So that's…"); lines that each open fresh ("First up", "Now", "Oh, and")
-  sound like separate recordings however steady the voice. Keep lines to one
-  thought of similar length. A two-part quip ("Nine entries? It's really
-  three.") puts half a second of silence mid-line, and a run of them chops
+  "Lastly…", "So that's…"); lines that each open fresh ("First up", "Now",
+  "Oh, and") sound like separate recordings however steady the voice, and a
+  bare "Last," reads clipped where "Lastly," signals the final step. Keep
+  lines to one thought of similar length. A two-part quip ("Nine entries?
+  It's really three.") puts half a second of silence mid-line, and a run of them chops
   the narration up. Open with a hook the viewer recognizes ("Ever plotted a
-  big dataset and just gotten a blob? Let's fix that."). For a two-host
+  big dataset and just gotten a blob? Let's fix that."), and give the hook
+  its own line: two statements in one opening line ("Every account says
+  they already have that. Here's what we keep hearing it leaves open.")
+  came out run-on and robotic, while a question line plus a short second
+  line in the same scene ("Ever pitched something and heard, we already
+  have that?" / "Fair enough. So let's look at what it leaves open.")
+  landed with a real beat between them. For a two-host
   conversation, short reactions ("Right.", "Exactly.") as their own lines,
   with `timeline.gap` 0.25, make it sound like talk.
 - **Pick each line's take with `--pick`.** Clones of one reference still
@@ -135,6 +145,11 @@ python scripts/make_voice.py narration.json --pick 3                # steadiest 
   `window.EVENTS` so the build can place sound effects on them.
 - **The voice repeats the screen.** A line says about what the headline says,
   in one sentence; don't read code aloud, and run the lines through deslop.
+- **Say it positively.** A listener can't re-read a line, and a double
+  negative costs them the sentence. A reviewer stumbled on "MCPs that touch
+  company data don't ship without governance"; "…need governance before
+  they ship" fixed it. Change the on-screen label with it ("No governance, no
+  go-live" became "Governance before go-live").
 - **With fixed times, fit the line to the screen, not the voice to the
   line.** Each line starts `lead` s after its screen. When a line runs past
   `tail` s before the next screen, the script prints how many words fit at
@@ -147,10 +162,20 @@ python scripts/make_voice.py narration.json --pick 3                # steadiest 
   product's name appears), split the line into two lines in the same scene:
   `timeline.gap` (0.5 s) then sets the silence exactly, and each half gets
   its own take.
-- **Respell anything the model might read wrong** in `lexicon`, which
-  changes only what the model hears; captions keep the on-screen spelling.
+- **Put every acronym and mixed-case name in `lexicon`** (GPU, AI, PyTorch,
+  hvPlot), plus anything else the model might read wrong. The lexicon changes
+  only what the model hears; captions keep the on-screen spelling. Before it
+  renders, `make_voice.py` warns about each word with two or more capitals, or
+  camelCase from a lowercase start, that no entry covers, and a plural needs
+  its own entry (`GPU` doesn't cover `GPUs`). Map a word to itself
+  (`"API": "API"`) once you've heard the model read it right, so the warning
+  records that someone checked it.
   Spell acronyms the way they're said, not letter by letter with spaces:
-  `"CVEs": "see vee eez"`, `"CISO": "see-so"` (`"C V Es"` came out wrong).
+  `"CVEs": "see vee eez"`, `"CISO": "see-so"` (`"C V Es"` came out wrong),
+  `"AI": "ay-eye"` (`"A I"` sounded robotic). **A product name of two or
+  more words gets its own entry** (`"Enkrypt AI": "Encrypt ay-eye"`) even
+  when each word already has one. Entries apply longest first, and the
+  phrase entry keeps the model from reading a verb followed by an acronym.
   Write out dates and symbols: `"12 Nov": "November twelfth"`,
   `"500+": "five hundred plus"`. Listen to every respelled line once.
 - Every line is levelled to the target before mixing, because clones of

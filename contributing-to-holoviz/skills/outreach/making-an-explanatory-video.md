@@ -18,6 +18,7 @@ contract and MP4 export as a demo.
 - [Labels and captions](#labels-and-captions)
 - [Pacing](#pacing)
 - [Ending: where your code goes](#ending-where-your-code-goes)
+- [Variant: a problem, value, solution grid](#variant-a-problem-value-solution-grid)
 
 ## References
 
@@ -145,3 +146,42 @@ gaps, each labeled with the directory a contributor would add to:
 `your agent → ai/agents/`, `your tool → ai/tools/`. One line per extension
 point, and only extension points the source actually supports. Hold the final
 frame at least 3 s.
+
+## Variant: a problem, value, solution grid
+
+For a sales or enablement explainer ("We already have that. Here's what it
+leaves open."), the stage is a grid instead of a bus: one row per product,
+three columns, PROBLEM, VALUE and SOLUTION. The rules above still apply
+(fixed stage, reveal by need, dim what is idle, brighten at the end); these
+are what changed over one round of reviewer feedback.
+
+- **Reveal row by row, cell by cell.** Each cell lands on the narration line
+  that names it: the problem, then the arrow and the value, then the arrow
+  and the solution. A column header appears with its first cell. Finished
+  rows dim to about 40% when the next row starts, and every row brightens
+  on the closing line. A footer tagline ("Kilo builds it · Core vets it ·
+  Orchestration runs it · Enkrypt secures it") fades in on the phrase that
+  says it.
+- **Ground every problem in what customers said.** Read the call notes and
+  DMs the user points to before writing a row, and use the buyer's own
+  words (CVEs, SBOMs, MCPs, exception tickets, burning tokens). Don't frame
+  a row as replacing a tool a customer said stays (a team standardised on
+  Cursor), and keep customer names off screen.
+- **The problem names its cost.** "Tokens burned in Cursor" was weak; "Top
+  model on every task / Menial work burns tokens", narrated as costing
+  money *and* time because the biggest models are also the slowest, made
+  the value obvious.
+- **The value is an outcome the product actually delivers.** "Spend they
+  can explain" was cut because the router picks a model without explaining
+  it. Check each value against what the product does, not what the buyer
+  wishes it did; "Cheaper and faster / Right-sized model per task" replaced
+  it.
+- **Give each solution two value props,** the feature that answers the
+  problem first and the next strongest second (Kilo: "Auto Efficient
+  routing", then "At cost, spend by user + model"). The second line lands
+  on its own narration line, so the box fills in as it is described.
+  Reviewers asked for the full set of value props; one line per product
+  undersold it.
+- **Flag claims the sources don't support** in the reply, rather than
+  softening them silently (a cost shown *before* a run, a speed figure, a
+  CVSS threshold described as a "CVE score").

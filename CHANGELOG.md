@@ -14,6 +14,17 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
+- **Problem, value, solution explainers** — the explanatory-video reference covers a sales
+  grid (one row per product, revealed cell by cell on the narration), with rules from review:
+  ground problems in customer notes, name the problem's cost, keep the value to what the
+  product does, and give each solution two value props.
+- **Narration lessons** — split the opening hook into its own line, avoid double negatives,
+  "Lastly," for the final step, `"AI": "ay-eye"`, and a lexicon entry for multi-word product
+  names (`"Enkrypt AI"`); the voice reference now mentions the shipped `casual` voice.
+- **Acronym check for narration** — `make_voice.py` lists every acronym and mixed-case name
+  (GPU, GPUs, PyTorch, hvPlot) that the spec's `lexicon` doesn't cover before it renders, so
+  none is left to the model's guess; map a word to itself once it's been heard read right.
+
 - **Narration for demo videos** — `outreach/scripts/make_voice.py` renders a narration spec
   with local Qwen3-TTS models through `faster-qwen3-tts`. Each speaker's voice comes from a
   written description (VoiceDesign) or a saved clip, and every other line clones it with the
