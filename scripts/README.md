@@ -10,8 +10,30 @@ eval, `eval_cleanup.py` (see below), because `eval.py` executes generated plots 
 code review has nothing to execute. None of the other skills (both routing skills,
 `param`, `panel` and its references, `holoviews` and its references, `documentation`,
 `minimal-example`, `outreach`, `pr-description`, `testing`,
-`creating-custom-holoviz-skills`) have any eval coverage yet. Contributions adding
-queries for other skills are welcome — see "Adding Queries" below.
+`creating-custom-holoviz-skills`) have any eval coverage of their content yet, though
+`eval_triggers.py` checks that each of them gets loaded. Contributions adding queries for
+other skills are welcome — see "Adding Queries" below.
+
+## Trigger Eval
+
+`eval.py` points Kilo at the skills through `AGENTS.md`, so it measures what a skill
+teaches once loaded, not whether an agent finds it unaided. `eval_triggers.py` measures
+the finding. For each prompt in `trigger_queries.yaml` it installs the skills into a fresh
+scratch project under `.kilo/skills/`, runs the prompt there with `kilo run`, and records
+which of our skills the agent loaded, whether through its skill tool or by reading a
+`SKILL.md`. A prompt passes when every skill in its `expect` list was loaded; prompts with
+`expect: []` pass only when none were, which catches a description broad enough to fire on
+unrelated work.
+
+```bash
+pixi run -e eval eval-triggers                          # every prompt once
+python scripts/eval_triggers.py --queries blog_post review_pr --runs 3
+python scripts/eval_triggers.py --models kilo/kilo-auto/free
+```
+
+Run it after editing any skill's `description`, which is the only part of a skill an agent
+sees before deciding to load it. Uninstall global HoloViz skills from `~/.kilo/skills` first;
+the script warns when it finds them, because they'd load in every scratch project.
 
 ## Cleanup Eval
 

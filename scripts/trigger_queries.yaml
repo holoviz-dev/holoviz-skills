@@ -1,0 +1,70 @@
+# Prompts for eval_triggers.py. Each is phrased the way a user would type it,
+# with no hint that skills exist, because the eval measures whether the skill
+# descriptions alone get the right skill loaded.
+#
+# expect: skill names (routing skills and/or sub-skills) the agent must load.
+# An empty list means it should load none of ours, which catches over-triggering.
+
+- id: panel_dashboard
+  prompt: Build a dashboard that filters the penguins dataset by species and shows a scatter plot of bill length against bill depth, using Panel.
+  expect: [developing-with-holoviz, panel]
+
+- id: hvplot_timeseries
+  prompt: I have a pandas DataFrame with date, station and temperature columns. Plot temperature over time per station with hvplot, with a hover tooltip showing the station.
+  expect: [developing-with-holoviz, hvplot]
+
+- id: holoviews_basemap
+  prompt: Show earthquake locations from a lon/lat DataFrame as points on a tile basemap with HoloViews.
+  expect: [developing-with-holoviz, holoviews]
+
+- id: param_class
+  prompt: Write a Param class with a bounded integer parameter and a selector parameter, and a method that reruns when either changes.
+  expect: [developing-with-holoviz, param]
+
+- id: plotly_in_app
+  prompt: I have a Plotly figure. Put it in a small Python web app next to a slider that changes the data.
+  expect: [developing-with-holoviz]
+
+- id: review_pr
+  prompt: |
+    Review this change to Panel for code quality and test coverage.
+
+    ```diff
+    --- a/panel/widgets/indicators.py
+    +++ b/panel/widgets/indicators.py
+    @@ -300,6 +300,14 @@ class Number(ValueIndicator):
+    +    def _format(self, value):
+    +        try:
+    +            return self.format.format(value=value)
+    +        except Exception:
+    +            return str(value)
+    ```
+  expect: [contributing-to-holoviz, cleanup, testing]
+
+- id: blog_post
+  prompt: Draft a post for blog.holoviz.org announcing the latest hvPlot release and its improved explorer.
+  expect: [contributing-to-holoviz, outreach]
+
+- id: demo_video_voiceover
+  prompt: Add a narrated voiceover and captions to the 45 second demo video I made for the hvPlot explorer.
+  expect: [contributing-to-holoviz, outreach]
+
+- id: pr_description
+  prompt: Write the pull request description for a HoloViews fix that stops an empty NdOverlay from raising an IndexError.
+  expect: [contributing-to-holoviz, pr-description]
+
+- id: minimal_repro
+  prompt: Write a minimal reproducer for a Panel bug report where a Tabulator's selection is lost after its filter changes.
+  expect: [contributing-to-holoviz, minimal-example]
+
+- id: new_skill
+  prompt: Add a new sub-skill for Datashader to the holoviz-skills repository.
+  expect: [creating-custom-holoviz-skills]
+
+- id: unrelated_python
+  prompt: Write a Python function that parses ISO 8601 durations like P3DT4H into a timedelta.
+  expect: []
+
+- id: unrelated_matplotlib
+  prompt: Make a matplotlib bar chart of the numbers 3, 7, 2, 9 and 4 and save it as bars.png.
+  expect: []
