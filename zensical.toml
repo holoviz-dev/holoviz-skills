@@ -69,12 +69,16 @@ nav = [
     ] },
     { "Outreach" = [
       "contributing-to-holoviz/outreach/index.md",
+      { "Adding Voice and Music" = "contributing-to-holoviz/outreach/adding-voice-and-music.md" },
       { "Making a Demo Video" = "contributing-to-holoviz/outreach/making-a-demo-video.md" },
       { "Making an Explanatory Video" = "contributing-to-holoviz/outreach/making-an-explanatory-video.md" },
       { "Writing a Blog Post" = "contributing-to-holoviz/outreach/writing-a-blog-post.md" },
       { "Scripts" = [
+        { "Check Video" = "contributing-to-holoviz/outreach/check_video.md" },
         { "Make Music" = "contributing-to-holoviz/outreach/make_music.md" },
         { "Make Sfx" = "contributing-to-holoviz/outreach/make_sfx.md" },
+        { "Make Voice" = "contributing-to-holoviz/outreach/make_voice.md" },
+        { "Record Video" = "contributing-to-holoviz/outreach/record_video.md" },
       ] },
     ] },
     { "PR Descriptions" = "contributing-to-holoviz/pr-description.md" },

@@ -7,23 +7,22 @@ These are defaults, not a template.
 
 ## Contents
 
-- [Making a Demo Video](#making-a-demo-video)
-  - [Contents](#contents)
-  - [Purpose: demo or teaser](#purpose-demo-or-teaser)
-  - [Long-form: briefings and comparisons](#long-form-briefings-and-comparisons)
-  - [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
-  - [Story](#story)
-  - [Pacing](#pacing)
-  - [Facts only](#facts-only)
-  - [Style](#style)
-  - [Real footage](#real-footage)
-  - [The HTML contract](#the-html-contract)
-  - [Checking frames](#checking-frames)
-  - [Exporting to MP4](#exporting-to-mp4)
-  - [Generated sound effects](#generated-sound-effects)
-  - [Generated music](#generated-music)
-    - [Loudness](#loudness)
-  - [Revisions](#revisions)
+- [Purpose: demo or teaser](#purpose-demo-or-teaser)
+- [Long-form: briefings and comparisons](#long-form-briefings-and-comparisons)
+- [Workflow: beat sheet before the file](#workflow-beat-sheet-before-the-file)
+- [Story](#story)
+- [Pacing](#pacing)
+- [Facts only](#facts-only)
+- [Style](#style)
+- [Real footage](#real-footage)
+- [Concept shots: SVG, Canvas, WebGL](#concept-shots-svg-canvas-webgl)
+- [The HTML contract](#the-html-contract)
+- [Checking frames](#checking-frames)
+- [Exporting to MP4](#exporting-to-mp4)
+- [Revisions](#revisions)
+
+Voice, captions, music and sound effects are in
+[Adding Voice and Music](adding-voice-and-music.md).
 
 ## Purpose: demo or teaser
 
@@ -145,8 +144,8 @@ take in.
 
 ## Style
 
-Feeds autoplay without sound, and the video has to read muted. Don't add audio
-unless asked.
+Feeds autoplay without sound, and the video has to read muted. Add audio only
+when asked, as a pass after the silent cut ([Adding Voice and Music](adding-voice-and-music.md)).
 
 - **Headlines of about eight words or fewer**, at 72–130 px on a 1080 px-tall
   stage. Check at phone feed size.
@@ -164,6 +163,13 @@ unless asked.
 When the demo is about something on screen (a Panel app, a widget, an
 interactive plot), show the real thing instead of redrawing it. Footage of the
 actual app is its own proof.
+
+**Write a shot list before opening the browser.** One line per scene: the
+claim it makes, the screenshot that proves it, and whether the claim holds for
+this audience. For a customer, ask it against what they already have (an
+existing eval tool, guardrails already in place): a "before" shot where the
+model refuses anyway, or "no redeploy" when the app isn't wired up yet, fails
+on paper and costs a re-shoot once captured.
 
 Capture it with Playwright when it's available. Serve the app, drive it with
 the same steps a user would take, and take a screenshot after each step:
@@ -197,12 +203,24 @@ finally:
 - **Make the app repeatable:** seeded or fixed data, a fixed viewport, and a
   wait for the app to settle (`networkidle`, or a selector the app renders
   once it's ready) before each screenshot.
+- **Serve with `--dev` from the start** (`panel serve app.py --dev`), so edits
+  reload without restarting the server between captures.
+- **Click by locator** (`get_by_role`, `get_by_text`), never by screen
+  coordinates, which shift when the zoom or viewport changes.
+- **Move the mouse away before each shot** (`page.mouse.move(0, 0)`), or the
+  last click leaves hover styles and tooltips in the frame.
+- **Save straight into the project** (for example `footage/`). If the capture
+  tool writes somewhere your file tools can't read, change its save folder
+  before the first capture instead of asking the user to copy each batch.
 - The page shows no cursor. Draw one in the HTML, moving as a function of `t`
   toward the element that changes, so the viewer knows where the click
   happened.
 - Crop to the part of the app that changes, and capture at
   `device_scale_factor=2`. A full-window screenshot shrunk into a 1080 px frame
   makes UI text unreadable at feed size.
+- **Take close-ups at full scale** with `page.screenshot(clip=...)`, not by
+  zooming the browser out or capturing at a reduced scale: the saved file keeps
+  the scale it was taken at, and upscaling it later blurs the text.
 - If Playwright can't run, ask the user for screenshots or a screen recording
   of the app. Don't fake the UI with drawn rectangles and call it the app.
 - **Walk through a screenshot that is the subject.** Zoom to one region at a
@@ -212,6 +230,39 @@ finally:
   every figure on screen, note each capture's run ID and time, and recapture
   after any fix. Keep an older capture only where it is the evidence for the
   old behavior.
+
+## Concept shots: SVG, Canvas, WebGL
+
+When there's no footage yet, or the subject is an idea rather than a screen
+("Datashader counts points per pixel"), abstract motion is the picture. It
+shows the idea and never stands in for the product's UI, and the headline
+still carries the claim, since a muted viewer can't decode a metaphor without
+it. Replace it with real footage once that exists.
+
+| Use | When | Cost |
+|---|---|---|
+| SVG | the default: diagrams, outlines, morphing shapes, kinetic type | holds are skipped when recording; text stays checkable |
+| Canvas 2D | thousands of points or particles | every frame is screenshotted; text drawn in it can't be checked |
+| WebGL | shaders, colour ramps over a grid, 3D | pin versions, `preserveDrawingBuffer: true`; headless output can differ from your screen, so check stills |
+
+- **Same contract:** every particle and uniform comes from `t` and a seeded
+  random generator; generate data once at load, never per frame.
+- **One shape, never cut.** Carry one thing through the whole video (points
+  that become a grid, then counts, then a coloured image) instead of cutting
+  between unrelated pictures, and make the claim visible in it: if the
+  headline says points hide each other, the overplotted points must actually
+  hide the structure.
+- **Text stays in the DOM** over the canvas, so the checks still apply; mark
+  full-bleed canvases and outline SVGs `data-background` so text over them
+  isn't reported.
+- **A flat vector look works for concept videos:** deep navy sky with slow,
+  twinkling stars, one saturated palette shared by the 2D canvas and the
+  shader, rounded tiles and pills, flat drop shadows, and reveals with a
+  slight overshoot (`easeOutBack`). Take the style, not another studio's
+  characters or branding.
+- **Headless sandboxes** without a GPU render WebGL with
+  `--use-gl=swiftshader --enable-unsafe-swiftshader`; pass each to
+  `check_video.py` and `record_video.py` as `--chromium-arg=<flag>`.
 
 ## The HTML contract
 
@@ -251,7 +302,15 @@ Check after every edit, not once before export: a fix on one screen often
 breaks its neighbour, and the user shouldn't be the one who finds it.
 
 1. Grep the file for the banned APIs.
-2. Screenshot each scene's settled frame (just before it fades out) and a
+2. Run [`scripts/check_video.py`](scripts/check_video.py) on the page (and on
+   the burned-caption page, with `--srt` and `--narration`). It seeks the
+   whole timeline and reports, as time ranges, console errors, text over
+   text, text over an image, canvas, SVG or a card, text within 24 px of a
+   box it doesn't belong to, clipped and undersized text, and captions whose
+   words differ from the narration; it exits 1 on any of them. It can't see
+   text drawn inside a canvas, judge a message, or catch a shape crossing
+   text, so the stills below are still needed.
+3. Screenshot each scene's settled frame (just before it fades out) and a
    few mid-transition frames in every orientation you deliver, then look at
    the images yourself. Check the layout:
    - unplanned wraps, and a headline running into the picture;
@@ -262,7 +321,7 @@ breaks its neighbour, and the user shouldn't be the one who finds it.
    - collisions with the corner label, the draft tag and the progress bar;
    - a moving element (a packet, a cursor) passing over text;
    - text that leaves before it can be read.
-3. Read each still as the target viewer, with the sound off. Check the
+4. Read each still as the target viewer, with the sound off. Check the
    message:
    - can they say what the screen claims without the narration?
    - would the audience know every term? An account executive doesn't know
@@ -271,9 +330,9 @@ breaks its neighbour, and the user shouldn't be the one who finds it.
      help" next to a Conda chip says Conda writes code;
    - is every claim in the sources? Flag commercial claims (licensing,
      pricing) for the user to confirm.
-4. If the recorder's machine lacks the intended font, check the longest
+5. If the recorder's machine lacks the intended font, check the longest
    headline's wrap there too.
-5. After fixing, re-shoot the same frames before moving on, and repeat until
+6. After fixing, re-run the check and re-shoot the same frames before moving on, and repeat until
    a pass finds nothing. Show the user a contact sheet of the settled frames
    with each cut.
 
@@ -282,46 +341,43 @@ Playwright takes these screenshots the same way it records the MP4: call
 into one image) reviews a whole video at once. Without Playwright, use the
 session's preview tool and say which frames you couldn't check.
 
-Re-render only the frames of scenes that changed: render frames to numbered
-images, then encode them in one ffmpeg pass. Splitting the frame range across
-a few parallel Playwright processes keeps each command inside a sandbox's
-time limit on long videos.
-
 ## Exporting to MP4
 
-Drive `seek` from a headless browser and pipe frames to ffmpeg. Frames are
-pure, and rendering slower than real time doesn't change the video.
+Record with [`scripts/record_video.py`](scripts/record_video.py), which drives
+`seek(t)` in headless Chromium and pipes frames to ffmpeg:
 
-```python
-import asyncio, os, subprocess
-from playwright.async_api import async_playwright
-
-W, H, FPS = 1920, 1080, 30
-
-async def record(src="demo.html", out="demo.mp4"):
-    ff = subprocess.Popen(
-        ["ffmpeg", "-y", "-f", "image2pipe", "-r", str(FPS), "-i", "-",
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16",
-         "-movflags", "+faststart", out],
-        stdin=subprocess.PIPE,
-    )
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page(viewport={"width": W, "height": H})
-        await page.goto(f"file://{os.path.abspath(src)}")
-        duration = await page.evaluate("window.duration")
-        for i in range(round(duration * FPS)):
-            await page.evaluate("t => window.seek(t)", i / FPS)
-            ff.stdin.write(await page.screenshot(type="png"))
-        await browser.close()
-    ff.stdin.close()
-    ff.wait()
-
-asyncio.run(record())
+```bash
+python scripts/record_video.py demo.html --out demo.mp4
+python scripts/record_video.py demo.html --out demo.mp4 --audio mix.wav --srt captions.srt
+python scripts/record_video.py vertical.html --size 1080x1920 --out vertical.mp4
 ```
 
-H.264 with `yuv420p` and `+faststart` uploads cleanly to YouTube, LinkedIn and
-X. Set the viewport to the stage size.
+It splits the timeline across parallel browser pages and reuses the last
+screenshot while nothing changes, so held screens cost nothing. A bottom
+progress bar (`#progress`, `#bar` or `[data-progress]`) is hidden in the page
+and drawn by ffmpeg, since it would otherwise change every frame. The output
+is H.264, `yuv420p`, `+faststart`, which uploads cleanly to YouTube, LinkedIn
+and X.
+
+- **Expose `window.frameKey(t)`** on any page with a canvas or WebGL: a string
+  of every value the frame is drawn from, rounded to what changes pixels.
+  Without it the recorder can't see inside a canvas and screenshots every
+  frame. Build it from the same inputs `render(t)` uses, leave out the
+  progress bar, and step anything that drifts constantly (twinkling stars) at
+  a few updates a second so held scenes repeat. On the Datashader concept
+  video this halved the screenshots, with pixel-identical output.
+- **`--burn-captions out.mp4`** renders each caption cue once as a transparent
+  image (the page's `#caption`, with `?captions=1`) and overlays them on the
+  plain cut with ffmpeg, fading like the page does, instead of recording the
+  video a second time.
+- **Render music and frames at the same time;** both need only the voice's
+  timeline. Together these took a full rebuild from about 2.7 minutes to
+  70 s.
+- **Estimate the render before starting it.** Frames are duration × fps (95 s
+  at 30 fps is 2,850). A one-CPU sandbox with a per-command time limit may not
+  finish a video past about 60 s, so hand the command to the user's machine
+  instead. When a render runs in the background, check its process or the
+  growing output file; a `sleep` returning says nothing about the recorder.
 
 **No headless browser?** Say so, and don't silently switch renderers. The
 fallback that holds up is one scene description (draw ops per element, plus
@@ -330,103 +386,6 @@ renderer (PIL piped to ffmpeg) for the MP4 and an HTML canvas that replays the
 same states for `seek(t)`. Neither has its own timeline, and the two can't
 drift. Nimbus Sans and DejaVu Sans Mono share metrics with Helvetica and Menlo,
 which keeps line breaks the same as in the browser. Show the user stills first.
-
-**Music,** if asked: generate a score that follows the video (see
-[Generated music](#generated-music)). You can't hear it, so the user has to
-check it; if they'd rather have a produced track, a platform library track
-(LinkedIn, YouTube) avoids licensing questions. Keep it around −16 to −20
-LUFS.
-
-## Generated sound effects
-
-When the user asks for sound, generate effects with
-[`scripts/make_sfx.py`](scripts/make_sfx.py) rather than downloading them.
-They're original, carry the repository's license and need no credit, and the
-script writes the same WAV for the same arguments, so commit the script call,
-not the audio.
-
-```bash
-python scripts/make_sfx.py --list                 # names and what each is for
-python scripts/make_sfx.py --out sfx/             # every sound + all-sounds.wav
-python scripts/make_sfx.py bubble --pitch -2      # retune after feedback
-```
-
-- **Each effect marks an event already on screen** (a box appearing, a token
-  landing), timed to that frame. Sound never carries meaning the picture
-  doesn't, since feeds autoplay muted.
-- **Cue them from the timeline.** Keep a list of `(sound, t, gain)` built from
-  the same named times the animation uses, and mix it with ffmpeg at export.
-  The audio then shares one clock with `seek(t)` and can't drift.
-- **You can't hear the output.** Hand the user `all-sounds.wav` first and
-  change parameters from their words ("softer", "lower"); don't describe a
-  sound as pleasant.
-
-## Generated music
-
-Write a score spec from the beat sheet and render it with
-[`scripts/make_music.py`](scripts/make_music.py). The music is unique to the
-video because it's built from the video's own timeline, and it's original, so
-it carries the repository's license like the sound effects. Commit the spec
-next to the HTML, not the WAV.
-
-```bash
-python scripts/make_music.py --example > score.json   # start from the example
-python scripts/make_music.py score.json --out music.wav
-```
-
-The script prints the loudness of each section and warns when a section
-doesn't start on a bar line. Map the video to the spec like this:
-
-- **Tempo from the beat sheet.** Pick `bpm` so every section time lands on a
-  bar line, and fix any warning by changing the tempo, not the picture's
-  times. Beats every 10–14 s with times on even seconds fit 120 BPM with
-  `"feel": "half"` (it reads as a relaxed 60).
-- **One `section` per beat-sheet change,** with `t` from the same named times
-  the animation uses.
-- **A motif per concept** in `motifs` (scale degrees, or `"pulse"` for a low
-  repeating root), added to `layers` from the section where that concept
-  first appears on screen. Progressive disclosure on screen becomes the
-  arrangement building up.
-- **The payoff gets `"layers": "all"`, `"swell": true` and a few dB of
-  `gain`,** so it's the first time the full arrangement plays and the loudest
-  section in the printout. Keep the opening quiet with a negative `gain`.
-- **The close gets `"resolve": true`,** which holds the tonic under the final
-  card while the music fades over the last 3 s.
-- **`hits`** are `[sound, t, LU]` from `make_sfx.py`, at the frames of
-  on-screen events. The number is how far above the music just before the
-  hit it lands (default 3, capped at 6), and the music ducks under each one.
-- **Mood picks `key`, `mode` and `texture`.** Explainers suit major or
-  `lydian` with `texture` around 0.5 (tape wobble, warm filter, vinyl
-  crackle); a launch demo suits `major` or `mixolydian` with less texture.
-- Change `seed` for a different take with the same structure.
-
-Hand the user the WAV with the section printout and change the spec from their
-words; you can't judge whether it sounds good.
-
-### Loudness
-
-Both scripts master their output through `scripts/_mastering.py`, so nothing
-they write clips or startles: a sudden loud moment is the fastest way to make
-a viewer scroll away or reach for the volume.
-
-- **Peaks stay under −1.5 dBFS.** A look-ahead limiter holds every sample
-  under the ceiling, with headroom for the MP4 encoder.
-- **The music is set by loudness, not peak:** `loudness` in the spec
-  (default −20 LUFS integrated), inside the −16 to −20 range for a bed
-  under a video. Sound effects are each levelled to the same loudness
-  (`--loudness`, default −16 LUFS for their loudest 400 ms), so a short tap
-  and a long chime sound equally loud.
-- **Layers fade in over their first bars**, so a new instrument doesn't
-  arrive at full level.
-- **`make_music.py` warns** when the music gets more than 6 LU louder within
-  3 s, or the loudest moment is more than 10 LU above the average. Fix the
-  spec (add layers more gradually, lower a section's `gain` or a hit) until
-  the warnings are gone; don't hand over a score that still prints one.
-- **Quieter for desk viewing.** A video watched at a desk or shared on a call
-  needs the music further under the picture than a feed clip, so start at
-  −20 LUFS or below and let the user raise it.
-- **Deliver the silent cut first** and add the score as a separate pass, so a
-  problem with the audio never holds up the video.
 
 ## Revisions
 
