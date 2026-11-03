@@ -26,6 +26,17 @@ def test_lexicon_respells_whole_words_longest_first(mv):
     assert mv.spoken("CVEscan and pre-CVE", lexicon) == "CVEscan and pre-CVE"
 
 
+def test_unspelled_finds_acronyms_and_mixed_case_names(mv):
+    lines = [
+        {"id": "a", "text": "Train on a GPU, or five GPUs, with PyTorch and AI."},
+        {"id": "b", "text": "Plot it in hvPlot. Here I said Anaconda Platform and exp/fix-width."},
+    ]
+    assert list(mv.unspelled(lines, {})) == ["GPU", "GPUs", "PyTorch", "AI", "hvPlot"]
+    # a plural needs its own entry, and an entry mapped to itself counts as checked
+    covered = {"GPU": "gee pee you", "PyTorch": "pie torch", "AI": "AI", "hvPlot": "aitch vee plot"}
+    assert mv.unspelled(lines, covered) == {"GPUs": "a"}
+
+
 def test_shipped_voices_have_a_clip_and_transcript(mv):
     metas = sorted(mv.VOICES.glob("*.json"))
     assert metas, "assets/voices ships no voice"

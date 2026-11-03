@@ -21,8 +21,9 @@ again; commit the spec, this script and the saved references, not the takes.
     python make_voice.py narration.json --line open --takes 4   # audition one line
     python make_voice.py narration.json --pick 3                # steadiest take per line
 
-The ``lexicon`` respells words for the model only ("hvPlot" -> "H V plot");
-captions keep the on-screen spelling.
+The ``lexicon`` respells words for the model only ("hvPlot" -> "aitch vee plot");
+captions keep the on-screen spelling. Every acronym and mixed-case name in the lines
+that the lexicon doesn't cover is listed in a warning before anything renders.
 """
 
 import argparse
@@ -54,7 +55,7 @@ EXAMPLE = {
     "lead": 0.4,
     "tail": 0.5,
     "loudness": -16,
-    "lexicon": {"hvPlot": "H V plot", "HoloViz": "holo viz"},
+    "lexicon": {"hvPlot": "aitch vee plot", "HoloViz": "holo viz"},
     "lines": [
         {"id": "open", "t": 0, "text": "HoloViz Skills teach your agent hvPlot."},
         {"id": "close", "t": 6, "text": "One command installs them.", "take": 2},
@@ -84,6 +85,25 @@ CLEAN = (
     "areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.12,"
     "areverse,highpass=f=80,aresample=48000"
 )
+
+
+# Two or more capitals (GPU, GPUs, AI, PyTorch, HoloViz) or camelCase from a lowercase start
+# (hvPlot): the words a model is most likely to read wrong, letter by letter or not at all.
+ACRONYM = re.compile(
+    r"(?<![\w-])"
+    r"(?:[A-Za-z0-9]*[A-Z][A-Za-z0-9]*[A-Z][A-Za-z0-9]*|[a-z]+[A-Z][A-Za-z0-9]*)"
+    r"(?![\w-])"
+)
+
+
+def unspelled(lines, lexicon):
+    """Acronyms and mixed-case names in the lines that no lexicon entry covers, first use first."""
+    found = {}
+    for line in lines:
+        for word in ACRONYM.findall(spoken(line["text"], lexicon)):
+            if word not in lexicon:
+                found.setdefault(word, line["id"])
+    return found
 
 
 def spoken(text, lexicon):
@@ -713,6 +733,14 @@ def main():
         parser.error("give a spec file, or --example")
     spec_path = pathlib.Path(args.spec)
     spec = json.loads(spec_path.read_text())
+    missing = unspelled(spec["lines"], spec.get("lexicon", {}))
+    if missing:
+        print(
+            "warning: not in lexicon, so the model guesses how to say them: "
+            + ", ".join(f"{w} ({i})" for w, i in missing.items())
+            + ". Add each respelled the way it's said, or mapped to itself once you've heard"
+            " it read right."
+        )
     cache = pathlib.Path(args.cache)
     cache.mkdir(parents=True, exist_ok=True)
     engine = Engine(spec["voice"], cache)
