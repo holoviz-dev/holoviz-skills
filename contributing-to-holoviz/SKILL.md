@@ -2,9 +2,9 @@
 name: contributing-to-holoviz
 description: Maintain, contribute to, and write about HoloViz packages. Use when reviewing PRs, refactoring code, writing tests, docs or PR descriptions, writing a minimal reproducer or a Playwright repro of a browser-only bug, stripping LLM slop from prose, or writing a blog post or demo video about a HoloViz project (Panel, hvPlot, HoloViews, Param, Lumen, etc.).
 user-invocable: true
-argument-hint: "[review PR | write tests | write docs | PR description | minimal example | browser repro | deslop | blog post | demo video | explanatory video]"
+argument-hint: "[review PR | write tests | write docs | PR description | minimal example | browser repro | deslop | blog post | demo video | voiceover | explanatory video]"
 metadata:
-  version: "2026.10.20"
+  version: "2026.11.02"
   author: holoviz
 ---
 
@@ -40,6 +40,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Strip LLM slop from prose | `skills/deslop/SKILL.md` |
 | Write or review a blog post | `skills/outreach/SKILL.md`, `skills/outreach/writing-a-blog-post.md`, `skills/deslop/SKILL.md` |
 | Make a demo or promo video | `skills/outreach/SKILL.md`, `skills/outreach/making-a-demo-video.md`, `skills/deslop/SKILL.md` |
+| Add narration, captions, music or sound to a video | `skills/outreach/SKILL.md`, `skills/outreach/making-a-demo-video.md`, `skills/outreach/adding-voice-and-music.md`, `skills/deslop/SKILL.md` |
 | Make an explanatory or codebase walkthrough video | `skills/outreach/SKILL.md`, `skills/outreach/making-an-explanatory-video.md`, `skills/outreach/making-a-demo-video.md`, `skills/deslop/SKILL.md` |
 
 ## Skill Map
@@ -50,6 +51,6 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | [deslop](skills/deslop/SKILL.md) | Keep LLM slop out of prose — the HoloViz voice before drafting, then AI vocabulary, rhetorical tics, false-profundity constructions, boilerplate |
 | [documentation](skills/documentation/SKILL.md) | Documentation guidelines — docs coverage, prose quality, Diátaxis structure, example/reference notebooks |
 | [minimal-example](skills/minimal-example/SKILL.md) | Writing minimal, self-contained, reproducible examples for bug reports, issue reproducers, and "How to test" snippets, plus Playwright reproducers for browser-only bugs |
-| [outreach](skills/outreach/SKILL.md) | Writing for readers outside a PR — blog posts (reader and point, structure, voice, code, figures, people and sources, review loop) and short demo videos (beat sheet, story, deterministic HTML, MP4 export), plus codebase explainer videos for new contributors |
+| [outreach](skills/outreach/SKILL.md) | Writing for readers outside a PR — blog posts (reader and point, structure, voice, code, figures, people and sources, review loop) and short demo videos (beat sheet, story, deterministic HTML, MP4 export, plus narration, captions and music), plus codebase explainer videos for new contributors |
 | [pr-description](skills/pr-description/SKILL.md) | Writing clear PR descriptions — title, description, before/after, AI disclosure, voice and style |
 | [testing](skills/testing/SKILL.md) | Testing guidelines — general practices, testing expected behavior, edge cases, logical errors |

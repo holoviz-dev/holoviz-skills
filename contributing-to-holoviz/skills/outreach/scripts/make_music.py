@@ -11,6 +11,7 @@ so commit the spec, not the audio. Requires ffmpeg.
 
     python make_music.py score.json --out music.wav
     python make_music.py --example > score.json
+    python make_music.py --preset lofi-jazz --scenes 0,6,12 --duration 18
 """
 
 import argparse
@@ -54,6 +55,35 @@ NOTES = {
     "B": 11,
 }
 BASE_LAYERS = {"pad", "keys", "bass", "drums"}
+# A preset fills in everything but the video's own times. With "scenes" and no
+# "sections", the tempo is fitted so every scene starts on a bar line and the
+# layers build up in "order", one group per scene, resolving on the last one.
+PRESETS = {
+    "lofi-jazz": {
+        "bpm": 80,
+        "key": "F",
+        "mode": "major",
+        "progression": [1, 4, 0, 5],  # ii9 V9 Imaj9 vi9
+        "chord_bars": 1,
+        "texture": 0.75,
+        "comp": True,
+        "loudness": -22,
+        "order": [["pad", "keys", "bass"], ["drums"]],
+    },
+    "cinematic": {
+        "bpm": 80,
+        "key": "D",
+        "mode": "lydian",
+        "progression": [0, 4, 5, 3],  # I V vi IV: slow and open
+        "chord_bars": 1,
+        "feel": "half",
+        "texture": 0.1,
+        "loudness": -22,
+        "motifs": {"wonder": [4, 2, 0, 2, 4, 7]},
+        "order": [["pad", "keys", "bass"], ["wonder"]],  # a full start keeps the fade-in under 6 LU
+        "payoff": True,  # the scene before the close swells
+    },
+}
 
 EXAMPLE = {
     "duration": 120,
@@ -244,6 +274,15 @@ class Score:
                         t0 + j * 0.018 + self.rng.uniform(0, 0.01),
                         electric_piano(mtof(m), chord_bars * self.bar * 0.9, vel),
                     )
+            if "keys" in layers and self.spec.get("comp") and not resolving:
+                for beat in (2.5,) if half else (1.5, 3.5):
+                    for j, m in enumerate(chord[1:4]):  # rootless voicing
+                        vel = 0.06 * ramp["keys"] * self.rng.uniform(0.8, 1)
+                        self.add(
+                            "music",
+                            t0 + beat * self.beat + 0.02 + j * 0.012,
+                            electric_piano(mtof(m), 0.6 * self.beat, vel),
+                        )
             if "bass" in layers and not resolving:
                 root = mtof(self.degree(degree, -2))
                 self.add("music", t0, bass(root, 1.5 * self.beat, 0.45 * ramp["bass"]))
@@ -362,10 +401,65 @@ def finish(score, music, out_path):
         mode = _ffmpeg.loudnorm(out_path, score.spec.get("loudness", -20), graph, inputs)
         if mode != "linear":
             score.warnings.append(
-                "loudnorm fell back to dynamic mode, which pumps the level; "
-                "lower the loudest hits"
+                "loudnorm fell back to dynamic mode, which pumps the level; lower the loudest hits"
             )
     return _ffmpeg.measure(out_path)
+
+
+def bar_fit_bpm(times, target, lo=66, hi=100):
+    """The whole BPM nearest ``target`` that puts every time on a bar line."""
+
+    def miss(bpm):
+        bar = 240 / bpm
+        return round(sum(abs(t / bar - round(t / bar)) for t in times), 3)
+
+    return min(range(lo, hi + 1), key=lambda bpm: (miss(bpm), abs(bpm - target)))
+
+
+def load(spec):
+    """Merge a preset under the spec and expand ``scenes`` into sections."""
+    fit = "bpm" not in spec
+    if "preset" in spec:
+        if spec["preset"] not in PRESETS:
+            raise SystemExit(f"unknown preset {spec['preset']!r}; choose from {', '.join(PRESETS)}")
+        spec = {**PRESETS[spec["preset"]], **spec}
+    if "sections" in spec:
+        return spec
+    scenes = sorted(spec["scenes"])
+    if fit:
+        spec["bpm"] = bar_fit_bpm(scenes, spec.get("bpm", 80))
+    order = spec.get("order", [["pad", "keys"], ["bass"], ["drums"]])
+    layers, sections = [], []
+    for k, t in enumerate(scenes):
+        if k == len(scenes) - 1 and k >= 2:
+            sections.append({"t": t, "layers": list(order[0]), "resolve": True})
+            break
+        if k < len(order):
+            layers = layers + order[k]
+        sections.append({"t": t, "layers": list(layers)})
+    if spec.get("payoff") and len(sections) >= 3:
+        sections[-2].update(swell=True, gain=sections[-2].get("gain", 0) + 1)
+    spec["sections"] = sections
+    return spec
+
+
+def worst_rise(stats, settle=0.0):
+    """Largest 3 s rise in short-term loudness, and the time it ends.
+
+    Rises ending before ``settle`` s (the opening fade-in) don't count.
+    """
+    # ebur128 reports no short-term value until 3 s have passed; skip those,
+    # and count anything 20 LU under the average as quiet, so a fade-in from
+    # silence isn't reported as a jump
+    raw = stats["short_term"]
+    st = np.maximum(raw, stats["integrated"] - 20)
+    valid = (raw[30:] > -100) & (raw[:-30] > -100)
+    valid &= stats["t"][30:] > settle
+    rises = np.where(valid, st[30:] - st[:-30], -np.inf)
+    if not len(rises) or not np.isfinite(rises.max()):
+        return 0.0, None
+    k = int(np.argmax(rises))
+    return float(rises[k]), float(stats["t"][k + 30])
 
 
 def main():
@@ -373,22 +467,51 @@ def main():
     parser.add_argument("spec", nargs="?", help="score spec JSON")
     parser.add_argument("--out", default="music.wav", help="output WAV")
     parser.add_argument("--example", action="store_true", help="print an example spec and exit")
+    parser.add_argument(
+        "--preset", choices=sorted(PRESETS), help="score from a preset, no spec file"
+    )
+    parser.add_argument("--scenes", help="with --preset: comma-separated scene start times")
+    parser.add_argument("--duration", type=float, help="with --preset: video length in seconds")
+    parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="lower a section's gain and re-render until no jump warning (on for scenes)",
+    )
+    parser.add_argument("--save-spec", help="write the expanded spec, after any fixes")
     args = parser.parse_args()
     if args.example:
         print(json.dumps(EXAMPLE, indent=2))
         return
-    if not args.spec:
-        parser.error("give a spec file, or --example")
-    score = Score(json.loads(pathlib.Path(args.spec).read_text()))
-    stats = finish(score, score.render(), args.out)
-    # ebur128 reports no short-term value until 3 s have passed; skip those,
-    # and count anything 20 LU under the average as quiet, so a fade-in from
-    # silence isn't reported as a jump
-    raw = stats["short_term"]
-    st = np.maximum(raw, stats["integrated"] - 20)
-    valid = (raw[30:] > -100) & (raw[:-30] > -100)
-    rises = (st[30:] - st[:-30])[valid]
-    rise = float(rises.max()) if len(rises) else 0.0
+    if args.preset:
+        if not (args.scenes and args.duration):
+            parser.error("--preset needs --scenes and --duration")
+        raw = {
+            "preset": args.preset,
+            "duration": args.duration,
+            "scenes": [float(t) for t in args.scenes.split(",")],
+        }
+    elif args.spec:
+        raw = json.loads(pathlib.Path(args.spec).read_text())
+    else:
+        parser.error("give a spec file, --preset, or --example")
+    spec = load(raw)
+    fix = args.fix or "sections" not in raw
+    for attempt in range(4 if fix else 1):
+        score = Score(spec)
+        stats = finish(score, score.render(), args.out)
+        rise, at = worst_rise(
+            stats, settle=2 * 240 / spec["bpm"] + 0.1
+        )  # layers fade in over two bars
+        if rise <= 6 or not fix or at is None or attempt == 3:
+            break
+        section = max((s for s in spec["sections"] if s["t"] <= at), key=lambda s: s["t"])
+        if section["t"] <= at - 3:
+            break  # the rise is a layer fading in inside one section; gain can't fix that
+        section["gain"] = round(section.get("gain", 0) - (rise - 5), 1)
+        print(
+            f"fix: {rise:.1f} LU rise ending at {at:.1f}s; "
+            f"section at {section['t']}s now {section['gain']:+.1f} dB"
+        )
     loudest = float(stats["momentary"].max())
     if rise > 6:
         score.warnings.append(
@@ -400,8 +523,8 @@ def main():
     for w in score.warnings:
         print("warning:", w)
     print(
-        f"integrated {stats['integrated']} LUFS, loudest moment {loudest:.1f} LUFS, "
-        f"true peak {stats['true_peak']} dBFS, largest 3 s rise {rise:.1f} LU"
+        f"{spec['bpm']} BPM, integrated {stats['integrated']} LUFS, loudest moment "
+        f"{loudest:.1f} LUFS, true peak {stats['true_peak']} dBFS, largest 3 s rise {rise:.1f} LU"
     )
     ends = [s["t"] for s in score.sections[1:]] + [score.spec["duration"]]
     for s, end in zip(score.sections, ends):
@@ -410,6 +533,8 @@ def main():
         level = 10 * np.log10(power)
         layers = s["layers"] if s["layers"] == "all" else ", ".join(s["layers"])
         print(f"{s['t']:6.1f}s  {level:6.1f} LUFS  {layers}")
+    if args.save_spec:
+        pathlib.Path(args.save_spec).write_text(json.dumps(spec, indent=2))
     print(f"wrote {args.out} ({score.spec['duration']}s)")
 
 
