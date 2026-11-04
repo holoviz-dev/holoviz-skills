@@ -1,0 +1,6 @@
+{
+ "text": "It also says the demo doc slimmed down, but it's still over twenty thousand characters. After that, there are just a few loose ends to sweep up before it ships.",
+ "instruct": "a calm, experienced Python developer in their forties giving a talk at PyCon, measured and even, quietly confident, speaks steadily without hype, natural American accent, warm mid-range voice, not deep, never excited, never an announcer",
+ "made_with": "Qwen3-TTS-12Hz-1.7B-VoiceDesign take 1 through faster-qwen3-tts (--backend ggml --quant Q8_0) designed the voice; this clip is 0:27.05-0:36.78 of the narration it was chosen by (two lines, levelled to -16 LUFS), at 24 kHz to stay under the 500 KB file check, so new lines match that narration",
+ "pitch": "about 120 Hz median, 3-4 semitones of movement, 3.5 words a second"
+}

@@ -14,6 +14,46 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
+- **Problem, value, solution explainers** — the explanatory-video reference covers a sales
+  grid (one row per product, revealed cell by cell on the narration), with rules from review:
+  ground problems in customer notes, name the problem's cost, keep the value to what the
+  product does, and give each solution two value props.
+- **Narration lessons** — split the opening hook into its own line, avoid double negatives,
+  "Lastly," for the final step, `"AI": "ay-eye"`, and a lexicon entry for multi-word product
+  names (`"Enkrypt AI"`); the voice reference now mentions the shipped `casual` voice.
+- **Acronym check for narration** — `make_voice.py` lists every acronym and mixed-case name
+  (GPU, GPUs, PyTorch, hvPlot) that the spec's `lexicon` doesn't cover before it renders, so
+  none is left to the model's guess; map a word to itself once it's been heard read right.
+
+- **Narration for demo videos** — `outreach/scripts/make_voice.py` renders a narration spec
+  with local Qwen3-TTS models through `faster-qwen3-tts`. Each speaker's voice comes from a
+  written description (VoiceDesign) or a saved clip, and every other line clones it with the
+  reference's transcript, so the delivery holds across lines; two speakers make a
+  podcast-style dialogue. Lines without `"t"` let the narration set the scene times
+  (`timeline.json`), so screens move on about a second after each line instead of waiting
+  out fixed slots. `--pick N` renders N takes of every line and keeps the steadiest pace,
+  `--line ID --takes N` auditions one line, and `"engine": "qwen-tts"` renders in bf16.
+  A calm narrator ships in `outreach/assets/voices` (`{"voice": "measured"}`), so every
+  machine gets the same voice; a description alone can't reproduce one. It
+  writes an SRT, cue and phrase times for embedded or burned-in captions, and warns when a
+  line runs past its screen. Narration, captions, music, sound effects and loudness live in
+  the new `adding-voice-and-music.md`, with its own Loading Table row, so a silent demo
+  doesn't load them.
+- **Music presets** — `make_music.py --preset lofi-jazz` (ii–V–I with comping) or `cinematic`
+  (ambient, drumless, a swell before the close) fits the tempo to the scene times and lowers
+  any section that jumps more than 6 LU, so a score needs no hand-tuned gains. Sound effects
+  can be placed from the page's `window.EVENTS`.
+- **Faster recording and layout checks** — `outreach/scripts/record_video.py` records a demo
+  HTML in parallel pages, reuses the last screenshot while the frame is unchanged (the DOM, or
+  `window.frameKey(t)` on canvas and WebGL pages), draws the progress bar in ffmpeg, overlays
+  burned-in captions on the plain cut, and muxes audio and a soft SRT track; a full rebuild of
+  an 84 s video dropped from about 2.7 minutes to 70 s. `check_video.py` seeks the page and
+  reports text collisions, crowding, clipped or small text and captions that differ from the
+  narration before stills are reviewed. `making-a-demo-video.md` adds concept shots (SVG,
+  Canvas, WebGL).
+- **Trigger eval** — `scripts/eval_triggers.py` runs each prompt in `scripts/trigger_queries.yaml`
+  in a fresh scratch project and checks which skills the agent loads unaided, so a `description`
+  edit that stops a skill firing, or makes it fire on unrelated work, shows up before release.
 - **Claude Code marketplace and `npx skills`** — `build_plugin.py` now writes
   `.claude-plugin/marketplace.json`, so `/plugin marketplace add holoviz-dev/holoviz-skills`
   installs every skill as one `holoviz` plugin, plus an opt-in `panel-live-server` plugin

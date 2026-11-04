@@ -1,0 +1,6 @@
+{
+ "text": "So here's the fun part: you just call H V plot on the data frame and it's already interactive.",
+ "instruct": "a woman in her late thirties, a senior Python developer, showing a colleague a trick she uses every day, casual and unhurried, dry sense of humor, natural American accent, warm low alto voice, never excited, not an announcer, never corporate, never squeaky or cartoonish",
+ "made_with": "Qwen3-TTS-12Hz-1.7B-VoiceDesign take 4 through faster-qwen3-tts (--backend ggml --quant Q8_0), the designed take itself rather than a cut of its clones (clones of clones came out flatter), resampled to 24 kHz",
+ "pitch": "about 189 Hz median, 3.6 semitones of movement"
+}
