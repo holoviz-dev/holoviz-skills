@@ -512,7 +512,7 @@ Examples:
   python eval.py
 
   # Specific queries only
-  python eval.py --queries hvplot_earthquake_plot hvplot_interactive_scatter
+  python eval.py --queries hvplot_earthquake_plot panel_sunset_app
 
   # With-skills condition only
   python eval.py --skills with

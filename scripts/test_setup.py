@@ -74,6 +74,7 @@ def check_dependencies():
         check_dependency("bokeh"),
         check_dependency("hvplot"),
         check_dependency("holoviews"),
+        check_dependency("astral"),
     ]
     return all(results)
 

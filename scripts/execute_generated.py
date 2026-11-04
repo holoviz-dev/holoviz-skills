@@ -57,7 +57,22 @@ _HEADLESS_SAVE_CODE = textwrap.dedent("""
                 return True
         except Exception:
             pass
+        if _is_panel(obj):
+            try:
+                import panel as pn
+                pn.io.save.save(pn.panel(obj), 'plot_output.html')
+                print('Plot saved to plot_output.html')
+                return True
+            except Exception:
+                pass
         return False
+
+    def _is_panel(obj):
+        try:
+            import panel as pn
+            return isinstance(obj, (pn.viewable.Viewable, pn.viewable.Viewer))
+        except Exception:
+            return False
 
     # 1. Check well-known variable names first
     for _var_name in ['plot', 'fig', 'p', 'chart', 'viz', '_last_plot']:
@@ -72,7 +87,7 @@ _HEADLESS_SAVE_CODE = textwrap.dedent("""
             import holoviews.core
             from bokeh.model import Model
             for _v in list(globals().values()):
-                if isinstance(_v, (holoviews.core.Dimensioned, Model)):
+                if isinstance(_v, (holoviews.core.Dimensioned, Model)) or _is_panel(_v):
                     if _try_save_plot(_v):
                         _plot_saved = True
                         break
@@ -221,8 +236,9 @@ class CodeExecutor:
         - hvplot/bokeh: save plot object to HTML
         """
         # Comment out any display calls
-        modified_code = code.replace("plt.show()", "# plt.show() # commented by eval")
-        modified_code = re.sub(r"(?<!\w)show\(\)", "# show() # commented by eval", modified_code)
+        modified_code = re.sub(
+            r"(?<![\w.])(?:[\w.]+\.)?show\(\)", "None  # show() # commented by eval", code
+        )
 
         # Use AST to detect a bare expression as the last statement and assign it
         # to _last_plot so the globals scan can find it. This correctly handles
