@@ -1,7 +1,45 @@
 {
   "schema_version": 1,
-  "run_count": 8,
+  "run_count": 9,
   "runs": [
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "status": "success",
+      "results_relpath": "runs/ci-50-1-0eed55d",
+      "total_queries": 4,
+      "models": [
+        "kilo_kilo-auto_free"
+      ],
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "resolved_models": {
+        "kilo_kilo-auto_free": [
+          "stealth/glyph-cluster",
+          "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "nvidia/nemotron-3.5-super-vl:free",
+          "dots-studio/dots-3-note-preview:free"
+        ]
+      },
+      "anonymous_models": [],
+      "publish_target": "eval-data",
+      "models_requested": [
+        "kilo/kilo-auto/free"
+      ],
+      "query_ids": [
+        "hvplot_earthquake_plot",
+        "panel_sunset_app",
+        "holoviews_topographic_hillshading",
+        "panel_gapminder_app"
+      ],
+      "skip_generation": false,
+      "skip_execution": false,
+      "skip_aggregation": false,
+      "git_commit": "0eed55d1237a1a2676ed5acd7d70041aafda7ae7",
+      "git_branch": "HEAD",
+      "python_version": "3.15.2",
+      "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43"
+    },
     {
       "run_id": "ci-47-1-71ba8f2",
       "created_at": "2026-10-13T22:31:42+00:00",

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "row_count": 32,
+  "row_count": 40,
   "rows": [
     {
       "run_id": "ci-34-1-8d17612",
@@ -555,6 +555,174 @@
       "timed_out": false,
       "resolved_models": [
         "nvidia/nemotron-3-super-120b-a12b:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "panel_gapminder_app",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 1016,
+      "tokens_input": 58167,
+      "tokens_cached": 97003,
+      "execution_time": 60.81180763244629,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/glyph-cluster"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "panel_gapminder_app",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 964,
+      "tokens_input": 25926,
+      "tokens_cached": 35072,
+      "execution_time": 58.439868688583374,
+      "cost": 0.0,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "nvidia/nemotron-3-ultra-550b-a55b:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 334,
+      "tokens_input": 33465,
+      "tokens_cached": 21680,
+      "execution_time": 17.760294914245605,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "nvidia/nemotron-3.5-super-vl:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "hvplot_earthquake_plot",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 80,
+      "tokens_input": 10011,
+      "tokens_cached": 0,
+      "execution_time": 18.05558753013611,
+      "cost": 0.0,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "dots-studio/dots-3-note-preview:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "panel_sunset_app",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 1313,
+      "tokens_input": 38640,
+      "tokens_cached": 48640,
+      "execution_time": 73.52821969985962,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "stealth/glyph-cluster"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "panel_sunset_app",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 1271,
+      "tokens_input": 71610,
+      "tokens_cached": 8672,
+      "execution_time": 70.84205341339111,
+      "cost": 0.0,
+      "execution_success": true,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "nvidia/nemotron-3.5-super-vl:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "holoviews_topographic_hillshading",
+      "model": "kilo_kilo-auto_free",
+      "condition": "with_skills",
+      "tokens_output": 626,
+      "tokens_input": 15074,
+      "tokens_cached": 17344,
+      "execution_time": 274.710191488266,
+      "cost": 0.0,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "nvidia/nemotron-3.5-super-vl:free"
+      ],
+      "anonymous": false
+    },
+    {
+      "run_id": "ci-50-1-0eed55d",
+      "created_at": "2026-11-09T16:20:32+00:00",
+      "run_trigger": "ci_tag",
+      "pr_number": null,
+      "query_id": "holoviews_topographic_hillshading",
+      "model": "kilo_kilo-auto_free",
+      "condition": "without_skills",
+      "tokens_output": 781,
+      "tokens_input": 8954,
+      "tokens_cached": 17344,
+      "execution_time": 140.18083143234253,
+      "cost": 0.0,
+      "execution_success": false,
+      "has_code": true,
+      "timed_out": false,
+      "resolved_models": [
+        "nvidia/nemotron-3.5-super-vl:free"
       ],
       "anonymous": false
     }
