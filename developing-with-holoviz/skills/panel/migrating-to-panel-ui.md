@@ -7,6 +7,7 @@ Migration is a presentation change, not a logic change: swap templates, widgets,
 ## Contents
 
 - [When to Migrate](#when-to-migrate)
+- [Automated Pass with `panel migrate`](#automated-pass-with-panel-migrate)
 - [Migration Checklist](#migration-checklist)
 - [Imports and Extension](#imports-and-extension)
 - [Template to Page](#template-to-page)
@@ -28,16 +29,34 @@ Migration is a presentation change, not a logic change: swap templates, widgets,
 - Do imports + template + widgets together as one coherent pass — a half-migrated app usually won't serve.
 - If you find yourself rewriting reactive wiring (`depends`, `watch`, `bind`), stop: migration changes presentation, not logic.
 
+## Automated Pass with `panel migrate`
+
+Panel 1.10 ships a codemod that does the mechanical part of this migration. It needs `libcst`: `pip install "panel[migrate]"`.
+
+```bash
+panel migrate app.py src/            # dry run: report only, exits 1 if any file would change
+panel migrate app.py --diff          # print a unified diff instead of the report
+panel migrate app.py src/ --fix      # write the changes
+```
+
+It rewrites classic `pn.widgets`/`pn.pane`/`pn.layout`/`pn.chat`/`pn.indicators` access paths and bare `pn.Row`-style shortcuts to `pn.ui`, `name=` to `label=`, `button_type`/`button_style` to `color`/`variant`, `MenuButton(split=True)` to `SplitButton`, and classic templates to `pn.ui.Page` when every keyword is known to carry over. It removes explicit Panel design selections, rewrites `panel_material_ui` imports to their `pn.ui` path, and is a no-op on code that is already migrated.
+
+- Commit or stash first, run with `--diff`, read it, then `--fix`. Run it on the app's own source only; directories are walked recursively, skipping dot directories, `venv`, `build`, and `dist`.
+- Everything under "manual review" in the report is yours to finish: calls using positional arguments or keywords that don't exist on the `pn.ui` class, templates with keywords that don't map to `Page`, and designs other than Panel's own.
+- The codemod knows nothing about this guide's judgment calls. After `--fix`, revert `pn.ui.Column`/`pn.ui.Row` on the layout directly wrapping a tile/geo plot ([Layouts](#layouts)), check that panes you wanted kept as `pn.pane.*` ([Panes](#panes)) and `GridSpec` placements still make sense, and rewrite any `stylesheets` as `sx` ([Styling](#styling)). Walk the rest of the checklist for anything it left, including interaction upgrades and new components.
+- It reads `*.py` files only.
+- Re-run it after fixing: a clean pass reports nothing and exits 0.
+
 ## Migration Checklist
 
-Walk these in order; each keeps the app runnable:
+Walk these in order; each keeps the app runnable. Run the [automated pass](#automated-pass-with-panel-migrate) first and use the list to review what it did and finish what it reported:
 
 1. **Imports & extension** — reference components as `pn.ui.X`, drop `template=`.
 2. **Template → `pn.ui.Page`** — collapse template + `.servable()` calls into one Page.
 3. **Widgets** — `pn.widgets.X` → `pn.ui.X`; `pn.Param(...)` → explicit `from_param`.
 4. **Parameter names** — `name`→`label`, `button_type`→`color`, `button_style`→`variant`.
 5. **Panes** — `pn.pane.Markdown` → `pn.ui.Typography`; `pn.pane.Alert` → `pn.ui.Alert` (the only pane swaps).
-6. **Layouts** (optional) — `pn.Card/FlexBox` → `pn.ui` equivalents; leave `pn.Row`/`pn.Column` as they are.
+6. **Layouts** — `pn.Row`/`pn.Column` → `pn.ui.Row`/`pn.ui.Column` except around tile/geo plots; `pn.Card/FlexBox` → `pn.ui` equivalents.
 7. **Styling** — keep `styles`; rewrite any `stylesheets` as `sx`.
 8. **Interaction upgrades** (optional) — replace hand-rolled stateful controls with `panel.ui` widgets, and consider [new `panel.ui` components](#consider-new-components) that may serve better than the pattern you're carrying over.
 9. **Verify** — serve and screenshot.

@@ -136,6 +136,7 @@ in-progress notes so it is skipped by the extraction.
   subprocess so the free tier can be evaluated alongside paid models. Costs unknown for runs
   predating cost tracking are kept as unknown: they are excluded from averages and the total
   cost is marked partial rather than counting them as free.
+- **`panel migrate` in `migrating-to-panel-ui.md`** — an Automated Pass section covers Panel 1.10's codemod (`panel[migrate]`, dry run by default, `--diff`, `--fix`), what it rewrites and reports for manual review, and what to check afterwards: tile/geo layouts, kept `pn.pane.*` panes, and `stylesheets`. The checklist's layout step now matches the Layouts section.
 
 ### Changed
 
