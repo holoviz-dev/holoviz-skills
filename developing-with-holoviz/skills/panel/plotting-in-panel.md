@@ -19,7 +19,7 @@ Examples build on the penguins Dashboard from the Panel skill.
 
 ## HoloViews and hvPlot
 
-The richest Panel integration — hvPlot and HoloViews render through `pn.pane.HoloViews`, with DynamicMap for live updates.
+The richest Panel integration — hvPlot and HoloViews render through `pn.pane.HoloViews`, with DynamicMap for live updates. Keep each output in a stable component, regardless of whether its reference comes from `pn.bind`, `@param.depends`, `rx`, or a direct Parameter. A DynamicMap takes a *reactive plot callback* such as `pn.bind(plot_fn, widget)` or a `@param.depends` method; that callback returns a HoloViews object, not a Panel pane or layout. Text and table references belong in their own panes (`pn.ui.Markdown(text_ref)`, `pn.ui.DataFrame(table_ref)`), and each independently changing chart gets its own `hv.DynamicMap(plot_ref)`. Do not make one reactive function/method/expression rebuild the entire view or place a reactive plotting function directly in a Panel layout: both replace components instead of updating a stable DynamicMap.
 
 ### pn.pane.HoloViews Configuration
 
@@ -33,7 +33,7 @@ pn.pane.HoloViews(
 ```
 
 - `responsive=True` and `height=N` go in the **hvPlot call**, never via `.opts()` and never via `hv.opts.defaults` — hvPlot writes its own `width=700` onto the element unless one of `responsive`/`aspect`/`frame_width`/`frame_height` is passed to the call, and that per-object value outranks any session default. See [Session Defaults](../holoviews/SKILL.md#session-defaults) for what *can* be defaulted.
-- `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`. (Inside a `pmui.Page`/`ThemeToggle`, plots auto-theme — see [Theming Material UI](theming-material-ui.md#chart-theming).)
+- `theme=` sets the Bokeh theme on the pane. Options: `"light_minimal"`, `"dark_minimal"`, `"caliber"`, `"night_sky"`, `None`. Do NOT set globally via `hv.renderer("bokeh").theme`. (Inside a `pn.ui.Page`/`ThemeToggle`, plots auto-theme — see [Theming Panel UI](theming-panel-ui.md#chart-theming).)
 - `linked_axes=False` prevents axis linking when combining charts with different axis types in a Layout (`+`). Pair with `.opts(shared_axes=False)` on the Layout itself.
 - `sizing_mode="stretch_width"` is required for responsive HoloViews plots.
 
@@ -45,7 +45,6 @@ pn.pane.HoloViews(
 import holoviews as hv
 import numpy as np
 import panel as pn
-import panel_material_ui as pmui
 import param
 
 pn.extension(throttled=True)
@@ -56,9 +55,9 @@ class SineExplorer(pn.viewable.Viewer):
 
     def __init__(self, **params):
         super().__init__(**params)  # from_param widgets go AFTER super() (see panel/SKILL.md)
-        self._controls = pn.Column(
-            pmui.FloatSlider.from_param(self.param.amplitude),
-            pmui.FloatSlider.from_param(self.param.frequency),
+        self._controls = pn.ui.Column(
+            pn.ui.FloatSlider.from_param(self.param.amplitude),
+            pn.ui.FloatSlider.from_param(self.param.frequency),
         )
         dmap = hv.DynamicMap(pn.bind(self._render, self.param.amplitude, self.param.frequency))
         self._plot = pn.pane.HoloViews(dmap, sizing_mode="stretch_width")
@@ -70,7 +69,7 @@ class SineExplorer(pn.viewable.Viewer):
         )
 
     def __panel__(self):
-        return pn.Row(self._controls, self._plot)
+        return pn.ui.Row(self._controls, self._plot)
 
 SineExplorer().servable()  # run with: panel serve app.py --dev --show
 ```
@@ -91,12 +90,12 @@ class Dashboard(pn.viewable.Viewer):
 
     def __init__(self, **params):
         super().__init__(**params)
-        self._species_widget = pmui.CheckBoxGroup.from_param(self.param.species)
+        self._species_widget = pn.ui.CheckBoxGroup.from_param(self.param.species)
         dmap = hv.DynamicMap(self._render_scatter)  # method carries its own @param.depends
         self._chart_pane = pn.pane.HoloViews(
             dmap, sizing_mode="stretch_both", theme="light_minimal",
         )
-        self._page = pmui.Page(
+        self._page = pn.ui.Page(
             title="Penguins",
             sidebar=[self._species_widget],
             main=[self._chart_pane],
@@ -126,9 +125,26 @@ If what changed genuinely isn't a Parameter you can bind or depend on, a `param.
 
 ### One Element Per DynamicMap
 
+- **Each independently changing plot gets its own reactive callback and DynamicMap**, even when the plots share widgets. A callback can be a `pn.bind` result or a `@param.depends` method. Keep text and tables outside the DynamicMaps, each with its own reference (a Parameter, `rx` expression, depends method, or bound callable). A DynamicMap callback returns a HoloViews/hvPlot object, never `pn.Column`, `pn.pane.Markdown`, or a mixture of those with a plot.
 - Returning mixed types (`hv.Scatter` sometimes, `hv.Overlay` other times) raises `AssertionError`.
 - Combining scatter + HLines inside `hv.Overlay([...])` loses hover tooltips.
 - Create one DynamicMap per element, combine with `*` at layout level. Each callback always returns the same element type.
+
+```python
+summary_ref = selector.param.value.rx.pipe(format_summary)
+table_ref = pn.bind(make_table, selector)
+scatter_ref = pn.bind(make_scatter, selector)
+histogram_ref = pn.bind(make_histogram, selector)
+
+pn.ui.Column(
+    pn.ui.Markdown(summary_ref),
+    pn.ui.DataFrame(table_ref),
+    pn.ui.Row(hv.DynamicMap(scatter_ref), hv.DynamicMap(histogram_ref)),
+)
+
+# Wrong: a reactive callback returns a new Column with both charts on every change.
+pn.ui.Column(pn.bind(make_summary_table_and_plots, selector))
+```
 
 ```python
 ...

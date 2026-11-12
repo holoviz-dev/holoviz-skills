@@ -6,8 +6,8 @@ plots) are embedded into its JSX tree as children. Params are the only wire
 between them.
 
 This is the opposite direction from
-[Converting Designs to Material UI](converting-designs-to-material-ui.md), which
-rebuilds a React UI in pmui. For the component-type decision ladder and CDN
+[Converting Designs to Panel UI](converting-designs-to-panel-ui.md), which
+rebuilds a React UI in `panel.ui`. For the component-type decision ladder and CDN
 rules, see [Building Custom Components](building-custom-components.md) — this
 document is only about the whole-app case.
 
@@ -29,15 +29,15 @@ document is only about the whole-app case.
 Reach for it only when the React UI is the asset and Python is the service layer:
 
 - A substantial React/JSX UI already exists — thousands of lines, bespoke CSS,
-  many views — and rebuilding it in pmui is the larger job.
+  many views — and rebuilding it in `panel.ui` is the larger job.
 - The UI is mostly *chrome*: navigation, modals, cards, toasts, filters. The
   parts that need Python are few and well-bounded (a chat, a data table, a plot).
 - You need CSS control that Material's theme system doesn't give you.
 
-Rebuild in pmui instead when the design is mostly widgets pmui already ships, or
+Rebuild in `panel.ui` instead when the design is mostly widgets `panel.ui` already ships, or
 when nearly every interaction needs Python. Every param is a websocket round
 trip, so a UI where Python must respond to each click is slower and more code
-this way than in pmui. The failure mode is choosing the React shell for a
+this way than in `panel.ui`. The failure mode is choosing the React shell for a
 dashboard and then re-implementing `Select`, `Tabs`, and `DataFrame` in JSX.
 
 ## Two Classes: Shell and App
@@ -50,7 +50,6 @@ watchers, and the async work.
 import pathlib
 
 import panel as pn
-import panel_material_ui as pmui
 import param
 from panel.custom import Child, ReactComponent
 
@@ -72,7 +71,7 @@ class Shell(ReactComponent):
 class App(pn.viewable.Viewer):
     def __init__(self, **params):
         super().__init__(**params)
-        self._chat = pmui.ChatInterface(callback=self._chat_callback, sizing_mode="stretch_both")
+        self._chat = pn.ui.ChatInterface(callback=self._chat_callback, sizing_mode="stretch_both")
         self.shell = Shell(data=load_data(), chat=self._chat, sizing_mode="stretch_both")
         self.shell.param.watch(self._persist, ["theme", "favorites"])
 
@@ -125,7 +124,7 @@ theme_toggle = Child()
 ```
 
 The child is a real Panel component with real Python callbacks — a
-`pmui.ChatInterface` with an async streaming callback, a `Tabulator` with
+`pn.ui.ChatInterface` with an async streaming callback, a `Tabulator` with
 `add_filter`, a HoloViews pane. Give children `sizing_mode="stretch_both"` and a
 CSS container with an explicit height; a child in an auto-height flex box
 collapses to nothing.
@@ -138,7 +137,7 @@ view.model.data.theme_toggle.data.value = new_theme === "dark";
 ```
 
 Use it only to drive a hidden control you deliberately mounted — the standard
-case being a `pmui.ThemeToggle(visible=False)` so pmui's own theming follows the
+case being a `pn.ui.ThemeToggle(visible=False)` so `panel.ui`'s own theming follows the
 shell's theme switch. It is unvalidated and untyped, so anything you can express
 as a param should be one.
 
@@ -288,7 +287,7 @@ class Shell(ReactComponent):
 ```
 
 `is_page=True` marks `<html data-theme-managed="true">` and suppresses Panel's
-bundled theme stylesheet, handing theming to the component. pmui components do
+bundled theme stylesheet, handing theming to the component. `panel.ui` components do
 this for themselves when a `ThemeToggle` is in the tree, but a plain
 `ReactComponent` inherits Panel's `server_doc` and must opt in. Skipping it
 leaves Panel's theme CSS fighting your own.
@@ -316,4 +315,4 @@ elif __name__ == "__main__":
 - **DON'T** promote UI-only state (hover, open/closed) to a Python param.
 - **DON'T** assume page CSS reaches the shell — shadow DOM is on, so use
   `_stylesheets`.
-- **DON'T** choose this shape for a UI that pmui components already cover.
+- **DON'T** choose this shape for a UI that `panel.ui` components already cover.

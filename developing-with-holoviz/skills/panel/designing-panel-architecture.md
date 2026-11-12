@@ -42,11 +42,12 @@ Four roles, each its own class, wired by `param.ClassSelector`:
 - **State** (`Filters`) — parameters only, plus its own widget panel. No data logic.
 - **DataStore** — holds the raw `data` and a reference to the state; exposes derived data. No UI.
 - **View** subclasses — presentation only; each reads from the shared `DataStore`.
-- **App** — the shell that composes views and wraps them in `pmui.Page`.
+- **App** — the shell that composes views and wraps them in `pn.ui.Page`.
 
 ```python
+import numpy as np
+import pandas as pd
 import panel as pn
-import panel_material_ui as pmui
 import param
 
 pn.extension("tabulator", throttled=True)
@@ -55,11 +56,17 @@ class Filters(pn.viewable.Viewer):
     year = param.Range(default=(2010, 2020), bounds=(2000, 2025))
     manufacturers = param.ListSelector(default=[], objects=[])
 
+    @classmethod
+    def from_data(cls, df):  # see "The from_data Factory" below
+        f = cls()
+        f.param.manufacturers.objects = sorted(df["manufacturer"].unique().tolist())
+        return f
+
     def __panel__(self):
-        return pn.Param(
+        return pn.ui.Param(
             self,
             parameters=["year", "manufacturers"],
-            widgets={"manufacturers": {"type": pmui.MultiChoice}},
+            widgets={"manufacturers": pn.ui.MultiChoice},
             width=320,
         )
 
@@ -79,17 +86,24 @@ class View(pn.viewable.Viewer):                  # shared base
     data_store = param.ClassSelector(class_=DataStore)
 
 class Indicators(View):
-    @param.depends("data_store.filtered")
+    def __init__(self, **params):
+        super().__init__(**params)
+        rows = pn.rx(self.data_store.filtered).rx.pipe(len)
+        self._number = pn.ui.Number(name="Rows", value=rows, format="{value:,.0f}", font_size="28pt")
+
     def __panel__(self):
-        df = self.data_store.filtered()
-        return pn.indicators.Number(name="Rows", value=len(df), format="{value:,.0f}")
+        return self._number
 
 class Table(View):
-    def __panel__(self):
-        return pn.widgets.Tabulator(
+    def __init__(self, **params):
+        super().__init__(**params)
+        self._table = pn.ui.Tabulator(
             self.data_store.filtered, pagination="remote", page_size=12,
             sizing_mode="stretch_width",
         )
+
+    def __panel__(self):
+        return self._table
 
 class App(pn.viewable.Viewer):
     title = param.String(default="Wind Explorer")
@@ -98,17 +112,19 @@ class App(pn.viewable.Viewer):
 
     def __init__(self, **params):
         super().__init__(**params)
-        main = pn.Column(*(view(data_store=self.data_store) for view in self.views))
+        main = pn.ui.Column(*(view(data_store=self.data_store) for view in self.views))
         # Build the Page once — __panel__ returns it unconditionally.
-        self._page = pmui.Page(title=self.title)
-        self._page.sidebar.append(self.data_store.filters)
-        self._page.main.append(main)
+        self._page = pn.ui.Page(title=self.title, sidebar=[self.data_store.filters], main=[main])
 
     def __panel__(self):
         return self._page
 
 # Wire it up
-df = make_data()
+rng = np.random.default_rng(0)
+df = pd.DataFrame({
+    "year": rng.integers(2000, 2026, 500),
+    "manufacturer": rng.choice(["Vestas", "GE", "Siemens"], 500),
+})
 store = DataStore(data=df, filters=Filters.from_data(df))
 App(data_store=store, views=[Indicators, Table]).servable()
 ```
@@ -124,7 +140,7 @@ The payoff: `DataStore.filtered()` is testable without rendering any UI, and one
 def filtered(self): ...
 ```
 
-A view then depends on the store's method by name: `@param.depends("data_store.filtered")`. This is what lets state, transform, and view live in separate classes yet stay reactive. The objects must be linked via `ClassSelector` (or passed at construction) for the path to resolve.
+A view consumes that method as a reference rather than naming it in its own `@param.depends`: pass the bound method straight to a component (`pn.ui.Tabulator(self.data_store.filtered)`) or derive from it with `pn.rx(self.data_store.filtered).rx.pipe(len)`. Dotted paths only resolve to *parameters*, so `@param.depends("data_store.filtered")` raises `KeyError: 'filtered'`; to depend on it inside a view method, list the underlying params (`"data_store.data"`, `"data_store.filters.year"`, …). This is what lets state, transform, and view live in separate classes yet stay reactive. The objects must be linked via `ClassSelector` (or passed at construction) for the path to resolve.
 
 ## The `from_data` Factory
 
@@ -146,7 +162,7 @@ def from_data(cls, df):
 Two ways to expose derived data from a `DataStore`:
 
 - **Method + `@param.depends`** (above) — recomputed each time a consumer calls it. Simple; fine when one or two views read it.
-- **Stored `param.DataFrame`** — when *many* components read the same derived frame, compute it once into a param with a `watch=True, on_init=True` watcher and have views depend on that param. Avoids recomputing the filter for every consumer. **Note:** this refactors `filtered` from a *method* into a *parameter* — every consumer that called `self.data_store.filtered()` (or passed the bound method, as `Table.__panel__` does above) must switch to reading `self.data_store.filtered` (the attribute, no call) or binding to `self.data_store.param.filtered`:
+- **Stored `param.DataFrame`** — when *many* components read the same derived frame, compute it once into a param with a `watch=True, on_init=True` watcher and have views depend on that param. Avoids recomputing the filter for every consumer. **Note:** this refactors `filtered` from a *method* into a *parameter* — every consumer that called `self.data_store.filtered()` (or passed the bound method, as `Table` does above) must switch to reading `self.data_store.filtered` (the attribute, no call) or binding to `self.data_store.param.filtered`:
 
 ```python
 class DataStore(param.Parameterized):
@@ -203,12 +219,12 @@ class Calculator(param.Parameterized):
 
 ## Wiring Shortcuts
 
-Beyond `.from_param()` (see [Using Material UI](using-material-ui.md#key-differences-from-panel) for which widget matches each Param type):
+Beyond `.from_param()` (see [Using `panel.ui`](using-panel-ui.md#key-differences-from-panel) for which widget matches each Param type):
 
 - **Pass a `Parameter` or widget directly as a constructor arg** to bind it reactively — no callback:
 
   ```python
-  card = pmui.Card(title=state.param.title, visible=state.param.visible)
+  card = pn.ui.Card(title=state.param.title, visible=state.param.visible)
   table = pn.widgets.Tabulator(df, page_size=self.param.page_size)
   ```
 
@@ -246,7 +262,7 @@ Each browser tab that connects to a served app gets its own **session** backed b
 
 Periodic callbacks, deferred execution (`pn.state.execute`), and session lifecycle hooks (`onload`, `on_session_created`/`on_session_destroyed`, `schedule_task`) all live on `pn.state` — see Panel's [Callbacks guide](https://panel.holoviz.org/how_to/callbacks/index.html). What agents get wrong:
 
-- `pn.state.add_periodic_callback(fn, period=...)` — `period` is in **milliseconds**, and the returned handle must be `.stop()`-ed. Tie it to the session so it stops on disconnect.
+- `pn.state.add_periodic_callback(fn, period=...)` — `period` is in **milliseconds**. A callback registered inside a session is stopped automatically when that session is destroyed; keep the returned handle only to `.stop()` it early or toggle `.running`.
 - Use `pn.state.execute(fn)` to defer heavy work off a callback so the UI stays responsive instead of blocking until the handler returns.
 
 ## URL State Sync
@@ -274,19 +290,24 @@ Call `pn.state.location.unsync(obj)` to stop syncing (e.g. when a component hold
 
 ## Streaming with Generators
 
-For incremental feedback during long work, bind `pn.bind` to a **generator** (sync or async) — each `yield` replaces the rendered output, so you avoid manual callbacks and state flags. Full guide: [Binding generators](https://panel.holoviz.org/how_to/interactivity/bind_generators.html).
+For incremental feedback during long work, bind `pn.bind` to a **generator** (sync or async) — each `yield` replaces the rendered output, so you avoid manual callbacks and state flags. Yield values into stable components, or yield the *same* pre-built layout, rather than constructing a new layout on every step. Full guide: [Binding generators](https://panel.holoviz.org/how_to/interactivity/bind_generators.html).
 
 The one rule agents miss: **a bound generator may `yield` repeatedly but must never `return` a value** — use a bare `return` only to stop early.
 
 ```python
+progress = pn.ui.LinearProgress(value=0, visible=False)
+
 def runner(run):
     if not run:
         yield "Not run yet"; return        # bare return — no value
+    progress.visible = True
     for i in range(101):
-        yield pn.Column(f"{i}%", pn.indicators.Progress(value=i))
+        progress.value = i
+        yield f"{i}%"
+    progress.visible = False
     yield "Done ✅"
 
-pn.Row(button, pn.bind(runner, button))
+pn.ui.Row(button, pn.ui.Column(pn.ui.Markdown(pn.bind(runner, button)), progress))
 ```
 
 ## Caching
@@ -370,7 +391,7 @@ self._map.loading = False
 
 ### Tab-Aware Loading
 
-With `pmui.Tabs(dynamic=True)`, inactive tabs don't render. Exploit this by putting the heaviest pane on a non-default tab:
+With `pn.ui.Tabs(dynamic=True)`, inactive tabs don't render. Exploit this by putting the heaviest pane on a non-default tab:
 
 1. Default tab = lightweight (ECharts bar chart: ~0.03s)
 2. Map tab = heavy (HoloViews/datashader: 2–7s Bokeh serialize)

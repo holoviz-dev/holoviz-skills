@@ -28,7 +28,7 @@ Most custom components need no JavaScript. Work down this ladder; stop at the
 first rung that works — each one below costs more (JS file, CDN debugging,
 state-sync lifecycle):
 
-1. **Native pmui / Panel widget** — no code; most "rich" UI is layout over `Paper`, `Chip`, `Grid`, `Accordion`, `Button`, `MenuList`.
+1. **Native `panel.ui` / Panel widget** — no code; most "rich" UI is layout over `Paper`, `Chip`, `Grid`, `Accordion`, `Button`, `MenuList`.
 2. **Pure-Python composite** (`Viewer` or `PyComponent`) — wire *existing* widgets into one reusable, Param-synced unit. No JS. See below.
 3. **JS component** — only for rendering no Panel widget provides (JS charting/mapping lib, bespoke DOM, fully-clickable rich row). See [Which JS Component Type](#which-js-component-type).
 
@@ -77,7 +77,7 @@ class EditableRange(Viewer):
 
 | Criteria | JSComponent | ReactComponent | AnyWidgetComponent | MaterialUIComponent |
 |---|---|---|---|---|
-| Best For | Vanilla JS, D3, Leaflet | React ecosystem, complex state | Cross-platform (Jupyter+Panel) | `panel-material-ui` apps |
+| Best For | Vanilla JS, D3, Leaflet | React ecosystem, complex state | Cross-platform (Jupyter+Panel) | `panel.ui` apps |
 | State Sync | `model.value`, `model.on('param', cb)` | `model.useState("param")` | `model.get/set/save_changes` | `model.useState("param")` |
 | Export | `export function render({model, el})` | `export function render({model, el})` | `export default { render }` | `export function render({model, el})` |
 | ESM attr | `_esm` | `_esm` | `_esm` | `_esm_base` |
@@ -88,11 +88,11 @@ The ladder above keeps you on rungs 1–2 whenever possible; reach for a *JS* co
 (almost always a vanilla-JS `JSComponent`) only when native widgets genuinely can't express the
 interaction. The clearest trigger: a **fully-clickable element with rich multi-part content** —
 e.g. a list row showing text plus several colored chips, where clicking anywhere selects it.
-`pmui.Button` takes only a string `label`, so it can't host that content, and `MenuList` items
+`pn.ui.Button` takes only a string `label`, so it can't host that content, and `MenuList` items
 flatten rich content into label/secondary/icon.
 
 - **❌ Anti-pattern — the overlay button (wastes hours).** Don't layer a transparent full-size
-  `pmui.Button` over a composed visual row to "capture the click." The Panel wrapper around the
+  `pn.ui.Button` over a composed visual row to "capture the click." The Panel wrapper around the
   inner MUI button stays in normal document flow, so `height: 100%` / `inset: 0` in `sx` resolves
   against an auto-height parent and the hit area **collapses to zero height** — clicks never land,
   silently. (`pointer-events`, `z-index`, and `styles` vs `sx` juggling don't reliably fix it.)
@@ -324,10 +324,10 @@ export default {
 
 ## MaterialUIComponent
 
-Uses `_esm_base` (not `_esm`) — builds on the panel-material-ui JS bundle. `@mui/material/` is pre-configured.
+Uses `_esm_base` (not `_esm`) — builds on the `panel.ui` JS bundle. `@mui/material/` is pre-configured.
 
 ```python
-from panel_material_ui import MaterialUIComponent
+from panel.ui.base import MaterialUIComponent
 
 class StyledButton(MaterialUIComponent):
     label = param.String(default="Click me")
@@ -355,7 +355,7 @@ Use inline `style` props for icon dimensions — MUI CSS classes may not load pr
 ## Key DOs and DON'Ts
 
 - Use external `.js`/`.jsx` files + `panel serve --dev` for hot reload. Use `panel compile` for production.
-- Don't use `_` prefix for parameters needed in JS — private params don't sync.
+- `_`-prefixed parameters still sync to JS (they're part of the data model), so a leading underscore only signals "not public API". Don't redeclare an inherited layout param with a different type (e.g. `margin = param.Integer(10)`): it becomes a data-model property and the real Bokeh `margin` is lost. Set `Cls.param.margin.default = 10` or pass `margin=` instead.
 - Prefer ESM imports over `__javascript__` — ESM is synchronous, `__javascript__` races with `render()`.
 - Don't mix API patterns between component types (e.g., `model.get()` in ReactComponent).
 - Set descriptive element IDs for Playwright testing.
@@ -376,7 +376,7 @@ Use inline `style` props for icon dimensions — MUI CSS classes may not load pr
       return handler
   row.on_event("select", self._make_handler(deal_id))
   ```
-- **Shadow DOM defeats DOM scraping.** pmui renders into shadow roots, so Playwright
+- **Shadow DOM defeats DOM scraping.** `panel.ui` renders into shadow roots, so Playwright
   `document.querySelector` / `getByText` often can't reach inside a component and `boundingBox()` can
   read `0×0`. Verify behavior by asserting on **Python-side param/state** (or a visible status pane
   you bind for the test), not by scraping the rendered DOM.

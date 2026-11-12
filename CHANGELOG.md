@@ -229,6 +229,7 @@ in-progress notes so it is skipped by the extraction.
   detected" when checking its config directory raised. Both now surface the error.
 - **`eval.py` reuses `aggregate_metrics.git_value`** instead of its own copy, and imports its
   sibling scripts at the top of the file.
+- **Panel skills target `panel.ui` instead of `panel_material_ui`.** Code references components directly as `pn.ui.X` with no separate import or `ui` alias. `using-material-ui.md`, `migrating-to-material-ui.md`, and `converting-designs-to-material-ui.md` are renamed to `using-panel-ui.md`, `migrating-to-panel-ui.md`, and `converting-designs-to-panel-ui.md`. Plain layouts now use `pn.ui.Column`/`pn.ui.Row` too, except directly around tile/geo plots, reversing the earlier native `pn.Column`/`pn.Row` recommendation.
 
 ### Removed
 
@@ -354,7 +355,7 @@ in-progress notes so it is skipped by the extraction.
   with the `if pn.state.location:` guard, the changed-parameters-only URL behavior, the
   JSON-encoding limit on synced values, and numeric-looking `Selector` options misresolving
   on load.
-- **Notifications** section in `using-material-ui.md` — `pn.state.notifications.*`, plus the
+- **Notifications** section in `using-panel-ui.md` — `pn.state.notifications.*`, plus the
   threading gotcha where calling it from a worker thread under `nthreads` can silently abandon
   the rest of that callback with no error surfaced.
 - `MockSource` latency/failure knobs in `iterating-on-panel-apps.md`, so the loading spinner and
@@ -498,11 +499,11 @@ hvPlot 0.12.2, HoloViews 1.22.1, GeoViews 1.15.1, and datashader 0.19.1:
 - **Panel — `pn.state.served` is always `False` inside `__panel__`**, because it inspects its
   immediate caller's module and Panel is the caller. The `if pn.state.served:` guard silently
   yielded the fallback layout with no header/sidebar; the `Page` is now built once in `__init__`
-  and returned unconditionally, across the Panel skill, `using-material-ui.md`,
+  and returned unconditionally, across the Panel skill, `using-panel-ui.md`,
   `plotting-in-panel.md`, and the examples.
 - **Panel — `super().__init__()` ordering** now also covers narrowing a `Selector`'s `.objects`
   (must come after `super()`, or the shared class parameter is mutated for every instance) and the
   collision when a `from_param` widget is also what an `on_init=True` watcher swaps in.
 - Panel — inline `Markdown`/`HTML` labels beside an `HSpacer` collapse to near-zero width under
   `sizing_mode="stretch_width"`; pin them like the icon widgets.
-- Stray double period in `AGENTS.md`, and a broken anchor in `using-material-ui.md`.
+- Stray double period in `AGENTS.md`, and a broken anchor in `using-panel-ui.md`.

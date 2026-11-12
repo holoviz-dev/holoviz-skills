@@ -1,8 +1,8 @@
-# Converting Designs to Material UI
+# Converting Designs to Panel UI
 
 A workflow for turning a visual design — a screenshot, a Figma mockup, or an existing app (e.g. a
-React app) you are porting — into a panel-material-ui (pmui) app. This is the *process*; for
-component APIs and theming see [Using Material UI](using-material-ui.md), for custom components see
+React app) you are porting — into a `panel.ui` app. This is the *process*; for
+component APIs and theming see [Using Panel UI](using-panel-ui.md), for custom components see
 [Building Custom Components](building-custom-components.md), for keeping the React UI as-is instead
 of rebuilding it see [Wrapping React Apps](wrapping-react-apps.md), and for the serve/screenshot
 mechanics see [Iterating on Panel Apps](iterating-on-panel-apps.md).
@@ -19,8 +19,8 @@ mechanics see [Iterating on Panel Apps](iterating-on-panel-apps.md).
 
 ## Why a Workflow
 
-This document assumes you've already decided to *rebuild* the UI in pmui — the right call when the
-design is mostly components pmui ships. When the source is an existing React app that's large,
+This document assumes you've already decided to *rebuild* the UI in `panel.ui` — the right call when the
+design is mostly components `panel.ui` ships. When the source is an existing React app that's large,
 heavily styled, and worth keeping, the cheaper route is often to serve that React UI as the app and
 embed Panel components inside it; see [Wrapping React Apps](wrapping-react-apps.md). Decide which of
 the two you're doing before step 1 — they share almost no work.
@@ -44,10 +44,10 @@ Save the images somewhere stable (`reference_screenshots/`) and refer back at ev
 
 ## 2. Map the Design to Components
 
-Before writing UI code, inventory the design and assign each visual element a pmui component. Most
+Before writing UI code, inventory the design and assign each visual element a `panel.ui` component. Most
 of it is native:
 
-| In the design | pmui |
+| In the design | `panel.ui` |
 |---|---|
 | Badge / tag / status chip | `Chip` |
 | Card / panel with a border | `Paper` |
@@ -60,7 +60,7 @@ of it is native:
 Then flag the **one or two** elements that native widgets can't express — typically a richly-styled
 clickable element. Decide those are custom components now (see
 [Building Custom Components](building-custom-components.md) — the "Choosing an Approach" ladder:
-native pmui first, a JS component only when needed), so you are not surprised mid-build.
+native `panel.ui` first, a JS component only when needed), so you are not surprised mid-build.
 
 ## 3. Build Component-First With Mock Data
 
@@ -88,12 +88,13 @@ status colors); the other should be minimal (no alert, empty lists) so you confi
 A preview harness is just a themed `Page` (or bare `Container`) wrapping the one component:
 
 ```python
-import panel_material_ui as pmui
+import panel as pn
+
 from components import account_row
 from mock import MOCK_RICH
 from theme import THEME
 
-pmui.Page(theme_config=THEME, dark_theme=True,
+pn.ui.Page(theme_config=THEME, dark_theme=True,
           main=[account_row(MOCK_RICH)]).servable()
 ```
 
@@ -103,15 +104,15 @@ These preview scripts are scaffolding — delete them once the full app is verif
 
 Only after the pieces match the references, wire them into the app: a single
 `pn.viewable.Viewer` holding one source-of-truth selection parameter, panes created once in
-`__init__` and updated reactively (no flicker), returned from `__panel__` inside a `pmui.Page`. See
-[Using Material UI](using-material-ui.md) for `Page`/layout rules and the Panel skill for the
+`__init__` and updated reactively (no flicker), returned from `__panel__` inside a `pn.ui.Page`. See
+[Using Panel UI](using-panel-ui.md) for `Page`/layout rules and the Panel skill for the
 Viewer pattern.
 
 ## 5. Theme to Match, Last
 
 Approximate the original palette in `theme_config` (background, paper, text, the accent as
 `primary.main`) once the structure is right. Theming a moving target wastes effort; theming a
-finished layout is a single focused pass. See [Using Material UI](using-material-ui.md), including
+finished layout is a single focused pass. See [Using Panel UI](using-panel-ui.md), including
 the Page header/AppBar color note.
 
 ## Pitfalls

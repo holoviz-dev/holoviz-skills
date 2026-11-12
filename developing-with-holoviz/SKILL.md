@@ -24,7 +24,7 @@ This is a **routing skill**. You MUST read every sub-skill file listed in the ta
 2. Read each matching sub-skill file in full.
 3. Only after reading the sub-skill file(s), proceed with the task.
 
-For new apps, prefer `panel-material-ui` over standard Panel templates — it provides modern Material Design components out of the box.
+For new apps, prefer `panel.ui` over standard Panel templates because it provides modern Material Design components out of the box.
 
 ## Loading Table
 
@@ -36,10 +36,10 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Quick exploratory plots from DataFrames / xarray | `skills/hvplot/SKILL.md` |
 | Compose a layered, faceted view to compare a metric across groups | `skills/hvplot/SKILL.md` + `skills/hvplot/composing-exploratory-plots.md` |
 | Make a chart explanatory for an audience (one message, presentation-ready) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` |
-| Build a data story / graphic article (charts + narrative) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/theming-material-ui.md` + `skills/panel/data-storytelling.md` |
-| Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` |
-| Theme a pmui app — palette, typography, web fonts, icons, brand assets, chart colors and fonts | `skills/panel/SKILL.md` + `skills/panel/theming-material-ui.md` |
-| Convert a design / screenshot / React app into a Material UI (pmui) app | `skills/panel/SKILL.md` + `skills/panel/using-material-ui.md` + `skills/panel/converting-designs-to-material-ui.md` + `skills/panel/theming-material-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
+| Build a data story / graphic article (charts + narrative) | `skills/hvplot/SKILL.md` + `skills/hvplot/distilling-explanatory-plots.md` + `skills/panel/SKILL.md` + `skills/panel/using-panel-ui.md` + `skills/panel/theming-panel-ui.md` + `skills/panel/data-storytelling.md` |
+| Dashboard, data app, or interactive tool | `skills/param/SKILL.md` + `skills/panel/SKILL.md` + `skills/panel/using-panel-ui.md` |
+| Theme a `panel.ui` app — palette, typography, web fonts, icons, brand assets, chart colors and fonts | `skills/panel/SKILL.md` + `skills/panel/theming-panel-ui.md` |
+| Convert a design / screenshot / React app into a `panel.ui` app | `skills/panel/SKILL.md` + `skills/panel/using-panel-ui.md` + `skills/panel/converting-designs-to-panel-ui.md` + `skills/panel/theming-panel-ui.md` (+ `skills/panel/building-custom-components.md` for rich/clickable pieces) |
 | Keep an existing React/JSX UI and serve it as the app, embedding Panel components inside it | `skills/panel/SKILL.md` + `skills/panel/building-custom-components.md` + `skills/panel/wrapping-react-apps.md` |
 | HoloViews elements, opts, tooltips, formatters, tools | `skills/holoviews/SKILL.md` |
 | Remove chart junk / clean a plot — hide or autohide toolbar, disable wheel-zoom, one-axis gridlines, share axes, place legend | `skills/holoviews/SKILL.md` + `skills/holoviews/decluttering-plots.md` |
@@ -52,7 +52,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Review or audit a Panel app | `skills/panel/SKILL.md` + `skills/panel/reviewing-panel-apps.md` |
 | Serve, screenshot, verify rendered output, benchmark startup, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
 | Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
-| Migrate an existing plain-Panel app to Material UI / pmui | `skills/panel/SKILL.md` + `skills/panel/migrating-to-material-ui.md` |
+| Migrate an existing plain-Panel app to `panel.ui` | `skills/panel/SKILL.md` + `skills/panel/migrating-to-panel-ui.md` |
 | Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting-panel-apps.md` |
 
 ## Skill Map

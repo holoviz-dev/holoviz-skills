@@ -89,8 +89,8 @@ REFERENCE_ORDER: dict[str, list[str]] = {
     "panel": [
         "iterating-on-panel-apps",
         "building-custom-components",
-        "using-material-ui",
-        "theming-material-ui",
+        "using-panel-ui",
+        "theming-panel-ui",
         "using-pytest-playwright",
         "reviewing-panel-apps",
     ],

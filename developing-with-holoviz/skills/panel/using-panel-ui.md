@@ -1,10 +1,10 @@
-# Using Material UI
+# Using Panel UI
 
-Build panel-material-ui (pmui) apps: what differs from plain Panel, `Page` structure, layouts, and component gotchas. For palette, typography, fonts, icons, brand assets and chart colors, see [Theming Material UI](theming-material-ui.md); for converting an *existing* plain-Panel app, see [Migrating to Material UI](migrating-to-material-ui.md).
+Build `panel.ui` apps: what differs from plain Panel, `Page` structure, layouts, and component gotchas. For palette, typography, fonts, icons, brand assets and chart colors, see [Theming Panel UI](theming-panel-ui.md); for converting an *existing* plain-Panel app, see [Migrating to Panel UI](migrating-to-panel-ui.md).
 
 ## Contents
 
-- [Lookup](#lookup) — where to fetch pmui docs as markdown
+- [Lookup](#lookup) — where to find `panel.ui` documentation
 - [Key Differences from Panel](#key-differences-from-panel)
 - [Page](#page) — incl. [header / AppBar color](#page-header-appbar-color)
 - [Layouts](#layouts)
@@ -12,32 +12,22 @@ Build panel-material-ui (pmui) apps: what differs from plain Panel, `Page` struc
 
 ## Lookup
 
-Fetch pmui docs as markdown, not HTML: prefix any pmui doc path with `/markdown/` and change `.html`/`.ipynb` → `.md` (also for links found inside pages). If the result is empty, the page moved — use the index.
-
-Base: `https://panel-material-ui.holoviz.org/markdown/` — append the endpoints below.
-
-- **Doc map / index**: `https://panel-material-ui.holoviz.org/llms.txt` (site root, *not* under `markdown/`)
-- **Component**: `reference/{section}/{Component}.md`
-  Sections: `widgets`, `menus`, `layouts`, `panes`, `wrappers`, `page`, `chat`, `indicators`, `global`
-- **Section index** (lists every component): `reference/{section}/index.md`
-- **How-to guides**: `how_to/{guide}.md` (index: `how_to/index.md`)
-- **Search**: web-search the topic, then convert the `.html` hit to its `/markdown/…​.md` URL.
+Use Panel's API reference for `panel.ui`: `https://panel.holoviz.org/api/panel.ui.html`. Component documentation uses the same `https://panel.holoviz.org/reference/{section}/{Component}.html` convention as the rest of Panel. Search `https://panel.holoviz.org/search.html?q=<topic>` when the component location is unclear.
 
 ## Key Differences from Panel
 
-- Import `panel_material_ui as pmui`. Don't add `"panel_material_ui"` or `"bokeh"` to `pn.extension()`. Don't set `design='material'`.
-- `pmui.Column`/`Row` are plain flex containers with no Material styling of their own, and native `pn.Column`/`pn.Row` are the more robust implementation — the pmui ones are ESM/React components, so children can paint before the layout has sized them (see [tile plot renders blank](troubleshooting-panel-apps.md#tilemap-plot-renders-blank-inside-a-pmui-layout)). Prefer `pn.Column`/`pn.Row`, especially as the immediate wrapper around a plot pane. Keep pmui for the layouts that *do* carry styling or layout features: `Grid`, `Container`, `Paper`, `Card`, `Tabs`, `Accordion`, `Page`. `FlexBox` and `Feed` are also mostly plain, though `Feed` has extra scroll machinery worth keeping.
-- Fall back to `pn.*` whenever no pmui equivalent exists (e.g. `pn.pane.HoloViews`). If an existing app already uses `pn.*` layouts, keep them rather than migrating.
-- Use `pmui.Page` instead of `pn.template.FastListTemplate`.
+- Import Panel once and reference components as `pn.ui.X`. Do not import the implementation package directly, add it or `"bokeh"` to `pn.extension()`, or set `design='material'`.
+- Use `pn.ui.Column`/`pn.ui.Row` in `panel.ui` apps so the whole app reads from one namespace and every layout accepts `sx`. Native `pn.Column`/`pn.Row` still work and need no migration in existing code. The one exception is the layout *directly* wrapping a tile/geo plot, which must be native until the [tile plot renders blank](troubleshooting-panel-apps.md#tilemap-plot-renders-blank-inside-a-panelui-layout) bug is fixed.
+- Fall back to `pn.*` whenever no `panel.ui` equivalent exists. If an existing app already uses `pn.*` layouts, keep them rather than migrating. Many `pn.ui` names are plain re-exports of the classic class (`pn.ui.Number is pn.indicators.Number`, likewise `pn.ui.Tabulator`, `pn.ui.Markdown`, `pn.ui.PNG`); others are distinct Material classes with different params (`pn.ui.ChatInterface`, `pn.ui.LoadingSpinner`, `pn.ui.Progress` uses `color`, not `bar_color`). Check `pn.ui.X.__module__` when it matters.
+- Use `pn.ui.Page` instead of `pn.template.FastListTemplate`.
 - Use new param names (`label`, `color`, `variant`) not legacy aliases (`name`, `button_type`, `button_style`).
-- **Params don't generalize across components — don't infer one from a sibling widget.** `variant`, `color` and `size` each exist on only *some* components, and the allowed values differ where they do. Check before writing: `'variant' in pmui.X.param`, `pmui.X.param.variant.objects`, `sorted(pmui.X.param)`. The ones that actually bite are tabled in [Troubleshooting](troubleshooting-panel-apps.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal).
+- **Params don't generalize across components — don't infer one from a sibling widget.** `variant`, `color` and `size` each exist on only *some* components, and the allowed values differ where they do. Check before writing: `'variant' in pn.ui.X.param`, `pn.ui.X.param.variant.objects`, `sorted(pn.ui.X.param)`. The ones that actually bite are tabled in [Troubleshooting](troubleshooting-panel-apps.md#typeerror-unexpected-keyword-argument-panelui-params-arent-universal).
 - Quick preview with `python app.py` + `.show()` works the same as for standard Panel. For iterating, prefer `panel serve app.py --dev --show` (see [Serving Workflow](SKILL.md#serving-workflow)).
-- **Widget from a Param:** pmui has no auto `Param` pane, so pick the widget class yourself with `pmui.<Widget>.from_param(obj.param.x)` (or `pn.Param(obj, widgets={"x": {"type": pmui.Select}})` to override auto-generated types). The Param-type → widget baseline matches Panel's own defaults ([Param pane reference](https://panel.holoviz.org/reference/panes/Param.html)); the pmui-specific things to know: `param.Boolean` → `pmui.Switch` (Panel defaults to `Checkbox`), and `param.Array` / `param.DataFrame` have **no** pmui widget — keep `pn.widgets.ArrayInput` / `pn.widgets.Tabulator`.
+- **Widget from a Param:** pick one widget with `pn.ui.<Widget>.from_param(obj.param.x)`, or generate a whole form with `pn.ui.Param(obj, parameters=[...], widgets={"x": pn.ui.Select})`, which builds Material widgets (`pn.Param` builds classic ones). `pn.ui.panel` and `pn.ui.HoloViews` likewise generate Material widgets for a DynamicMap's key dimensions. The Param-type → widget mapping matches Panel's own defaults ([Param pane reference](https://panel.holoviz.org/reference/panes/Param.html)): `param.Boolean` → `Checkbox` (use `pn.ui.Switch.from_param` if you want a switch), `param.DataFrame` → `Tabulator`, `param.Array` → `pn.ui.ArrayInput`.
 
 ```python
-import panel as pn
-import panel_material_ui as pmui
 import param
+import panel as pn
 
 pn.extension(throttled=True)
 
@@ -47,10 +37,10 @@ class MyApp(pn.viewable.Viewer):
     def __init__(self, **params):
         super().__init__(**params)
         with pn.config.set(sizing_mode="stretch_width"):
-            self._slider = pmui.IntSlider.from_param(self.param.value, margin=(10, 20))
-            self._output = pn.Column(self._display)
+            self._slider = pn.ui.IntSlider.from_param(self.param.value, margin=(10, 20))
+            self._output = pn.ui.Column(self._display)
         # Build the Page once here — __panel__ returns it unconditionally.
-        self._page = pmui.Page(
+        self._page = pn.ui.Page(
             title="My App",
             sidebar=[self._slider],
             main=[self._output],
@@ -66,21 +56,22 @@ class MyApp(pn.viewable.Viewer):
 
 ## Page
 
+- For a flat script, `pn.extension(template="page")` creates a global `Page` (`pn.state.template`); add to it with `.servable(target=...)`, where targets are `"main"` (default), `"sidebar"`, `"header"` and `"contextbar"`. There is no `"modal"`; use `pn.ui.Dialog`. Don't also call `.servable()` on a `Page` you built yourself. In a `Viewer` app build the `Page` explicitly as below.
 - Title goes in `Page.title` — don't repeat in `main`.
 - `Page.sidebar`, `Page.main`, `Page.header` require lists — not bare components or `list(layout)`.
 - Don't add `ThemeToggle` — built in.
-- `header` is only 100px — buttons, indicators, nav links only.
+- `header` is a single toolbar row — buttons, indicators, nav links only.
 - Add `margin=10` to outer `main` layouts so they stand out from sidebar.
-- Only use a sidebar when there are multiple control widgets. For a single selector, use inline `RadioButtonGroup` or `Select` in the main area with `pmui.Container` — avoids wasting viewport on a near-empty sidebar.
+- Only use a sidebar when there are multiple control widgets. For a single selector, use inline `RadioButtonGroup` or `Select` in the main area with `pn.ui.Container` — avoids wasting viewport on a near-empty sidebar.
 - Sidebar order: logo → description → widgets → docs.
-- **Page not rendering (no header/sidebar)**: gating the `Page` construction/return on `if pn.state.served:` inside `__panel__` is a bug — that guard is **always** `False` there, even under `panel serve`, so you silently get the blank/fallback layout with no top bar. `pn.state.served` checks whether its *immediate caller's* module is the served script, and it is Panel that calls `__panel__`, not your module. Always build the `Page` once in `__init__` (e.g. `self._page = pmui.Page(...)`) and return it unconditionally from `__panel__` (`return self._page`). `pn.state.served` remains correct at **module level** of the served script (`if pn.state.served: App().servable()`) — see [Troubleshooting](troubleshooting-panel-apps.md#pmuipage-renders-blank-no-headersidebar).
+- **Page not rendering (no header/sidebar)**: gating the `Page` construction/return on `if pn.state.served:` inside `__panel__` is a bug: the guard is **always** `False` there, even under `panel serve`, so you silently get the blank/fallback layout with no top bar. `pn.state.served` checks whether its *immediate caller's* module is the served script, and it is Panel that calls `__panel__`, not your module. Always build the `Page` once in `__init__` (e.g. `self._page = pn.ui.Page(...)`) and return it unconditionally from `__panel__` (`return self._page`). `pn.state.served` remains correct at **module level** of the served script (`if pn.state.served: App().servable()`) — see [Troubleshooting](troubleshooting-panel-apps.md#pnuipage-renders-blank-no-headersidebar).
 
 ```python
 # ✅ Lists
-pmui.Page(sidebar=[widget1, widget2], main=[content])
+pn.ui.Page(sidebar=[widget1, widget2], main=[content])
 
 # ❌ Bare component — fails silently
-pmui.Page(sidebar=widget1, main=content)
+pn.ui.Page(sidebar=widget1, main=content)
 ```
 
 ### Page header / AppBar color
@@ -92,7 +83,7 @@ clashes with a dark app. Either set `palette.primary.main`, or override the head
 dark panel tone):
 
 ```python
-pmui.Page(
+pn.ui.Page(
     sx={"& .header": {
         "backgroundColor": "#14141b",  # match the app's panel color
         "backgroundImage": "none",
@@ -104,37 +95,37 @@ pmui.Page(
 
 ## Layouts
 
-- `pmui.Column`/`Row` add nothing over `pn.Column`/`pn.Row` and are less robust — use the native ones ([why](#key-differences-from-panel)). The exception: `sx` exists only on the pmui versions, so a layout that needs `sx` styling is a legitimate reason to keep one. Set gaps through `sx` too; there is no `spacing` param.
-- `pmui.Container(width_option="lg")` clamps content max width — prevents wide-screen stretching.
-- `pmui.Grid` with `size=` breakpoints for responsive multi-column layouts (not `ncols`, not bare `xs`/`sm`/`md`), and `spacing=2` or more. Nest items inside `Grid(container=True)`. KPI cards: `size={"xs": 6, "md": 3}`. Side-by-side charts: `size={"xs": 12, "md": 6}`. `size="grow"` for auto-sized items.
+- Prefer `pn.ui.Column`/`pn.ui.Row` for plain stacking ([tile plot exception](#key-differences-from-panel)). Set gaps through `sx`; there is no `spacing` param.
+- `pn.ui.Container(width_option="lg")` clamps content max width — prevents wide-screen stretching.
+- `pn.ui.Grid` with `size=` breakpoints for responsive multi-column layouts (not `ncols`, not bare `xs`/`sm`/`md`), and `spacing=2` or more. Nest items inside `Grid(container=True)`. KPI cards: `size={"xs": 6, "md": 3}`. Side-by-side charts: `size={"xs": 12, "md": 6}`. `size="grow"` for auto-sized items.
 - Set `sizing_mode="stretch_width"` on children inside `Grid` items so they fill the cell.
-- List layouts take positional args: `pmui.Paper(a, b)`, not `pmui.Paper([a, b])`.
+- List layouts take positional args: `pn.ui.Paper(a, b)`, not `pn.ui.Paper([a, b])`.
 
 ```python
 # 2-column responsive layout
-pmui.Grid(
-    pmui.Grid(left_card, size={"xs": 12, "md": 6}),
-    pmui.Grid(right_card, size={"xs": 12, "md": 6}),
+pn.ui.Grid(
+    pn.ui.Grid(left_card, size={"xs": 12, "md": 6}),
+    pn.ui.Grid(right_card, size={"xs": 12, "md": 6}),
     container=True, spacing=2,
 )
 
 # Width-clamped page content
-pmui.Container(pmui.Column(...), width_option="lg")
+pn.ui.Container(pn.ui.Column(...), width_option="lg")
 ```
 
 ### Centering in Page
 
-The `pmui.Page` main area does not support CSS flexbox centering. Use margins instead:
+The `pn.ui.Page` main area does not support CSS flexbox centering. Use margins instead:
 
-- **Horizontal**: wrap content in `pmui.Container(width_option="sm")` for narrow centered cards
+- **Horizontal**: wrap content in `pn.ui.Container(width_option="sm")` for narrow centered cards
 - **Vertical**: use integer tuple margins like `margin=(100, 0, 0, 0)` for top spacing. `margin="auto"` and `pn.Spacer()` don't work for vertical centering in Page
 
 ```python
-pmui.Page(
+pn.ui.Page(
     main=[
-        pmui.Container(
-            pn.Column(
-                pmui.Paper(content, sx={"p": 5}),
+        pn.ui.Container(
+            pn.ui.Column(
+                pn.ui.Paper(content, sx={"p": 5}),
                 sizing_mode="stretch_width",
                 margin=(100, 0, 0, 0),  # Push down from top
             ),
@@ -155,8 +146,8 @@ pmui.Page(
 - Align a whole body: make each section an item of ONE `Grid(container=True, spacing=2)` with children `margin=0` — shared padding aligns them and `spacing` makes the gaps (also stops cards touching):
 
   ```python
-  pmui.Grid(pmui.Grid(title, size={"xs": 12}),
-            pmui.Grid(card, size={"xs": 12, "sm": 6, "md": 3}), ...,
+  pn.ui.Grid(pn.ui.Grid(title, size={"xs": 12}),
+            pn.ui.Grid(card, size={"xs": 12, "sm": 6, "md": 3}), ...,
             container=True, spacing=2, sizing_mode="stretch_width")
   ```
 
@@ -175,7 +166,7 @@ pmui.Page(
   matters](troubleshooting-panel-apps.md#first-option-cant-be-selected-selection-widget-with-defaultnone)):
 
   ```python
-  pmui.AutocompleteInput.from_param(
+  pn.ui.AutocompleteInput.from_param(
       obj.param.city, placeholder="Type to search…",
       restrict=True,               # keeps free text out of a validated Selector
       search_strategy="includes",  # "wa" matches Yakima, not just names starting with it
@@ -192,8 +183,8 @@ pmui.Page(
   pn.indicators.Number(name="Cities over AQI 100", value=6, default_color="#ef6c00",
                        styles={"font-family": MONO})
   # CORRECT: quiet label, loud value
-  pmui.Paper(pmui.Typography("Cities over AQI 100", variant="overline", sx={"color": SOFT}),
-             pmui.Typography("6", variant="kpi", sx={"color": "#ef6c00"}))
+  pn.ui.Paper(pn.ui.Typography("Cities over AQI 100", variant="overline", sx={"color": SOFT}),
+             pn.ui.Typography("6", variant="kpi", sx={"color": "#ef6c00"}))
   ```
 
   Also note `Number.format` is a **Python** format spec (`"{value:,.0f}"`), not numeral.js —
@@ -203,12 +194,12 @@ pmui.Page(
 - `Chip`: use `label=`, not `object=` (deprecated). Chips default to `margin=10`, which blows out tight stacked layouts — set `margin=0` when packing several together. Translucent-pill look: `sx={"color": c, "backgroundColor": f"{c}22"}`.
 - `Accordion` header text: the title renders as a Typography *inside* the summary, so a rule on `.MuiAccordionSummary-root` won't reach it. Target the content to restyle the label: `sx={"& .MuiAccordionSummary-content *": {"fontSize": "13px", "color": "#6d5cff"}}`.
 - `RadioButtonGroup`/`CheckButtonGroup` are MUI `ToggleButtonGroup`s, so they take **no
-  `variant`** ([why, and the other params that surprise](troubleshooting-panel-apps.md#typeerror-unexpected-keyword-argument-pmui-params-arent-universal))
+  `variant`** ([why, and the other params that surprise](troubleshooting-panel-apps.md#typeerror-unexpected-keyword-argument-panelui-params-arent-universal))
   — only `color`, `size`, `orientation`, `disabled`, `label`, `sx`. In a sidebar go vertical,
   and get borders from `sx`:
 
   ```python
-  pmui.RadioButtonGroup.from_param(
+  pn.ui.RadioButtonGroup.from_param(
       obj.param.mode, orientation="vertical", color="primary", size="small",
       sx={"& .MuiToggleButton-root": {"borderColor": "divider"}},
   )
@@ -223,19 +214,19 @@ pmui.Page(
 
   ```python
   # ❌ Rating fills the row (giant stars); the label wraps vertically
-  pn.Row(pn.pane.Markdown("**Rating:**"), pmui.Rating(end=5), pn.layout.HSpacer())
+  pn.Row(pn.pane.Markdown("**Rating:**"), pn.ui.Rating(end=5), pn.layout.HSpacer())
 
   # ✅ pinned
   pn.Row(
       pn.pane.HTML("<b>Rating:</b>", width=64, sizing_mode="fixed"),
-      pmui.Rating(end=5, size="small", width=170, sizing_mode="fixed"),
+      pn.ui.Rating(end=5, size="small", width=170, sizing_mode="fixed"),
       pn.layout.HSpacer(),
   )
   ```
 - `Dialog`: for secondary detail that would crowd the page (or overflow the narrow `Page` contextbar), use a dialog and toggle `.open`. `close_on_click=True` dismisses on backdrop click:
 
   ```python
-  self._details = pmui.Dialog(content, title="Details",
+  self._details = pn.ui.Dialog(content, title="Details",
                               width_option="md", open=False, close_on_click=True)
   # open from a button: self._details.open = True
   ```
@@ -253,6 +244,6 @@ pn.state.notifications.send("Custom", background="#ff0000", icon="local_fire_dep
 pn.state.notifications.clear()
 ```
 
-The API is identical in plain Panel and panel-material-ui — no separate pmui import needed, and `pn.state.notifications.position = "top-right"` controls placement.
+The API is identical in plain Panel and `panel.ui` — no separate `panel.ui` import needed, and `pn.state.notifications.position = "top-right"` controls placement.
 
 **Gotcha — threading:** under `pn.extension(nthreads=...)`, calling a `pn.state.notifications.*` method from code running on a worker thread can silently stop executing the rest of that callback with no error surfaced (server and other callbacks keep running; only that one callback goes dark). If a callback that fires a notification stops having its later side effects apply once threading is enabled, this is the first thing to suspect — move the notification call off the threaded path, or verify the specific call actually completes.

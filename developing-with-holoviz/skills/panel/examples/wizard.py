@@ -1,18 +1,17 @@
 """
-Wizard/stepper layout example using panel-material-ui.
+Wizard/stepper layout example using `panel.ui`.
 
-Multi-step wizard with one action per page, driven by a `pmui.StepperMenu`
+Multi-step wizard with one action per page, driven by a `pn.ui.StepperMenu`
 that shows live step state (completed / error / active), supports non-linear
 navigation, and reports position via its `active` parameter. Also demonstrates
 the Viewer class pattern, `pn.pane.Placeholder` step swapping, `pn.io.hold()`
-batching, shared `disabled` state, inline `pmui.Alert` validation, a
-`pmui.Tooltip`, and the `pmui.Page` template.
+batching, shared `disabled` state, inline `pn.ui.Alert` validation, a
+`pn.ui.Tooltip`, and the `pn.ui.Page` template.
 
 Run: panel serve examples/wizard.py --dev --show
 """
 
 import panel as pn
-import panel_material_ui as pmui
 import param
 
 pn.extension(throttled=True)
@@ -122,14 +121,14 @@ class FilingStatusStep(WizardStep):
 
     def __panel__(self):
         return pn.Column(
-            pmui.Typography(
+            pn.ui.Typography(
                 "What is your filing status?", variant="h4", sx={"fontWeight": 700, "mb": 1}
             ),
-            pmui.Typography(
+            pn.ui.Typography(
                 "This determines your tax brackets and standard deduction.",
                 sx={"color": "text.secondary", "mb": 4},
             ),
-            pmui.RadioBoxGroup.from_param(
+            pn.ui.RadioBoxGroup.from_param(
                 self.param.filing_status,
                 label="",  # Remove redundant label
                 options=[
@@ -171,23 +170,23 @@ class IncomeStep(WizardStep):
 
     def __panel__(self):
         return pn.Column(
-            pmui.Typography(
+            pn.ui.Typography(
                 "What did you earn this year?", variant="h4", sx={"fontWeight": 600, "mb": 1}
             ),
-            pmui.Typography(
+            pn.ui.Typography(
                 "Enter your total income from all sources. "
                 "We'll use this to calculate your tax bracket.",
                 sx={"color": "text.secondary", "mb": 4},
             ),
             pn.Column(
-                pmui.Typography("W-2 Wages", sx={"fontWeight": 500, "mb": 1}),
-                pmui.FloatInput.from_param(
+                pn.ui.Typography("W-2 Wages", sx={"fontWeight": 500, "mb": 1}),
+                pn.ui.FloatInput.from_param(
                     self.param.wages,
                     label="$ Wages",
                     sizing_mode="stretch_width",
                     disabled=self.param.disabled,
                 ),
-                pmui.Typography(
+                pn.ui.Typography(
                     "From Box 1 of your W-2 form",
                     sx={"color": "text.secondary", "fontSize": 13, "mt": 0.5},
                 ),
@@ -195,14 +194,14 @@ class IncomeStep(WizardStep):
                 margin=(0, 0, 24, 0),
             ),
             pn.Column(
-                pmui.Typography("Interest & Dividends", sx={"fontWeight": 500, "mb": 1}),
-                pmui.FloatInput.from_param(
+                pn.ui.Typography("Interest & Dividends", sx={"fontWeight": 500, "mb": 1}),
+                pn.ui.FloatInput.from_param(
                     self.param.interest,
                     label="$ Interest",
                     sizing_mode="stretch_width",
                     disabled=self.param.disabled,
                 ),
-                pmui.Typography(
+                pn.ui.Typography(
                     "From 1099-INT and 1099-DIV forms",
                     sx={"color": "text.secondary", "fontSize": 13, "mt": 0.5},
                 ),
@@ -236,8 +235,8 @@ class DeductionsStep(WizardStep):
     title = param.String(default="Deductions")
 
     def __init__(self, **params):
-        self._standard_info = pmui.Paper(
-            pmui.Typography(
+        self._standard_info = pn.ui.Paper(
+            pn.ui.Typography(
                 "Standard deduction: $14,600 (Single) / $29,200 (Married)",
                 sx={"color": "text.secondary"},
             ),
@@ -249,7 +248,7 @@ class DeductionsStep(WizardStep):
         # but @param.depends/watchers on itemized_amount would never fire. Because this widget
         # is also what _update_deduction_details swaps in, that watcher can't use on_init=True
         # (it would run before the widget exists); we call it explicitly instead.
-        self._itemized_input = pmui.FloatInput.from_param(
+        self._itemized_input = pn.ui.FloatInput.from_param(
             self.param.itemized_amount,
             label="Itemized Amount ($)",
             sizing_mode="stretch_width",
@@ -266,12 +265,14 @@ class DeductionsStep(WizardStep):
 
     def __panel__(self):
         return pn.Column(
-            pmui.Typography("Choose your deduction", variant="h4", sx={"fontWeight": 600, "mb": 1}),
-            pmui.Typography(
+            pn.ui.Typography(
+                "Choose your deduction", variant="h4", sx={"fontWeight": 600, "mb": 1}
+            ),
+            pn.ui.Typography(
                 "Most filers benefit from the standard deduction.",
                 sx={"color": "text.secondary", "mb": 4},
             ),
-            pmui.RadioButtonGroup.from_param(
+            pn.ui.RadioButtonGroup.from_param(
                 self.param.deduction_type, disabled=self.param.disabled
             ),
             self._deduction_details,
@@ -304,46 +305,46 @@ class ReviewStep(WizardStep):
         taxable = max(0, total_income - deduction_amount)
 
         return pn.Column(
-            pmui.Typography("Review your return", variant="h4", sx={"fontWeight": 600, "mb": 1}),
-            pmui.Typography(
+            pn.ui.Typography("Review your return", variant="h4", sx={"fontWeight": 600, "mb": 1}),
+            pn.ui.Typography(
                 "Please confirm your information before submitting.",
                 sx={"color": "text.secondary", "mb": 3},
             ),
-            pmui.Paper(
+            pn.ui.Paper(
                 pn.Column(
                     pn.Row(
-                        pmui.Typography(
+                        pn.ui.Typography(
                             "Filing Status", sx={"color": "text.secondary", "minWidth": 140}
                         ),
-                        pmui.Typography(
+                        pn.ui.Typography(
                             filing.filing_status or "Not selected", sx={"fontWeight": 500}
                         ),
                     ),
                     pn.Row(
-                        pmui.Typography(
+                        pn.ui.Typography(
                             "W-2 Wages", sx={"color": "text.secondary", "minWidth": 140}
                         ),
-                        pmui.Typography(f"${income.wages:,.2f}", sx={"fontWeight": 500}),
+                        pn.ui.Typography(f"${income.wages:,.2f}", sx={"fontWeight": 500}),
                     ),
                     pn.Row(
-                        pmui.Typography(
+                        pn.ui.Typography(
                             "Interest Income", sx={"color": "text.secondary", "minWidth": 140}
                         ),
-                        pmui.Typography(f"${income.interest:,.2f}", sx={"fontWeight": 500}),
+                        pn.ui.Typography(f"${income.interest:,.2f}", sx={"fontWeight": 500}),
                     ),
                     pn.Row(
-                        pmui.Typography(
+                        pn.ui.Typography(
                             "Deduction", sx={"color": "text.secondary", "minWidth": 140}
                         ),
-                        pmui.Typography(
+                        pn.ui.Typography(
                             f"{deductions.deduction_type} (${deduction_amount:,.0f})",
                             sx={"fontWeight": 500},
                         ),
                     ),
                     pn.layout.Divider(margin=(16, 0)),
                     pn.Row(
-                        pmui.Typography("Taxable Income", sx={"fontWeight": 600, "minWidth": 140}),
-                        pmui.Typography(
+                        pn.ui.Typography("Taxable Income", sx={"fontWeight": 600, "minWidth": 140}),
+                        pn.ui.Typography(
                             f"${taxable:,.2f}", sx={"fontWeight": 600, "color": "primary.main"}
                         ),
                     ),
@@ -390,7 +391,7 @@ class TaxWizard(pn.viewable.Viewer):
         # StepperMenu replaces the old Breadcrumbs + sidebar MenuList +
         # LinearProgress — it conveys order, progress, and per-step state in
         # one component. non_linear=True lets users click a step to jump to it.
-        self._stepper = pmui.StepperMenu(
+        self._stepper = pn.ui.StepperMenu(
             items=self._build_items(),
             active=0,
             non_linear=True,
@@ -401,7 +402,7 @@ class TaxWizard(pn.viewable.Viewer):
         )
 
         # Inline validation banner shown when the current step is incomplete.
-        self._alert = pmui.Alert(
+        self._alert = pn.ui.Alert(
             object="",
             severity="warning",
             variant="outlined",
@@ -411,17 +412,17 @@ class TaxWizard(pn.viewable.Viewer):
         )
 
         # Navigation
-        self._back_btn = pmui.Button(
+        self._back_btn = pn.ui.Button(
             label="Back", icon="arrow_back", variant="outlined", visible=False
         )
-        self._next_btn = pmui.Button(
+        self._next_btn = pn.ui.Button(
             label="Continue", icon="arrow_forward", variant="contained", color="primary"
         )
         self._nav_row = pn.Row(
             self._back_btn, pn.layout.HSpacer(), self._next_btn, sizing_mode="stretch_width"
         )
         self._content = pn.pane.Placeholder(sizing_mode="stretch_width", min_height=420, margin=20)
-        self._step_text = pmui.Typography(
+        self._step_text = pn.ui.Typography(
             f"Step 1 of {len(self._steps)}", sx={"color": "primary.contrastText"}
         )
 
@@ -490,12 +491,12 @@ class TaxWizard(pn.viewable.Viewer):
             self._alert.visible = False
             self._content.update(
                 pn.Column(
-                    pmui.Typography(
+                    pn.ui.Typography(
                         "Your return has been submitted!",
                         variant="h4",
                         sx={"fontWeight": 700, "mb": 2},
                     ),
-                    pmui.Typography(
+                    pn.ui.Typography(
                         "Thank you for using Tax Wizard. You will receive a confirmation shortly.",
                         sx={"color": "text.secondary"},
                     ),
@@ -535,17 +536,17 @@ class TaxWizard(pn.viewable.Viewer):
             self._update_controls()
 
     def _build_page(self):
-        return pmui.Page(
+        return pn.ui.Page(
             title="Tax Wizard",
             header=[self._step_text],
             sidebar=[
-                pmui.Typography("Need Help?", variant="h6", sx={"mb": 1}),
-                pmui.Typography(
+                pn.ui.Typography("Need Help?", variant="h6", sx={"mb": 1}),
+                pn.ui.Typography(
                     "Have questions about filing? Visit our FAQ or contact support.",
                     sx={"color": "text.secondary", "fontSize": 13},
                 ),
-                pmui.Tooltip(
-                    pmui.Button(
+                pn.ui.Tooltip(
+                    pn.ui.Button(
                         label="View FAQ",
                         icon="help_outline",
                         variant="outlined",
@@ -558,10 +559,10 @@ class TaxWizard(pn.viewable.Viewer):
             sidebar_width=280,
             theme_config=THEME_CONFIG,
             main=[
-                pmui.Container(
+                pn.ui.Container(
                     pn.Column(
                         self._stepper,
-                        pmui.Paper(
+                        pn.ui.Paper(
                             pn.Column(
                                 self._alert,
                                 self._content,
