@@ -1,6 +1,8 @@
 # Migrating to Panel UI
 
-This skill provides the steps and diffs for converting an existing plain-Panel app to `panel.ui`.
+This skill provides the steps and diffs for converting an existing plain-Panel app to `panel.ui`, which requires Panel 1.10 or later.
+
+**Start with `panel migrate`.** Panel 1.10 ships a codemod that does the mechanical rewrite (imports, access paths, param names, templates) for you. Run it first, then use the rest of this skill for what it leaves behind. See [Automated Pass with `panel migrate`](#automated-pass-with-panel-migrate).
 
 Migration is a presentation change, not a logic change: swap templates, widgets, and panes, but leave every `@param.depends`, `param.watch`, `pn.bind`, and periodic callback untouched. For how the target API works once you're there, see [Using Panel UI](using-panel-ui.md) (Page, layouts, component gotchas, palette, typography, icons). Do not restate those here.
 
@@ -26,6 +28,7 @@ Migration is a presentation change, not a logic change: swap templates, widgets,
 
 - Migrate when the user wants an existing app to use `panel.ui` or a more modern look.
 - For a brand-new app, skip this skill and build with [Using Panel UI](using-panel-ui.md) directly.
+- Run [`panel migrate`](#automated-pass-with-panel-migrate) before editing by hand.
 - Do imports + template + widgets together as one coherent pass — a half-migrated app usually won't serve.
 - If you find yourself rewriting reactive wiring (`depends`, `watch`, `bind`), stop: migration changes presentation, not logic.
 

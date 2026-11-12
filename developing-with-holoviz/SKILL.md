@@ -52,7 +52,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Review or audit a Panel app | `skills/panel/SKILL.md` + `skills/panel/reviewing-panel-apps.md` |
 | Serve, screenshot, verify rendered output, benchmark startup, and debug a Panel app in a dev loop | `skills/panel/SKILL.md` + `skills/panel/iterating-on-panel-apps.md` |
 | Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
-| Migrate an existing plain-Panel app to `panel.ui` | `skills/panel/SKILL.md` + `skills/panel/migrating-to-panel-ui.md` |
+| Migrate an existing plain-Panel app to `panel.ui` (start with the `panel migrate` codemod) | `skills/panel/SKILL.md` + `skills/panel/migrating-to-panel-ui.md` |
 | Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting-panel-apps.md` |
 
 ## Skill Map

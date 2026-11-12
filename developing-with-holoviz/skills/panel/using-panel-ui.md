@@ -1,5 +1,7 @@
 # Using Panel UI
 
+`panel.ui` requires Panel 1.10 or later; on 1.9.x `pn.ui` does not exist. Check `pn.__version__` before writing `pn.ui` code, and upgrade Panel if it is older.
+
 Build `panel.ui` apps: what differs from plain Panel, `Page` structure, layouts, and component gotchas. For palette, typography, fonts, icons, brand assets and chart colors, see [Theming Panel UI](theming-panel-ui.md); for converting an *existing* plain-Panel app, see [Migrating to Panel UI](migrating-to-panel-ui.md).
 
 ## Contents
