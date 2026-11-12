@@ -360,6 +360,42 @@ def test_upload_rejects_branch_records_missing_keys(repo, remote, tmp_path, caps
     assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
 
 
+def test_record_errors_reports_non_object_entries():
+    """Non-object entries are schema errors rather than a TypeError."""
+    assert eval_sync._record_errors([None], []) == ["run record at index 0 is not an object"]
+    assert eval_sync._record_errors([], [42]) == ["history row at index 0 is not an object"]
+
+
+def test_upload_rejects_non_object_branch_records(repo, remote, tmp_path, capsys):
+    """A branch with null run entries fails validation instead of crashing the upload."""
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 0
+    tip = commit_to_branch(
+        remote,
+        tmp_path,
+        {"runs.json": json.dumps({"schema_version": 1, "runs": [None]})},
+        "seed-null",
+    )
+
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-b"), "run-b") == 1
+    assert "is not an object" in capsys.readouterr().out
+    assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
+
+
+def test_upload_rejects_non_list_registry(repo, remote, tmp_path, capsys):
+    """A branch registry whose container is not a list is a schema error."""
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 0
+    tip = commit_to_branch(
+        remote,
+        tmp_path,
+        {"runs.json": json.dumps({"schema_version": 1, "runs": None})},
+        "seed-null-container",
+    )
+
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-b"), "run-b") == 1
+    assert "is not a list" in capsys.readouterr().out
+    assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
+
+
 def test_upload_rejects_record_missing_keys(repo, remote, tmp_path, capsys):
     """A run record missing a producer key is rejected before anything is pushed."""
     results = make_results(tmp_path, "run-a")

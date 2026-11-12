@@ -18,7 +18,7 @@ on:
         required: false
         type: string
       deploy_dashboard:
-        description: Deploy the historical dashboard to Outerbounds after eval
+        description: Deploy the historical dashboard to Outerbounds after eval (default branch or tags only)
         required: false
         type: boolean
         default: false
@@ -121,6 +121,18 @@ jobs:
               }
             } else {
               reason = `Unsupported event: ${context.eventName}`;
+            }
+
+            // The deploy step runs code from the checked-out ref with the
+            // Outerbounds token, so only allow the default branch or tags.
+            const defaultBranch = context.payload.repository?.default_branch || "main";
+            const trustedDeployRef =
+              checkoutRef === `refs/heads/${defaultBranch}` ||
+              checkoutRef === defaultBranch ||
+              checkoutRef.startsWith("refs/tags/");
+            if (deployDashboard && !trustedDeployRef) {
+              deployDashboard = false;
+              reason = `${reason} (dashboard deploy skipped: '${checkoutRef}' is not a trusted ref)`;
             }
 
             core.setOutput("should_run", shouldRun ? "true" : "false");

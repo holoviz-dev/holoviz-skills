@@ -304,6 +304,10 @@ The deploy command stages `scripts/compare_history.py`, `runs.json`,
 `history_summary.json`, and (with `--images`) `plot_output.html` (or `screenshot.png` if no
 plot) per query for the Plot Outputs tab, and deploys that bundle to Outerbounds.
 
+In CI the deploy step receives `OUTERBOUNDS_CONFIG_TOKEN`, so it only runs when the checked
+out ref is the default branch or a tag. Manual dispatches that evaluate a different ref
+still upload history but skip the dashboard deploy.
+
 ## Adding Queries
 
 Edit `scripts/eval_queries.yaml`:

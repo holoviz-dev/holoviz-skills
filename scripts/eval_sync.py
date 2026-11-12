@@ -256,12 +256,18 @@ def _record_errors(run_records: list[dict], history_rows: list[dict]) -> list[st
     Required keys are minimums, so extra keys are allowed.
     """
     errors = []
-    for record in run_records:
+    for index, record in enumerate(run_records):
+        if not isinstance(record, dict):
+            errors.append(f"run record at index {index} is not an object")
+            continue
         missing = [key for key in RUN_RECORD_KEYS if key not in record]
         if missing:
             run_id = record.get("run_id", "<unknown>")
             errors.append(f"run record '{run_id}' is missing required keys: {', '.join(missing)}")
-    for row in history_rows:
+    for index, row in enumerate(history_rows):
+        if not isinstance(row, dict):
+            errors.append(f"history row at index {index} is not an object")
+            continue
         missing = [key for key in HISTORY_ROW_KEYS if key not in row]
         if missing:
             label = "/".join(
@@ -272,11 +278,17 @@ def _record_errors(run_records: list[dict], history_rows: list[dict]) -> list[st
     return errors
 
 
-def _merged_record_errors(worktree_dir: Path) -> list[str]:
-    """Return schema errors for the registries after merging into the worktree."""
-    run_records = _load_json(worktree_dir / RUNS_REGISTRY_FILE, {"runs": []}).get("runs", [])
-    history_rows = _load_json(worktree_dir / HISTORY_SUMMARY_FILE, {"rows": []}).get("rows", [])
-    return _record_errors(run_records, history_rows)
+def _registry_record_errors(worktree_dir: Path) -> list[str]:
+    """Return schema errors for the registries currently in the worktree."""
+    errors = []
+    entries = []
+    for filename, key in ((RUNS_REGISTRY_FILE, "runs"), (HISTORY_SUMMARY_FILE, "rows")):
+        value = _load_json(worktree_dir / filename, {key: []}).get(key)
+        if not isinstance(value, list):
+            errors.append(f"{filename} '{key}' is not a list")
+            value = []
+        entries.append(value)
+    return errors + _record_errors(*entries)
 
 
 def upload(branch: str, eval_results: Path, run_id: str | None = None) -> int:
@@ -303,8 +315,8 @@ def upload(branch: str, eval_results: Path, run_id: str | None = None) -> int:
         print(f"Error: eval results directory not found: {eval_results}")
         return 1
 
-    run_records = _load_json(eval_results / RUNS_REGISTRY_FILE, {"runs": []}).get("runs", [])
-    history_rows = _load_json(eval_results / HISTORY_SUMMARY_FILE, {"rows": []}).get("rows", [])
+    run_records = _load_json(eval_results / RUNS_REGISTRY_FILE, {"runs": []}).get("runs") or []
+    history_rows = _load_json(eval_results / HISTORY_SUMMARY_FILE, {"rows": []}).get("rows") or []
 
     run_ids: set[str] | None = None
     if run_id:
@@ -340,6 +352,16 @@ def upload(branch: str, eval_results: Path, run_id: str | None = None) -> int:
             if not all(_validate_branch_json(path) for path in branch_files):
                 return 1
 
+            branch_errors = _registry_record_errors(worktree_dir)
+            if branch_errors:
+                for error in branch_errors:
+                    print(f"Error: {error}")
+                print(
+                    "Refusing to upload; the branch contains records that do not match "
+                    "the current schema."
+                )
+                return 1
+
             for run_record in run_records:
                 _update_runs_registry(worktree_dir, run_record)
             if history_rows:
@@ -348,7 +370,7 @@ def upload(branch: str, eval_results: Path, run_id: str | None = None) -> int:
             snapshots_copied = _copy_run_snapshots(eval_results, worktree_dir, run_ids)
             _write_readme(worktree_dir)
 
-            merged_errors = _merged_record_errors(worktree_dir)
+            merged_errors = _registry_record_errors(worktree_dir)
             if merged_errors:
                 for error in merged_errors:
                     print(f"Error: {error}")
