@@ -131,7 +131,13 @@ def push_orphan_branch(
     git("worktree", "remove", "--force", str(worktree), cwd=repo)
 
 
-def commit_to_branch(remote: Path, tmp_path: Path, files: dict[str, str], name: str) -> str:
+def commit_to_branch(
+    remote: Path,
+    tmp_path: Path,
+    files: dict[str, str],
+    name: str,
+    binary_files: dict[str, bytes] | None = None,
+) -> str:
     """Commit `files` onto `eval-data` from a clone and return the new tip SHA."""
     clone = tmp_path / name
     git("clone", "-b", "eval-data", str(remote), str(clone), cwd=tmp_path)
@@ -139,6 +145,10 @@ def commit_to_branch(remote: Path, tmp_path: Path, files: dict[str, str], name: 
         path = clone / relpath
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
+    for relpath, data in (binary_files or {}).items():
+        path = clone / relpath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
     git("add", "-A", cwd=clone)
     git("commit", "-m", "seed", cwd=clone)
     git("push", "origin", "eval-data", cwd=clone)
@@ -394,6 +404,50 @@ def test_upload_rejects_non_list_registry(repo, remote, tmp_path, capsys):
     assert eval_sync.upload("eval-data", make_results(tmp_path, "run-b"), "run-b") == 1
     assert "is not a list" in capsys.readouterr().out
     assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
+
+
+def test_upload_replaces_non_utf8_readme(repo, remote, tmp_path):
+    """A README that is not valid UTF-8 is replaced without being decoded."""
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 0
+    commit_to_branch(
+        remote,
+        tmp_path,
+        {},
+        "seed-nonutf8",
+        binary_files={"README.md": b"\xff\xfe\x00"},
+    )
+
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-b"), "run-b") == 0
+    assert git("show", "eval-data:README.md", cwd=remote).stdout == eval_sync.README_TEXT
+
+
+def test_upload_rejects_branch_registry_not_an_object(repo, remote, tmp_path, capsys):
+    """A branch registry whose top-level JSON is not an object fails cleanly."""
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 0
+    tip = commit_to_branch(remote, tmp_path, {"runs.json": "[]"}, "seed-array")
+
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-b"), "run-b") == 1
+    assert "runs.json is not an object" in capsys.readouterr().out
+    assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        ("[]", "runs.json is not an object"),
+        ('{"schema_version": 1, "runs": null}', "runs.json 'runs' is not a list"),
+        ('{"schema_version": 1, "runs": [null]}', "run record at index 0 is not an object"),
+    ],
+    ids=["array", "null-registry", "null-entry"],
+)
+def test_upload_rejects_malformed_local_registry(repo, remote, tmp_path, capsys, payload, expected):
+    """Malformed local registries are rejected instead of being treated as empty."""
+    results = make_results(tmp_path, "run-a")
+    (results / "runs.json").write_text(payload)
+
+    assert eval_sync.upload("eval-data", results, "run-a") == 1
+    assert expected in capsys.readouterr().out
+    assert git("ls-remote", "--heads", str(remote), "eval-data", cwd=tmp_path).stdout == ""
 
 
 def test_upload_rejects_record_missing_keys(repo, remote, tmp_path, capsys):

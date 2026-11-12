@@ -223,16 +223,10 @@ def _copy_run_snapshots(source_root: Path, dest_root: Path, run_ids: set[str] | 
 
 
 def _write_readme(worktree_dir: Path) -> None:
-    """Set the branch README to `README_TEXT` whenever it differs.
-
-    A symlinked `README.md` is removed first; writing through the link would
-    replace the file it points at, such as the run registry.
-    """
+    """Rewrite the branch README from `README_TEXT`."""
     readme = worktree_dir / "README.md"
     if readme.is_symlink():
         readme.unlink()
-    elif readme.exists() and readme.read_text() == README_TEXT:
-        return
     readme.write_text(README_TEXT)
 
 
@@ -250,23 +244,31 @@ def _layout_errors(worktree_dir: Path) -> list[str]:
     return errors
 
 
+def _non_object_errors(records: list, label: str) -> list[str]:
+    """Return messages for entries that are not JSON objects."""
+    return [
+        f"{label} at index {index} is not an object"
+        for index, record in enumerate(records)
+        if not isinstance(record, dict)
+    ]
+
+
 def _record_errors(run_records: list[dict], history_rows: list[dict]) -> list[str]:
     """Return messages for records or rows missing keys the producers always emit.
 
     Required keys are minimums, so extra keys are allowed.
     """
-    errors = []
-    for index, record in enumerate(run_records):
+    errors = _non_object_errors(run_records, "run record")
+    errors += _non_object_errors(history_rows, "history row")
+    for record in run_records:
         if not isinstance(record, dict):
-            errors.append(f"run record at index {index} is not an object")
             continue
         missing = [key for key in RUN_RECORD_KEYS if key not in record]
         if missing:
             run_id = record.get("run_id", "<unknown>")
             errors.append(f"run record '{run_id}' is missing required keys: {', '.join(missing)}")
-    for index, row in enumerate(history_rows):
+    for row in history_rows:
         if not isinstance(row, dict):
-            errors.append(f"history row at index {index} is not an object")
             continue
         missing = [key for key in HISTORY_ROW_KEYS if key not in row]
         if missing:
@@ -278,15 +280,29 @@ def _record_errors(run_records: list[dict], history_rows: list[dict]) -> list[st
     return errors
 
 
+def _registry_entries(path: Path, key: str) -> tuple[list, str | None]:
+    """Load `path` and return the list under `key`, plus a shape error if any.
+
+    A missing file is an empty registry. A file whose JSON is not an object, or
+    whose registry value is not a list, is an error rather than an empty one.
+    """
+    payload = _load_json(path, {key: []})
+    if not isinstance(payload, dict):
+        return [], f"{path.name} is not an object"
+    value = payload.get(key)
+    if not isinstance(value, list):
+        return [], f"{path.name} '{key}' is not a list"
+    return value, None
+
+
 def _registry_record_errors(worktree_dir: Path) -> list[str]:
     """Return schema errors for the registries currently in the worktree."""
     errors = []
     entries = []
     for filename, key in ((RUNS_REGISTRY_FILE, "runs"), (HISTORY_SUMMARY_FILE, "rows")):
-        value = _load_json(worktree_dir / filename, {key: []}).get(key)
-        if not isinstance(value, list):
-            errors.append(f"{filename} '{key}' is not a list")
-            value = []
+        value, error = _registry_entries(worktree_dir / filename, key)
+        if error:
+            errors.append(error)
         entries.append(value)
     return errors + _record_errors(*entries)
 
@@ -315,8 +331,16 @@ def upload(branch: str, eval_results: Path, run_id: str | None = None) -> int:
         print(f"Error: eval results directory not found: {eval_results}")
         return 1
 
-    run_records = _load_json(eval_results / RUNS_REGISTRY_FILE, {"runs": []}).get("runs") or []
-    history_rows = _load_json(eval_results / HISTORY_SUMMARY_FILE, {"rows": []}).get("rows") or []
+    run_records, runs_error = _registry_entries(eval_results / RUNS_REGISTRY_FILE, "runs")
+    history_rows, history_error = _registry_entries(eval_results / HISTORY_SUMMARY_FILE, "rows")
+    local_errors = [error for error in (runs_error, history_error) if error]
+    local_errors += _non_object_errors(run_records, "run record")
+    local_errors += _non_object_errors(history_rows, "history row")
+    if local_errors:
+        for error in local_errors:
+            print(f"Error: {error}")
+        print("Refusing to upload malformed local eval history.")
+        return 1
 
     run_ids: set[str] | None = None
     if run_id:
@@ -434,8 +458,17 @@ def pull(branch: str, eval_results: Path) -> int:
             return 1
 
         eval_results.mkdir(parents=True, exist_ok=True)
-        run_records = _load_json(worktree_dir / RUNS_REGISTRY_FILE, {"runs": []}).get("runs", [])
-        history_rows = _load_json(worktree_dir / HISTORY_SUMMARY_FILE, {"rows": []}).get("rows", [])
+        run_records, runs_error = _registry_entries(worktree_dir / RUNS_REGISTRY_FILE, "runs")
+        history_rows, history_error = _registry_entries(worktree_dir / HISTORY_SUMMARY_FILE, "rows")
+        pull_errors = [error for error in (runs_error, history_error) if error]
+        pull_errors += _non_object_errors(run_records, "run record")
+        pull_errors += _non_object_errors(history_rows, "history row")
+        if pull_errors:
+            for error in pull_errors:
+                print(f"Error: {error}")
+            print("Refusing to merge malformed branch history.")
+            return 1
+
         for run_record in run_records:
             _update_runs_registry(eval_results, run_record)
         if history_rows:
