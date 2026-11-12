@@ -5,6 +5,7 @@ import json
 import subprocess
 from pathlib import Path
 
+import aggregate_metrics
 import eval_sync
 import pytest
 
@@ -42,23 +43,96 @@ def repo(tmp_path, remote, monkeypatch):
     return work
 
 
-def make_results(root: Path, run_id: str) -> Path:
-    """Write a minimal local eval_results dir containing one run."""
-    results = root / f"results-{run_id}"
-    snapshot = results / "runs" / run_id
-    snapshot.mkdir(parents=True)
-    (snapshot / "run_metadata.json").write_text(json.dumps({"run_id": run_id}))
-    record = {"run_id": run_id, "created_at": f"2026-01-01T00:00:0{len(run_id) % 10}+00:00"}
-    (results / "runs.json").write_text(json.dumps({"runs": [record]}))
-    row = {
+def make_record(run_id: str) -> dict:
+    """Return a run record with every key the producer always emits."""
+    return {
         "run_id": run_id,
-        "created_at": record["created_at"],
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "status": "success",
+        "results_relpath": f"runs/{run_id}",
+        "total_queries": 1,
+        "models": ["m"],
+        "run_trigger": "manual",
+        "pr_number": None,
+        "resolved_models": {"m": ["m"]},
+        "anonymous_models": [],
+        "publish_target": "local",
+        "models_requested": ["m"],
+        "query_ids": ["q"],
+        "skip_generation": False,
+        "skip_execution": False,
+        "skip_aggregation": False,
+        "git_commit": "abc1234",
+        "git_branch": "main",
+        "python_version": "3.12.0",
+        "platform": "test",
+    }
+
+
+def make_row(run_id: str) -> dict:
+    """Return a history row with every key the producer always emits."""
+    return {
+        "run_id": run_id,
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "run_trigger": "manual",
+        "pr_number": None,
         "query_id": "q",
         "model": "m",
         "condition": "with_skills",
+        "tokens_output": 10,
+        "tokens_input": 20,
+        "tokens_cached": 0,
+        "execution_time": 1.0,
+        "cost": 0.01,
+        "execution_success": True,
+        "has_code": True,
+        "timed_out": False,
+        "resolved_models": ["m"],
+        "anonymous": False,
     }
-    (results / "history_summary.json").write_text(json.dumps({"rows": [row]}))
+
+
+def make_results(root: Path, run_id: str) -> Path:
+    """Write a minimal local eval_results dir containing one full-schema run."""
+    results = root / f"results-{run_id}"
+    snapshot = results / "runs" / run_id
+    snapshot.mkdir(parents=True)
+    record = make_record(run_id)
+    (snapshot / "run_metadata.json").write_text(json.dumps(record))
+    (results / "runs.json").write_text(json.dumps({"schema_version": 1, "runs": [record]}))
+    (results / "history_summary.json").write_text(
+        json.dumps({"schema_version": 1, "rows": [make_row(run_id)]})
+    )
     return results
+
+
+def push_orphan_branch(repo: Path, tmp_path: Path, files: dict[str, str], name: str) -> None:
+    """Create an orphan `eval-data` branch containing exactly `files` and push it."""
+    worktree = tmp_path / name
+    git("worktree", "add", "--no-checkout", "--detach", str(worktree), cwd=repo)
+    git("switch", "--orphan", "eval-data", cwd=worktree)
+    for relpath, text in files.items():
+        path = worktree / relpath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    git("add", "-A", cwd=worktree)
+    git("commit", "-m", "seed eval-data", cwd=worktree)
+    git("push", "origin", "HEAD:eval-data", cwd=worktree)
+    git("worktree", "remove", "--force", str(worktree), cwd=repo)
+
+
+def commit_to_branch(remote: Path, tmp_path: Path, files: dict[str, str], name: str) -> str:
+    """Commit `files` onto `eval-data` from a clone and return the new tip SHA."""
+    clone = tmp_path / name
+    git("clone", "-b", "eval-data", str(remote), str(clone), cwd=tmp_path)
+    for relpath, text in files.items():
+        path = clone / relpath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    git("add", "-A", cwd=clone)
+    git("commit", "-m", "seed", cwd=clone)
+    git("push", "origin", "eval-data", cwd=clone)
+    return git("rev-parse", "eval-data", cwd=remote).stdout.strip()
 
 
 def branch_json(remote: Path, tmp_path: Path, name: str) -> dict:
@@ -158,7 +232,9 @@ def test_upload_retries_after_concurrent_push(repo, remote, tmp_path, monkeypatc
 
     other = tmp_path / "other"
     git("clone", "-b", "eval-data", str(remote), str(other), cwd=tmp_path)
-    (other / "other.txt").write_text("competing commit")
+    competing = other / "runs" / "run-other" / "run_metadata.json"
+    competing.parent.mkdir(parents=True)
+    competing.write_text("competing commit")
     git("add", "-A", cwd=other)
     git("commit", "-m", "competing", cwd=other)
 
@@ -176,7 +252,10 @@ def test_upload_retries_after_concurrent_push(repo, remote, tmp_path, monkeypatc
 
     assert raced
     assert run_ids(branch_json(remote, tmp_path, "runs.json"), "runs") == {"run-a", "run-b"}
-    assert "other.txt" in git("ls-tree", "-r", "--name-only", "eval-data", cwd=remote).stdout
+    assert (
+        "runs/run-other/run_metadata.json"
+        in git("ls-tree", "-r", "--name-only", "eval-data", cwd=remote).stdout
+    )
 
 
 def test_upload_gives_up_after_max_attempts(repo, remote, tmp_path, monkeypatch, capsys):
@@ -193,3 +272,79 @@ def test_upload_gives_up_after_max_attempts(repo, remote, tmp_path, monkeypatch,
     assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 1
     assert len(pushes) == eval_sync.MAX_UPLOAD_ATTEMPTS
     assert "failed to upload" in capsys.readouterr().out
+
+
+def test_upload_replaces_existing_readme(repo, remote, tmp_path):
+    """A project README on the branch is replaced by the canonical eval-data README."""
+    push_orphan_branch(repo, tmp_path, {"README.md": "# project readme\n"}, "seed-readme")
+
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 0
+    assert git("show", "eval-data:README.md", cwd=remote).stdout == eval_sync.README_TEXT
+
+
+def test_upload_rejects_disallowed_branch_paths(repo, remote, tmp_path, capsys):
+    """An upload against a branch with stray files fails without moving the branch."""
+    push_orphan_branch(repo, tmp_path, {"visuals.json": "{}"}, "seed-bad")
+    tip = git("rev-parse", "eval-data", cwd=remote).stdout.strip()
+
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 1
+    assert "outside the allowed layout" in capsys.readouterr().out
+    assert "visuals.json" in git("ls-tree", "-r", "--name-only", "eval-data", cwd=remote).stdout
+    assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
+
+
+def test_upload_rejects_record_missing_keys(repo, remote, tmp_path, capsys):
+    """A run record missing a producer key is rejected before anything is pushed."""
+    results = make_results(tmp_path, "run-a")
+    record = json.loads((results / "runs.json").read_text())["runs"][0]
+    del record["resolved_models"]
+    (results / "runs.json").write_text(json.dumps({"schema_version": 1, "runs": [record]}))
+
+    assert eval_sync.upload("eval-data", results, "run-a") == 1
+    assert "missing required keys" in capsys.readouterr().out
+    assert git("ls-remote", "--heads", str(remote), "eval-data", cwd=tmp_path).stdout == ""
+
+
+def test_upload_rejects_history_row_missing_keys(repo, remote, tmp_path, capsys):
+    """A history row missing a producer key is rejected before anything is pushed."""
+    results = make_results(tmp_path, "run-a")
+    row = json.loads((results / "history_summary.json").read_text())["rows"][0]
+    del row["anonymous"]
+    (results / "history_summary.json").write_text(json.dumps({"schema_version": 1, "rows": [row]}))
+
+    assert eval_sync.upload("eval-data", results, "run-a") == 1
+    assert "anonymous" in capsys.readouterr().out
+    assert git("ls-remote", "--heads", str(remote), "eval-data", cwd=tmp_path).stdout == ""
+
+
+def test_producer_records_pass_the_check(tmp_path):
+    """Records from aggregate_metrics satisfy the required keys, guarding schema drift."""
+    summary = {"queries": {"q": {"models": {"m": {"with_skills": {"tokens_output": 1}}}}}}
+    created_at = "2026-01-01T00:00:00+00:00"
+    record = aggregate_metrics._build_run_record(
+        run_id="run-a",
+        created_at=created_at,
+        summary=summary,
+        run_metadata={},
+        snapshot_dir=tmp_path / "runs" / "run-a",
+    )
+    rows = aggregate_metrics._flatten_history_rows(summary, "run-a", created_at)
+
+    assert rows
+    assert eval_sync._record_errors([record], rows) == []
+
+
+def test_pull_empty_branch_succeeds(repo, remote, tmp_path, capsys):
+    """Pulling a branch with empty registries reports zero runs and exits cleanly."""
+    push_orphan_branch(
+        repo,
+        tmp_path,
+        {
+            "runs.json": json.dumps({"schema_version": 1, "run_count": 0, "runs": []}),
+            "history_summary.json": json.dumps({"schema_version": 1, "row_count": 0, "rows": []}),
+        },
+        "seed-empty",
+    )
+
+    assert eval_sync.pull("eval-data", tmp_path / "out") == 0
+    assert "Merged 0 run record(s)" in capsys.readouterr().out
