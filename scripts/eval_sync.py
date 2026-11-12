@@ -223,20 +223,30 @@ def _copy_run_snapshots(source_root: Path, dest_root: Path, run_ids: set[str] | 
 
 
 def _write_readme(worktree_dir: Path) -> None:
-    """Set the branch README to `README_TEXT` whenever it differs."""
+    """Set the branch README to `README_TEXT` whenever it differs.
+
+    A symlinked `README.md` is removed first; writing through the link would
+    replace the file it points at, such as the run registry.
+    """
     readme = worktree_dir / "README.md"
-    if not readme.exists() or readme.read_text() != README_TEXT:
-        readme.write_text(README_TEXT)
+    if readme.is_symlink():
+        readme.unlink()
+    elif readme.exists() and readme.read_text() == README_TEXT:
+        return
+    readme.write_text(README_TEXT)
 
 
 def _layout_errors(worktree_dir: Path) -> list[str]:
-    """Return tracked paths that are outside the allowed `eval-data` layout."""
+    """Return tracked paths outside the allowed `eval-data` layout."""
     allowed = set(ALLOWED_BRANCH_FILES)
     errors = []
-    for path in _git(["ls-files"], cwd=worktree_dir).stdout.splitlines():
-        if path in allowed or path.startswith("runs/"):
-            continue
-        errors.append(path)
+    for entry in _git(["ls-files", "-s"], cwd=worktree_dir).stdout.splitlines():
+        meta, _, path = entry.partition("\t")
+        mode = meta.split()[0]
+        if mode == "120000":
+            errors.append(f"{path} (symlink)")
+        elif path not in allowed and not path.startswith("runs/"):
+            errors.append(path)
     return errors
 
 
@@ -260,6 +270,13 @@ def _record_errors(run_records: list[dict], history_rows: list[dict]) -> list[st
             )
             errors.append(f"history row '{label}' is missing required keys: {', '.join(missing)}")
     return errors
+
+
+def _merged_record_errors(worktree_dir: Path) -> list[str]:
+    """Return schema errors for the registries after merging into the worktree."""
+    run_records = _load_json(worktree_dir / RUNS_REGISTRY_FILE, {"runs": []}).get("runs", [])
+    history_rows = _load_json(worktree_dir / HISTORY_SUMMARY_FILE, {"rows": []}).get("rows", [])
+    return _record_errors(run_records, history_rows)
 
 
 def upload(branch: str, eval_results: Path, run_id: str | None = None) -> int:
@@ -330,6 +347,16 @@ def upload(branch: str, eval_results: Path, run_id: str | None = None) -> int:
 
             snapshots_copied = _copy_run_snapshots(eval_results, worktree_dir, run_ids)
             _write_readme(worktree_dir)
+
+            merged_errors = _merged_record_errors(worktree_dir)
+            if merged_errors:
+                for error in merged_errors:
+                    print(f"Error: {error}")
+                print(
+                    "Refusing to upload; the branch contains records that do not match "
+                    "the current schema."
+                )
+                return 1
 
             _git(["add", "-A"], cwd=worktree_dir)
             if _git(["diff", "--cached", "--quiet"], cwd=worktree_dir, check=False).returncode == 0:

@@ -106,8 +106,14 @@ def make_results(root: Path, run_id: str) -> Path:
     return results
 
 
-def push_orphan_branch(repo: Path, tmp_path: Path, files: dict[str, str], name: str) -> None:
-    """Create an orphan `eval-data` branch containing exactly `files` and push it."""
+def push_orphan_branch(
+    repo: Path,
+    tmp_path: Path,
+    files: dict[str, str],
+    name: str,
+    symlinks: dict[str, str] | None = None,
+) -> None:
+    """Create an orphan `eval-data` branch containing `files` and `symlinks`."""
     worktree = tmp_path / name
     git("worktree", "add", "--no-checkout", "--detach", str(worktree), cwd=repo)
     git("switch", "--orphan", "eval-data", cwd=worktree)
@@ -115,6 +121,10 @@ def push_orphan_branch(repo: Path, tmp_path: Path, files: dict[str, str], name: 
         path = worktree / relpath
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
+    for relpath, target in (symlinks or {}).items():
+        path = worktree / relpath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.symlink_to(target)
     git("add", "-A", cwd=worktree)
     git("commit", "-m", "seed eval-data", cwd=worktree)
     git("push", "origin", "HEAD:eval-data", cwd=worktree)
@@ -290,6 +300,63 @@ def test_upload_rejects_disallowed_branch_paths(repo, remote, tmp_path, capsys):
     assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 1
     assert "outside the allowed layout" in capsys.readouterr().out
     assert "visuals.json" in git("ls-tree", "-r", "--name-only", "eval-data", cwd=remote).stdout
+    assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
+
+
+def test_upload_rejects_symlinked_readme(repo, remote, tmp_path, capsys):
+    """A symlink on the branch fails the layout guard instead of being followed."""
+    push_orphan_branch(
+        repo,
+        tmp_path,
+        {"runs.json": json.dumps({"schema_version": 1, "runs": []})},
+        "seed-symlink",
+        symlinks={"README.md": "runs.json"},
+    )
+    tip = git("rev-parse", "eval-data", cwd=remote).stdout.strip()
+
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 1
+    assert "README.md (symlink)" in capsys.readouterr().out
+    assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
+
+
+def test_write_readme_replaces_symlink_without_touching_target(tmp_path):
+    """Rewriting a symlinked README unlinks it rather than overwriting its target."""
+    target = tmp_path / "runs.json"
+    target.write_text("{}")
+    readme = tmp_path / "README.md"
+    readme.symlink_to("runs.json")
+
+    eval_sync._write_readme(tmp_path)
+
+    assert not readme.is_symlink()
+    assert readme.read_text() == eval_sync.README_TEXT
+    assert target.read_text() == "{}"
+
+
+def test_upload_rejects_branch_records_missing_keys(repo, remote, tmp_path, capsys):
+    """A legacy record already on the branch is caught by the merged schema check."""
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-a"), "run-a") == 0
+
+    legacy_record = make_record("legacy")
+    del legacy_record["resolved_models"]
+    legacy_row = make_row("legacy")
+    del legacy_row["anonymous"]
+    tip = commit_to_branch(
+        remote,
+        tmp_path,
+        {
+            "runs.json": json.dumps(
+                {"schema_version": 1, "runs": [legacy_record, make_record("run-a")]}
+            ),
+            "history_summary.json": json.dumps(
+                {"schema_version": 1, "rows": [legacy_row, make_row("run-a")]}
+            ),
+        },
+        "seed-legacy",
+    )
+
+    assert eval_sync.upload("eval-data", make_results(tmp_path, "run-b"), "run-b") == 1
+    assert "current schema" in capsys.readouterr().out
     assert git("rev-parse", "eval-data", cwd=remote).stdout.strip() == tip
 
 
