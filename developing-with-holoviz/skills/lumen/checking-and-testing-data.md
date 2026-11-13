@@ -54,7 +54,7 @@ def test_penguins_in_2008(source):
     assert answer.result == 114
 ```
 
-- `cassette(path)` **replays** by default. Record once with `LUMEN_AI_RECORD=1 pytest ...` (uses the configured LLM) or `cassette(path, llm)`, then commit the JSON.
+- `cassette(path)` **replays** by default, even when an LLM is passed. It records only with `LUMEN_AI_RECORD=1` set (`LUMEN_AI_RECORD=1 pytest ...`), using `cassette(path, llm)`'s LLM or the configured one; then commit the JSON. Replay in a later run, not right after recording in the same process.
 - A call that was not recorded raises `MissingRecording` naming the closest recorded call, usually because a prompt changed. Record again.
 - Recording replaces the file; `record(llm, path, append=True)` keeps old calls. `record(llm, path)` and `ReplayLLM(path)` are the two halves for use outside a `with` block.
 - Tool calls replay as their final answer; the tools do not run again.
