@@ -9,8 +9,7 @@ tags:
 
 dependencies:
   conda:
-    panel: 1.9.3
-    panel-material-ui: 0.13.0
+    panel: 1.10.0
     hvplot: 0.12.2
     pandas: 3.0.3
     scipy: "*"

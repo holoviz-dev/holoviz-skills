@@ -34,7 +34,7 @@ def __init__(self, **params):
     super().__init__(**params)
 ```
 
-**What to look for**: any `@param.depends` method (without `watch=True`) that returns `pn.Column`, `pn.Row`, `pmui.Paper`, or any layout/widget constructor. The fix is always the same — create once, update properties.
+**What to look for**: any `@param.depends` method (without `watch=True`) that returns `pn.Column`, `pn.Row`, `pn.ui.Paper`, or any layout/widget constructor. The fix is always the same — create once, update properties. Returning (or yielding) an *existing* instance, e.g. `return self._results_column`, is not this bug: nothing is recreated.
 
 For content that genuinely varies in type (string one moment, plot the next), use `pn.pane.Placeholder`:
 
@@ -43,17 +43,19 @@ For content that genuinely varies in type (string one moment, plot the next), us
 @param.depends("mode")
 def _details(self):
     if self.mode == "A":
-        return pmui.FloatInput.from_param(self.param.amount)
-    return pmui.Typography("No input needed")
+        return pn.ui.FloatInput.from_param(self.param.amount)
+    return pn.ui.Typography("No input needed")
 
 # CORRECT — create both once, swap via Placeholder
 def __init__(self, **params):
-    self._amount_input = pmui.FloatInput.from_param(self.param.amount)
-    self._no_input_msg = pmui.Typography("No input needed")
+    self._no_input_msg = pn.ui.Typography("No input needed")
     self._details = pn.pane.Placeholder()
     super().__init__(**params)
+    # from_param after super(); call the updater explicitly instead of on_init
+    self._amount_input = pn.ui.FloatInput.from_param(self.param.amount)
+    self._update_details()
 
-@param.depends("mode", watch=True, on_init=True)
+@param.depends("mode", watch=True)
 def _update_details(self):
     if self.mode == "A":
         self._details.update(self._amount_input)
@@ -106,23 +108,23 @@ pn.bind(self._on_menu_select, self._nav_menu.param.active, watch=True)
 
 ## Unintended Stretch and Collapsed Labels
 
-Under the default `sizing_mode="stretch_width"`, fixed-size widgets stretch to fill their container. Icon widgets like `Rating` render enormous, and inline `Markdown`/`HTML` labels placed in a `Row` alongside `HSpacer`s collapse to near-zero width and wrap one character per line. The fix — pinning `width` plus `sizing_mode="fixed"` — is in [Using Material UI](using-material-ui.md#components).
+Under the default `sizing_mode="stretch_width"`, fixed-size widgets stretch to fill their container. Icon widgets like `Rating` render enormous, and inline `Markdown`/`HTML` labels placed in a `Row` alongside `HSpacer`s collapse to near-zero width and wrap one character per line. The fix — pinning `width` plus `sizing_mode="fixed"` — is in [Using `panel.ui`](using-panel-ui.md#components).
 
 **What to look for**: `Rating`, small buttons, or text labels inside a stretched `Row`/`Column` without an explicit `width`/`sizing_mode="fixed"`.
 
 ## Spacer vs Margin
 
-`pn.Spacer(height=N)` creates a real component in the DOM. Margin or padding on the parent achieves the same visual gap without an extra element.
+`pn.Spacer(height=N)` creates a real component in the DOM. Margin or padding on the parent achieves the same visual gap without an extra element. This is a style preference, not a bug: flag it only in a cleanup pass, never as a blocking finding.
 
 ```python
-# WRONG — extra DOM element just for spacing
+# AVOID — extra DOM element just for spacing
 pn.Column(
     self._content,
     pn.Spacer(height=30),
     self._nav_row,
 )
 
-# CORRECT — margin on parent
+# PREFER — margin on parent
 pn.Column(
     self._content,
     self._nav_row,

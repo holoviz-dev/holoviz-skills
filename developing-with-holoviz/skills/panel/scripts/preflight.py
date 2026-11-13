@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static lint for generated Panel/panel-material-ui app code.
+"""Static lint for generated Panel/`panel.ui` app code.
 
 Greps the mechanical anti-patterns already documented in reviewing-panel-apps.md
 and troubleshooting-panel-apps.md, before the first `panel serve`. Cheap and deterministic —
@@ -85,7 +85,7 @@ def iter_own_scope(node: ast.AST):
 
 
 def _call_name(node: ast.AST) -> str | None:
-    """Trailing name of a Call's func, e.g. `pmui.Row(...)` -> 'Row'."""
+    """Trailing name of a Call's func, e.g. `pn.ui.Row(...)` -> 'Row'."""
     if not isinstance(node, ast.Call):
         return None
     func = node.func

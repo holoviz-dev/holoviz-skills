@@ -2,7 +2,7 @@
 name: holoviews
 description: Build interactive visualizations with HoloViews elements, opts, streams, and operations. Use when composing plots from element primitives (Curve, Points, Bars, NdOverlay), customizing Bokeh tools/tooltips/formatters, using DynamicMap, streams, or link_selections. Do not use for simple DataFrame plotting (use hvPlot) or Panel app structure (use Panel).
 metadata:
-  version: "2026.08.24"
+  version: "2026.11.12"
   author: holoviz
 ---
 
@@ -195,6 +195,8 @@ on the top-level plot (overlay/layout), see [Decluttering Plots](decluttering-pl
 
 DynamicMap calls a callback to generate elements lazily. It patches data in place, preserving zoom/pan — unlike replacing `pane.object` which resets axes.
 
+For Panel widget-driven plots, give *each plot* its own reactive callback and DynamicMap: `hv.DynamicMap(pn.bind(make_plot, widget))` or `hv.DynamicMap(self._plot)` when `_plot` has `@param.depends` (without `watch=True`). The callback must return a HoloViews/hvPlot object, not a Panel pane or a layout containing plots. Put tables and text in their own stable panes (`pn.ui.DataFrame(table_ref)`, `pn.ui.Markdown(text_ref)`), supplying each with its own `pn.bind`, depends method, `rx` expression, or direct Parameter reference as appropriate. Never rebuild the whole dashboard in a reactive callback, regardless of the API used: it recreates all outputs on every update.
+
 ```python
 dmap = hv.DynamicMap(render_fn, streams=[stream])
 ```
@@ -203,7 +205,7 @@ dmap = hv.DynamicMap(render_fn, streams=[stream])
 - Create one DynamicMap per element type, combine with `*` (overlay) or `+` (layout).
 - Use `.opts(framewise=True)` with streaming data (Pipe/Buffer) so axes update when data ranges change.
 
-For the Panel integration pattern (trigger param, `pn.bind`, `pn.pane.HoloViews`), see [Plotting in Panel](../panel/plotting-in-panel.md).
+For the Panel integration pattern (reactive references, `pn.pane.HoloViews`, multiple plots), see [Plotting in Panel](../panel/plotting-in-panel.md).
 
 ## Streams
 

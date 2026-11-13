@@ -27,20 +27,20 @@ CASES: dict[str, dict[str, str]] = {
     "flicker_recreated_layout": {
         "wrong": """
 import param
-import panel_material_ui as pmui
+import panel as pn
 
 class C:
     @param.depends("active_step")
     def _nav_buttons(self):
-        return pmui.Row(self._back_btn, self._next_btn)
+        return pn.ui.Row(self._back_btn, self._next_btn)
 """,
         "correct": """
 import param
-import panel_material_ui as pmui
+import panel as pn
 
 class C:
     def __init__(self, **params):
-        self._nav_row = pmui.Row(self._back_btn, self._next_btn)
+        self._nav_row = pn.ui.Row(self._back_btn, self._next_btn)
         super().__init__(**params)
 """,
         "check": "FLICKER_RECREATED_LAYOUT",
@@ -71,20 +71,20 @@ class C:
     },
     "from_param_before_super": {
         "wrong": """
-import panel_material_ui as pmui
+import panel as pn
 
 class C:
     def __init__(self, **params):
-        self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
+        self._toggle = pn.ui.RadioButtonGroup.from_param(self.param.chart_type)
         super().__init__(**params)
 """,
         "correct": """
-import panel_material_ui as pmui
+import panel as pn
 
 class C:
     def __init__(self, **params):
         super().__init__(**params)
-        self._toggle = pmui.RadioButtonGroup.from_param(self.param.chart_type)
+        self._toggle = pn.ui.RadioButtonGroup.from_param(self.param.chart_type)
 """,
         "check": "FROM_PARAM_BEFORE_SUPER",
     },
@@ -136,12 +136,14 @@ class C:
     },
     "radio_default_none": {
         "wrong": """
-import panel_material_ui as pmui
-w = pmui.RadioButtonGroup(options=["a", "b"], value=None)
+import panel as pn
+
+w = pn.ui.RadioButtonGroup(options=["a", "b"], value=None)
 """,
         "correct": """
-import panel_material_ui as pmui
-w = pmui.RadioButtonGroup(options=["a", "b"], value="a")
+import panel as pn
+
+w = pn.ui.RadioButtonGroup(options=["a", "b"], value="a")
 """,
         "check": "RADIO_DEFAULT_NONE",
     },
@@ -166,18 +168,18 @@ w = pn.widgets.IntSlider(start=0, end=10)
 
 REGRESSIONS: dict[str, dict[str, object]] = {
     "nested_closure_not_misattributed": {
-        # A `return pmui.Row()` inside a nested function must not be blamed
+        # A `return pn.ui.Row()` inside a nested function must not be blamed
         # on the enclosing @param.depends method (ast.walk-based traversal
         # used to leak into nested scopes here).
         "src": """
 import param
-import panel_material_ui as pmui
+import panel as pn
 
 class C:
     @param.depends("x")
     def outer(self):
         def inner():
-            return pmui.Row()
+            return pn.ui.Row()
         inner()
         return self._cached
 """,
@@ -199,7 +201,7 @@ class C:
 def helper():
     """
     WRONG example:
-        w = pmui.RadioButtonGroup(options=["a", "b"], value=None)
+        w = pn.ui.RadioButtonGroup(options=["a", "b"], value=None)
     """
 ''',
         "expect_checks": set(),
@@ -208,8 +210,9 @@ def helper():
         # Anti-pattern split across lines (the common formatter output) must
         # still be caught — this used to be missed by line-scoped regexes.
         "src": """
-import panel_material_ui as pmui
-w = pmui.RadioButtonGroup(
+import panel as pn
+
+w = pn.ui.RadioButtonGroup(
     options=["a", "b"],
     value=None,
 )
@@ -219,12 +222,12 @@ w = pmui.RadioButtonGroup(
     "pn_depends_alias_matched": {
         "src": """
 import panel as pn
-import panel_material_ui as pmui
+import panel as pn
 
 class C:
     @pn.depends("x")
     def bad(self):
-        return pmui.Row()
+        return pn.ui.Row()
 """,
         "expect_checks": {"FLICKER_RECREATED_LAYOUT"},
     },

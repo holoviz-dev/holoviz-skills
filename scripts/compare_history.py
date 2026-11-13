@@ -17,7 +17,6 @@ import hvplot.pandas  # noqa: F401
 import numpy as np
 import pandas as pd
 import panel as pn
-import panel_material_ui as pmui
 import param
 
 pn.extension("tabulator", "echarts", throttled=True, sizing_mode="stretch_width")
@@ -112,7 +111,7 @@ def stack_xaxis(i, last):
 
 def no_rows_notice(df):
     if df is None or df.empty:
-        return pmui.Alert(
+        return pn.ui.Alert(
             "Nothing matches the current filters — pick at least one run, model and query "
             "in the sidebar.",
             severity="info",
@@ -142,8 +141,8 @@ def donut(pairs, title):
 
 
 def _section(title, plot):
-    return pmui.Column(
-        pmui.Typography(title, variant="h6"),
+    return pn.ui.Column(
+        pn.ui.Typography(title, variant="h6"),
         chart_pane(plot),
         sx={"gap": "8px"},
     )
@@ -180,7 +179,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         params.setdefault("selected_models", all_models)
         params.setdefault("selected_queries", all_queries)
 
-        self._no_data_alert = pmui.Alert(
+        self._no_data_alert = pn.ui.Alert(
             "No historical summary found. Run eval first to generate ``history_summary.json``.",
             alert_type="warning",
             visible=self._history_df.empty,
@@ -191,7 +190,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         self.param.selected_models.objects = all_models
         self.param.selected_queries.objects = all_queries
 
-        self._run_filter = pmui.MultiSelect.from_param(
+        self._run_filter = pn.ui.MultiSelect.from_param(
             self.param.selected_runs, label="Runs", sizing_mode="stretch_width"
         )
         self._source_filter = self._check_group("selected_sources", label="Run source")
@@ -200,7 +199,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         self._condition_filter = self._check_group("selected_conditions", label="Conditions")
 
     def _check_group(self, name, **kw):
-        return pmui.CheckButtonGroup.from_param(
+        return pn.ui.CheckButtonGroup.from_param(
             self.param[name],
             orientation="vertical",
             button_style="outlined",
@@ -325,9 +324,9 @@ class HistoricalDashboard(pn.viewable.Viewer):
         ws_ok, ws_fail, ws_to = counts(with_df)
         wo_ok, wo_fail, wo_to = counts(without_df)
         impact = self._skills_impact(df)
-        return pmui.Column(
+        return pn.ui.Column(
             kpis,
-            pmui.Row(
+            pn.ui.Row(
                 donut(
                     [
                         ("Success", ws_ok, GREEN),
@@ -348,7 +347,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             self._routed_models(df),
             impact
             if impact is not None
-            else pmui.Alert(
+            else pn.ui.Alert(
                 "Select both conditions to see the skills-impact chart.", severity="info"
             ),
             sx={"gap": "16px"},
@@ -359,7 +358,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         exploded = df[["run_id", "created_at", "resolved_models"]].explode("resolved_models")
         exploded = exploded[exploded["resolved_models"].notna()]
         if exploded.empty:
-            return pmui.Alert(
+            return pn.ui.Alert(
                 "No routed-model data for the selected runs (older runs didn't record it).",
                 severity="info",
             )
@@ -479,7 +478,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         df = self.df
         if (notice := no_rows_notice(df)) is not None:
             return notice
-        caption = pmui.Typography(
+        caption = pn.ui.Typography(
             "Cell = mean across selected runs · green is better · both conditions share a scale",
             variant="caption",
             sx={"color": "text.secondary"},
@@ -490,11 +489,13 @@ class HistoricalDashboard(pn.viewable.Viewer):
             if pair is None:
                 continue
             sections.append(
-                pmui.Column(pmui.Typography(_LABELS[metric], variant="h6"), pair, sx={"gap": "8px"})
+                pn.ui.Column(
+                    pn.ui.Typography(_LABELS[metric], variant="h6"), pair, sx={"gap": "8px"}
+                )
             )
         if len(sections) == 1:
-            return pmui.Alert("No numeric data for the selected filters yet.", severity="info")
-        return pmui.Column(*sections, sx={"gap": "20px"})
+            return pn.ui.Alert("No numeric data for the selected filters yet.", severity="info")
+        return pn.ui.Column(*sections, sx={"gap": "20px"})
 
     # ------------------------------------------------------------------
     # Distributions
@@ -540,7 +541,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         df = self.df
         if (notice := no_rows_notice(df)) is not None:
             return notice
-        return pmui.Column(
+        return pn.ui.Column(
             *[
                 _section(_LABELS[m], self._build_metric_violin(df, m, i=i, n=len(_METRICS)))
                 for i, m in enumerate(_METRICS)
@@ -609,7 +610,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
         for i, metric in enumerate(_METRICS, start=1):
             plot = self._build_trend(df, metric, _LABELS[metric], i=i, n=n)
             sections.append(_section(_LABELS[metric], plot))
-        return pmui.Column(*sections, sx={"gap": "20px"})
+        return pn.ui.Column(*sections, sx={"gap": "20px"})
 
     # ------------------------------------------------------------------
     # Details
@@ -674,9 +675,9 @@ class HistoricalDashboard(pn.viewable.Viewer):
     # ------------------------------------------------------------------
 
     def _output_card(self, query: str, model: str, condition: str, kind: str, path: Path):
-        title = pmui.Typography(query, variant="subtitle2", sx={"fontWeight": 600})
+        title = pn.ui.Typography(query, variant="subtitle2", sx={"fontWeight": 600})
         kind_label = "screenshot" if kind == "screenshot" else "saved plot"
-        caption = pmui.Typography(
+        caption = pn.ui.Typography(
             f"{model} · {condition} · {kind_label}",
             variant="caption",
             sx={"color": "text.secondary"},
@@ -697,8 +698,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 f"</div>",
                 sizing_mode="stretch_width",
             )
-        return pmui.Paper(
-            pmui.Column(title, caption, body, sx={"gap": "8px"}),
+        return pn.ui.Paper(
+            pn.ui.Column(title, caption, body, sx={"gap": "8px"}),
             sx={"p": 2},
             elevation=1,
         )
@@ -722,18 +723,18 @@ class HistoricalDashboard(pn.viewable.Viewer):
             elif screenshot.exists():
                 cards.append(self._output_card(query, model, condition, "screenshot", screenshot))
         if not cards:
-            return pmui.Alert(
+            return pn.ui.Alert(
                 "No saved plots or screenshots found for the selected filters.",
                 severity="info",
             )
-        grid = pmui.Grid(
-            *(pmui.Grid(card, size={"xs": 12, "md": 6, "lg": 4}) for card in cards),
+        grid = pn.ui.Grid(
+            *(pn.ui.Grid(card, size={"xs": 12, "md": 6, "lg": 4}) for card in cards),
             container=True,
             spacing=2,
             sizing_mode="stretch_width",
         )
-        return pmui.Column(
-            pmui.Typography(
+        return pn.ui.Column(
+            pn.ui.Typography(
                 "Saved plot per model / condition / query (screenshot if no plot). "
                 "Most recent artifacts on disk — overwritten each run.",
                 variant="caption",
@@ -750,16 +751,16 @@ class HistoricalDashboard(pn.viewable.Viewer):
         if not empty:
             latest = pd.to_datetime(self._history_df["created_at"]).max()
             latest = latest.strftime("%Y-%m-%d %H:%M")
-        sidebar = pmui.Column(
-            pmui.Typography("Filters", variant="h6"),
+        sidebar = pn.ui.Column(
+            pn.ui.Typography("Filters", variant="h6"),
             self._source_filter,
-            pmui.Divider(),
+            pn.ui.Divider(),
             self._run_filter,
-            pmui.Divider(),
+            pn.ui.Divider(),
             self._model_filter,
-            pmui.Divider(),
+            pn.ui.Divider(),
             self._query_filter,
-            pmui.Divider(),
+            pn.ui.Divider(),
             self._condition_filter,
             pn.pane.HTML(
                 f'<div style="font-size:12px;display:flex;gap:10px">'
@@ -767,7 +768,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
                 f'<span style="color:{RED}">●</span> failure'
                 f'<span style="color:{GREY}">●</span> timeout</div>'
             ),
-            pmui.Typography(
+            pn.ui.Typography(
                 f"{n_runs} run(s) · latest {latest or '—'}",
                 variant="caption",
                 sx={"color": "text.secondary", "mt": 2},
@@ -775,15 +776,15 @@ class HistoricalDashboard(pn.viewable.Viewer):
             sx={"gap": "12px"},
             margin=10,
         )
-        main = pmui.Column(
+        main = pn.ui.Column(
             self._no_data_alert,
-            pmui.Typography("Historical Evaluation Trends", variant="h4"),
-            pmui.Typography(
+            pn.ui.Typography("Historical Evaluation Trends", variant="h4"),
+            pn.ui.Typography(
                 f"Results directory: {self._results_dir}",
                 variant="body2",
                 sx={"color": "text.secondary"},
             ),
-            pmui.Tabs(
+            pn.ui.Tabs(
                 ("Overview", self._overview),
                 ("Comparison", self._heatmaps),
                 ("Distributions", self._distributions),
@@ -794,7 +795,7 @@ class HistoricalDashboard(pn.viewable.Viewer):
             sx={"gap": "16px"},
             margin=10,
         )
-        return pmui.Page(
+        return pn.ui.Page(
             title="HoloViz Skills - Eval Trends",
             sidebar=[sidebar],
             main=[main],

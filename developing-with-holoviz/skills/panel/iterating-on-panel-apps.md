@@ -87,7 +87,7 @@ APP_MOCK=1 APP_LATENCY=2 panel serve app.py --dev --show   # loading state
 APP_MOCK=1 APP_FAIL=1 panel serve app.py --dev --show      # error state
 ```
 
-Catch the raised error in the calling watcher and surface it as a `pmui.Alert` or a notification (see [Notifications](using-material-ui.md#notifications)) instead of letting it crash the callback silently — an app with no exercised error path is untested, not robust. `time.sleep` is fine for a headless smoke test, but for the spinner to actually show *during* a live-served request the slow call needs to run `async` (see the loading-spinner caveat in [Designing Panel Architecture](designing-panel-architecture.md#batching-loading-and-memory)).
+Catch the raised error in the calling watcher and surface it as a `pn.ui.Alert` or a notification (see [Notifications](using-panel-ui.md#notifications)) instead of letting it crash the callback silently — an app with no exercised error path is untested, not robust. `time.sleep` is fine for a headless smoke test, but for the spinner to actually show *during* a live-served request the slow call needs to run `async` (see the loading-spinner caveat in [Designing Panel Architecture](designing-panel-architecture.md#batching-loading-and-memory)).
 
 Then drive a headless smoke test by setting widget/param values and asserting the panes updated — no browser needed:
 

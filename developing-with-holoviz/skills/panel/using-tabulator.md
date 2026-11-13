@@ -38,8 +38,8 @@ self._table = pn.widgets.Tabulator(
 Wire sidebar widgets directly as table filters — Tabulator watches widget values and shows/hides rows automatically. No manual filtering needed.
 
 ```python
-region_filter = pmui.CheckBoxGroup(value=list(REGIONS), options=REGIONS)
-product_filter = pmui.CheckBoxGroup(value=list(PRODUCTS), options=PRODUCTS)
+region_filter = pn.ui.CheckBoxGroup(value=list(REGIONS), options=REGIONS)
+product_filter = pn.ui.CheckBoxGroup(value=list(PRODUCTS), options=PRODUCTS)
 
 # Must be called AFTER table has data (value is set),
 # otherwise raises AttributeError: 'NoneType' has no attribute 'columns'

@@ -2,7 +2,7 @@
 name: creating-custom-holoviz-skills
 description: Create new agent skills for the HoloViz ecosystem. Use when adding a skill to this repository — covers repo conventions, directory layout, routing skills, the docs pipeline, and the eval system.
 metadata:
-  version: "2026.10.20"
+  version: "2026.11.12"
   author: holoviz
 ---
 
@@ -177,7 +177,7 @@ panel/
   SKILL.md                        # Core instructions (always loaded when skill triggers)
   iterating-on-panel-apps.md      # Reference — serve, screenshot, debug loop
   building-custom-components.md   # Reference — JSComponent, ReactComponent, CDN guide
-  using-material-ui.md            # Reference — pmui.Page, layouts, gotchas, theming
+  using-panel-ui.md            # Reference — pn.ui.Page, layouts, gotchas, theming
   examples/
     dashboard.py                  # Runnable example — agent can read or execute
     wizard.py
@@ -234,10 +234,10 @@ user's need to a file. Concretely:
   an existing one" vs "test it" are distinct moments — merging them forces
   irrelevant material into context and muddies routing.
 - **Split a merged file back out when it outgrows the size warning and one part
-  serves a different need.** `using-material-ui` once held building and theming
+  serves a different need.** `using-panel-ui` once held building and theming
   together; at 28,000 chars, the Loading Table's busiest row (dashboards, which
   rarely theme) was paying for palettes and fonts, so theming moved to
-  `theming-material-ui` and only the rows that theme load it.
+  `theming-panel-ui` and only the rows that theme load it.
 
 When you merge, give the combined file a grouped TOC (a label per original
 file, then its sections) so the broadened scope stays scannable.
@@ -255,7 +255,7 @@ sidebar navigation, so keep them concise.
 ```
 # ✅ Good — action-oriented, no redundant prefix
 Building Custom Components
-Using Material UI
+Using `panel.ui`
 Designing Panel Architecture
 Plotting in Panel
 

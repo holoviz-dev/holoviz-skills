@@ -1,13 +1,13 @@
 """
-KPI dashboard example using panel-material-ui and HoloViews.
+KPI dashboard example using `panel.ui` and HoloViews.
 
 Trend indicators for KPI cards, DynamicMap charts that preserve zoom/pan,
 Tabulator checkbox selection that cross-filters charts, and a responsive
-pmui.Grid layout. Modern pmui components: a pmui.Badge selection counter, a
-pmui.SpeedDial for quick actions (reset / reload), a pmui.Alert empty-state,
-and pmui.Tooltip KPI hints. Also demonstrates pn.indicators.Trend,
+pn.ui.Grid layout. Modern `panel.ui` components: a pn.ui.Badge selection counter, a
+pn.ui.SpeedDial for quick actions (reset / reload), a pn.ui.Alert empty-state,
+and pn.ui.Tooltip KPI hints. Also demonstrates pn.indicators.Trend,
 DynamicMaps that @param.depends on a param.DataFrame single source of
-truth, Tabulator selection-driven filtering, and the pmui.Page template.
+truth, Tabulator selection-driven filtering, and the pn.ui.Page template.
 
 Run: panel serve examples/dashboard.py --dev --show
 """
@@ -16,7 +16,6 @@ import holoviews as hv
 import numpy as np
 import pandas as pd
 import panel as pn
-import panel_material_ui as pmui
 import param
 from bokeh.models import DatetimeTickFormatter, NumeralTickFormatter
 
@@ -190,34 +189,34 @@ class SalesDashboard(pn.viewable.Viewer):
         self._table.param.watch(self._on_table_selection, "selection")
 
         # Sidebar widgets
-        self._date_picker = pmui.DateRangeSlider(
+        self._date_picker = pn.ui.DateRangeSlider(
             start=pd.Timestamp("2025-01-01"),
             end=pd.Timestamp("2025-12-31"),
             value=(pd.Timestamp("2025-01-01"), pd.Timestamp("2025-12-31")),
             sizing_mode="stretch_width",
             margin=(5, 16),
         )
-        self._region_filter = pmui.CheckBoxGroup(
+        self._region_filter = pn.ui.CheckBoxGroup(
             value=list(REGIONS),
             options=REGIONS,
             label="Regions",
         )
-        self._product_filter = pmui.CheckBoxGroup(
+        self._product_filter = pn.ui.CheckBoxGroup(
             value=list(PRODUCTS),
             options=PRODUCTS,
             label="Products",
         )
 
         # Badge showing how many table rows are selected (drives the filter).
-        self._selection_badge = pmui.Badge(
-            pmui.IconButton(icon="filter_alt", size="small"),
+        self._selection_badge = pn.ui.Badge(
+            pn.ui.IconButton(icon="filter_alt", size="small"),
             content=0,
             color="primary",
             show_zero=False,
         )
 
         # Empty-state notice when filters exclude all data.
-        self._empty_alert = pmui.Alert(
+        self._empty_alert = pn.ui.Alert(
             object="No data matches the current filters. Try widening your selection.",
             severity="info",
             variant="outlined",
@@ -227,7 +226,7 @@ class SalesDashboard(pn.viewable.Viewer):
         )
 
         # Floating quick-actions menu.
-        self._actions = pmui.SpeedDial(
+        self._actions = pn.ui.SpeedDial(
             items=[
                 {"label": "Reset filters", "icon": "restart_alt"},
                 {"label": "Reload data", "icon": "refresh"},
@@ -287,30 +286,30 @@ class SalesDashboard(pn.viewable.Viewer):
             (self._aov_trend, KPI_TOOLTIPS["aov"]),
         ]
         self._kpi_cards = [
-            pmui.Tooltip(
-                pmui.Paper(trend, sx={"p": 1.5}, sizing_mode="stretch_width"),
+            pn.ui.Tooltip(
+                pn.ui.Paper(trend, sx={"p": 1.5}, sizing_mode="stretch_width"),
                 title=tip,
                 sizing_mode="stretch_width",
             )
             for trend, tip in kpi_specs
         ]
 
-        self._charts_section = pmui.Paper(
+        self._charts_section = pn.ui.Paper(
             self._chart_pane,
             sx={"p": 2},
             sizing_mode="stretch_width",
         )
 
-        self._table_section = pmui.Paper(
+        self._table_section = pn.ui.Paper(
             pn.Column(
                 pn.Row(
-                    pmui.Typography("Sales summary", variant="h6"),
+                    pn.ui.Typography("Sales summary", variant="h6"),
                     pn.layout.HSpacer(),
                     self._selection_badge,
                     align="center",
                     sizing_mode="stretch_width",
                 ),
-                pmui.Typography(
+                pn.ui.Typography(
                     "Select rows to filter the charts above.",
                     sx={"color": "text.secondary", "fontSize": 13, "mb": 1},
                 ),
@@ -571,8 +570,8 @@ class SalesDashboard(pn.viewable.Viewer):
     # -- Layout --
 
     def _build_page(self):
-        kpi_row = pmui.Grid(
-            *(pmui.Grid(card, size={"xs": 12, "sm": 6, "md": 3}) for card in self._kpi_cards),
+        kpi_row = pn.ui.Grid(
+            *(pn.ui.Grid(card, size={"xs": 12, "sm": 6, "md": 3}) for card in self._kpi_cards),
             container=True,
             spacing=2,
             sizing_mode="stretch_width",
@@ -588,10 +587,10 @@ class SalesDashboard(pn.viewable.Viewer):
             margin=(10, 0),
         )
 
-        return pmui.Page(
+        return pn.ui.Page(
             title="Sales Dashboard",
             sidebar=[
-                pmui.Typography("Filters", variant="h6", sx={"mb": 1}),
+                pn.ui.Typography("Filters", variant="h6", sx={"mb": 1}),
                 self._date_picker,
                 pn.layout.Divider(margin=(16, 0)),
                 self._region_filter,
@@ -601,7 +600,7 @@ class SalesDashboard(pn.viewable.Viewer):
             sidebar_width=260,
             theme_config=THEME_CONFIG,
             main=[
-                pmui.Container(
+                pn.ui.Container(
                     main_content,
                     width_option="xl",
                 )

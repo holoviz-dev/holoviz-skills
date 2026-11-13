@@ -1,4 +1,4 @@
-"""A NYT-style graphic story built with panel-material-ui.
+"""A NYT-style graphic story built with `panel.ui`.
 
 A scrollable editorial article: a masthead, a narrow reading column, and prose
 interleaved with explanatory charts (takeaway titles, one highlight color, direct
@@ -13,7 +13,6 @@ import holoviews as hv
 import numpy as np
 import pandas as pd
 import panel as pn
-import panel_material_ui as pmui
 from bokeh.themes.theme import Theme
 
 hv.extension("bokeh")
@@ -192,8 +191,8 @@ def source(text):
 
 
 article = pn.Column(
-    pmui.Typography("The Great American Car Diet", variant="h3", sx={"fontWeight": 700, "mt": 2}),
-    pmui.Typography(
+    pn.ui.Typography("The Great American Car Diet", variant="h3", sx={"fontWeight": 700, "mt": 2}),
+    pn.ui.Typography(
         "How the oil shocks of the 1970s remade the automobile",
         variant="subtitle1",
         sx={"color": "text.secondary", "mb": 1},
@@ -232,8 +231,8 @@ THEME = {
     "typography": {"fontFamily": "Georgia, 'Times New Roman', serif"},  # editorial serif
 }
 
-pmui.Page(
+pn.ui.Page(
     title="The Upshot",
     theme_config=THEME,
-    main=[pmui.Container(article, width_option="md")],  # clamp to a readable column
+    main=[pn.ui.Container(article, width_option="md")],  # clamp to a readable column
 ).servable()
