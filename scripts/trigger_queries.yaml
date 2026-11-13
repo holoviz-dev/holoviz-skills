@@ -25,6 +25,14 @@
   prompt: I have a Plotly figure. Put it in a small Python web app next to a slider that changes the data.
   expect: [developing-with-holoviz]
 
+- id: lumen_ask_notebook
+  prompt: In a Jupyter notebook I have a pandas DataFrame of sales. Use Lumen to ask it "which region grew fastest last year?" in plain English and show me the SQL it ran and a chart.
+  expect: [developing-with-holoviz, lumen]
+
+- id: lumen_test_without_llm
+  prompt: My code calls lumen's source.ask() and I want a pytest test for it that runs in CI without calling a real LLM.
+  expect: [developing-with-holoviz, lumen]
+
 - id: review_pr
   prompt: |
     Review this change to Panel for code quality and test coverage.
