@@ -1,6 +1,6 @@
 ---
 name: lumen
-description: Ask questions of data in plain language from Python or a notebook with Lumen AI: load data with lumen.read, call .ask() for an Answer holding the text, the SQL and a chart, follow up, check data, test, and map spatial or gridded data. Use when the user wants an LLM to query, chart or explain a DataFrame, file, database or xarray Dataset. Do not use for hand-written plots (use hvPlot) or for building a Panel app (use Panel).
+description: Ask questions of data in plain language from Python or a notebook with Lumen AI. Covers loading data with lumen.read, calling .ask() for an Answer holding the text, the SQL and a chart, follow-ups, data checks, tests, and spatial or gridded data. Use when the user wants an LLM to query, chart or explain a DataFrame, file, database or xarray Dataset. Do not use for hand-written plots (use hvPlot) or for building a Panel app (use Panel).
 metadata:
   version: "2026.11.13"
   author: holoviz
