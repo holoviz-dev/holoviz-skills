@@ -14,6 +14,13 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
+- **Lumen skill**: `developing-with-holoviz/skills/lumen` teaches `lumen.read(...).ask(...)`, Lumen's
+  API for asking questions of data from Python and notebooks (ships in Lumen 1.5). The core skill
+  covers loading data, picking the LLM, reading an Answer whose failures come back as a status rather
+  than an exception, privacy, and the mistakes agents make (a DataFrame accessor that does not
+  exist, a second `ask` that forgets the first, re-asking to restyle a chart). Four references
+  load by need: asking from notebooks, reusing answers, checking and testing data (including
+  LLM record and replay for CI), and maps and grids. Routed from four new Loading Table rows.
 - **Problem, value, solution explainers** — the explanatory-video reference covers a sales
   grid (one row per product, revealed cell by cell on the narration), with rules from review:
   ground problems in customer notes, name the problem's cost, keep the value to what the
