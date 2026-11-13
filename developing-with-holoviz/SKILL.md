@@ -1,8 +1,8 @@
 ---
 name: developing-with-holoviz
-description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, or custom JS/Python components in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param) — including tasks that name Bokeh, Matplotlib, or Plotly, since HoloViz embeds those figures and this skill covers how.
+description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, custom JS/Python components, or asking an LLM questions about data in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param, Lumen) — including tasks that name Bokeh, Matplotlib, or Plotly, since HoloViz embeds those figures and this skill covers how.
 user-invocable: true
-argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component]"
+argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component, ask data a question]"
 metadata:
   version: "2026.11.12"
   author: holoviz
@@ -54,6 +54,10 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Structure or scale a larger app — multiple views over shared state, sessions, caching, threading, deployment | `skills/panel/SKILL.md` + `skills/panel/designing-panel-architecture.md` |
 | Migrate an existing plain-Panel app to `panel.ui` (start with the `panel migrate` codemod) | `skills/panel/SKILL.md` + `skills/panel/migrating-to-panel-ui.md` |
 | Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting-panel-apps.md` |
+| Ask questions of a DataFrame, file, database or xarray Dataset in plain language (LLM-written SQL, answer + chart), from Python or a notebook | `skills/lumen/SKILL.md` + `skills/lumen/asking-from-notebooks.md` |
+| Restyle, rerun, export, explore or follow up on a Lumen answer | `skills/lumen/SKILL.md` + `skills/lumen/reusing-answers.md` |
+| Check data against rules, or test code that calls Lumen's `ask` without a live LLM | `skills/lumen/SKILL.md` + `skills/lumen/checking-and-testing-data.md` |
+| Ask spatial or gridded questions with Lumen (GeoDataFrames, GeoParquet, xarray, Overture, ERA5) | `skills/lumen/SKILL.md` + `skills/lumen/asking-about-maps-and-grids.md` |
 
 ## Skill Map
 
@@ -63,3 +67,4 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | [hvplot](skills/hvplot/SKILL.md) | `.hvplot` accessor, hover tooltips, styling, big data, timeseries, subplots |
 | [holoviews](skills/holoviews/SKILL.md) | Elements, `.opts()`, session defaults (`hv.opts.defaults`), hover tooltips, formatters, Bokeh tools, DynamicMap, streams, link_selections, decluttering plots |
 | [panel](skills/panel/SKILL.md) | Static layout, reactivity, widgets, defaults, templates, serving, performance, plotting gotchas; 14 topic references indexed in its own References section |
+| [lumen](skills/lumen/SKILL.md) | `lumen.read(...).ask(...)`: the Answer (text, SQL, chart), chat follow-ups, failed and typed answers, privacy, refine/compile/export, data checks, LLM record/replay tests, maps and grids |
