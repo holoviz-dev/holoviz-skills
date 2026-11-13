@@ -49,10 +49,10 @@ The notebook guide is `docs/getting_started/lumen_in_notebooks.md` in the Lumen 
 `lumen.read` and `.ask()` ship in Lumen 1.5. Lumen 1.4 has neither, and fails with `AttributeError: module 'lumen' has no attribute 'read'`. Check `lumen.__version__` before writing this code; until 1.5 is out, install from main:
 
 ```bash
-pip install "lumen[ai-openai] @ git+https://github.com/holoviz/lumen"
+pip install "lumen @ git+https://github.com/holoviz/lumen"
 ```
 
-The `ai-*` extra names the provider SDK (`ai-openai`, `ai-anthropic`, `ai-google`, ...); `lumen[geo]` and `lumen[xarray]` add maps and grids.
+Plain `lumen` covers OpenAI, every OpenAI-compatible provider (Groq, OpenRouter, Kilo, Ollama) and the coding CLIs; Anthropic, Google, Mistral, Bedrock, Llama.cpp and LiteLLM need their extra (`lumen[ai-anthropic]`, ...). `lumen[geo]` and `lumen[xarray]` add maps and grids.
 
 ## Loading Data
 
@@ -71,21 +71,38 @@ The `ai-*` extra names the provider SDK (`ai-openai`, `ai-anthropic`, `ai-google
 
 ## Choosing the LLM
 
-Without `llm=`, `ask` uses the first provider whose API key is in the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, ...). Pass one explicitly when the user names a model, or set it once for the session:
+Without `llm=`, `ask` uses the first provider whose **API key** is in the environment. Providers that need no key (Kilo, local models, coding CLIs) are never picked on their own: pass them with `llm=` or `configure(llm=...)`. With neither, `ask` raises `RuntimeError: No LLM provider found`, listing any coding CLI the user is signed in to.
 
 ```python
 from lumen.ai import configure
-from lumen.ai.llm import Kilo, OpenAI
+from lumen.ai.llm import ClaudeCode, Kilo, OpenAI
 
-configure(llm=OpenAI(model_kwargs={"default": {"model": "gpt-6-luna"}}))
-answer = source.ask("...", llm=Kilo())   # a question's own llm= wins
+configure(llm=OpenAI(model_kwargs={"default": {"model": "gpt-6-luna"}}))   # session default
+answer = source.ask("...", llm=Kilo())          # a question's own llm= wins
+answer = source.ask("...", llm=ClaudeCode())    # the signed-in `claude` CLI, no API key
 ```
 
-`Kilo()` serves free models with no account, which suits demos and examples. `LUMEN_AI_PROVIDER` and `LUMEN_AI_MODEL` pick the provider from the environment.
+| Class (`lumen.ai.llm`) | `LUMEN_AI_PROVIDER` | Found by | Install |
+|---|---|---|---|
+| `OpenAI` | `openai` | `OPENAI_API_KEY` | `lumen` |
+| `Anthropic` | `anthropic` | `ANTHROPIC_API_KEY` | `lumen[ai-anthropic]` |
+| `Google` | `google` | `GEMINI_API_KEY` | `lumen[ai-google]` |
+| `MistralAI` | `mistral` | `MISTRAL_API_KEY` | `lumen[ai-mistralai]` |
+| `Groq` | `groq` | `GROQ_API_KEY` | `lumen` |
+| `OpenRouter` | `openrouter` | `OPENROUTER_API_KEY` | `lumen` |
+| `AzureOpenAI`, `Bedrock`, `AnthropicBedrock`, `LiteLLM` | `azure-openai`, `bedrock`, `anthropic-bedrock`, `litellm` | their cloud credentials | see the provider docs |
+| `Kilo` | `kilo` | explicit only; free models with no account (`KILO_API_KEY` for paid ones) | `lumen` |
+| `Ollama`, `LlamaCpp`, `MLX` | `ollama`, `llama-cpp`, `mlx` | explicit only; local models (default `qwen3.5:9b` or its GGUF/MLX build) | `lumen` for Ollama (plus the Ollama app), `lumen[ai-llama]` for LlamaCpp |
+| `ClaudeCode`, `CodexCli`, `CopilotCli`, `AntigravityCli` | `claude-code`, `codex-cli`, `copilot-cli`, `antigravity-cli` | explicit only; the user's signed-in CLI on `PATH`, billed to their subscription | the CLI itself |
+
+- **Pick a model with `model_kwargs`**, keyed by task: `{"default": {"model": ...}}` for most calls, plus optional entries such as `"sql"`. There is no `model=` argument and no string form (`llm="gpt-4"` is wrong).
+- `LUMEN_AI_PROVIDER` takes the names above and `LUMEN_AI_MODEL` sets the default model, so a notebook can pick a keyless provider without code.
+- `Kilo()` suits demos, docs and tests that must run anywhere. Keep examples on small, cheap models; the defaults (`gpt-6-luna`, `claude-haiku-4-5`, `gemini-3.8-flash`) already are.
+- Every provider and its options: `https://github.com/holoviz/lumen/blob/main/docs/configuration/llm_providers.md`. The chat app takes the same choice on its command line: `lumen-ai serve data.csv --provider claude-code`.
 
 ## Reading the Answer
 
-- **`ask` does not raise when a question fails.** It returns an Answer with `status` `"error"` (SQL failed; `answer.retry(hint=...)`) or `"unanswerable"` (the data lacks what the question needs; `answer.error` says why). Check `answer.status == "success"` before using `answer.data` in a script.
+- **`ask` does not raise when a question fails** (only when no LLM is configured at all). It returns an Answer with `status` `"error"` (SQL failed; `answer.retry(hint=...)`) or `"unanswerable"` (the data lacks what the question needs; `answer.error` says why). Check `answer.status == "success"` before using `answer.data` in a script.
 - `answer.data` comes back in the input's type: polars for polars, a GeoDataFrame or xarray Dataset for geo or grid input, pandas otherwise.
 - `answer.value` is the prose, `answer.sql` the query, `answer.view` the Lumen View, `answer.spec` the Vega-Lite spec (None for an hvPlot chart).
 - In a script, echoing `answer` prints one line (`Answer(status='success', value='...')`); read `answer.value` for the text.
