@@ -46,6 +46,13 @@ nav = [
       "developing-with-holoviz/holoviews/index.md",
       { "Decluttering Plots" = "developing-with-holoviz/holoviews/decluttering-plots.md" },
     ] },
+    { "Lumen" = [
+      "developing-with-holoviz/lumen/index.md",
+      { "Asking about Maps and Grids" = "developing-with-holoviz/lumen/asking-about-maps-and-grids.md" },
+      { "Asking from Notebooks" = "developing-with-holoviz/lumen/asking-from-notebooks.md" },
+      { "Checking and Testing Data" = "developing-with-holoviz/lumen/checking-and-testing-data.md" },
+      { "Reusing Answers" = "developing-with-holoviz/lumen/reusing-answers.md" },
+    ] },
   ] },
   { "Contributing to HoloViz" = [
     "contributing-to-holoviz/index.md",
