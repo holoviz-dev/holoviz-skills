@@ -1,6 +1,6 @@
 ---
 name: developing-with-holoviz
-description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, custom JS/Python components, or asking an LLM questions about data in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param, Lumen) — including tasks that name Bokeh, Matplotlib, or Plotly, since HoloViz embeds those figures and this skill covers how.
+description: Route to HoloViz sub-skills. Use for ANY task involving interactive plots, dashboards, data apps, reactive parameters, custom JS/Python components, or asking an LLM questions about data with Lumen (including code and tests built on lumen.ai) in the HoloViz ecosystem (Panel, hvPlot, HoloViews, Param, Lumen) — including tasks that name Bokeh, Matplotlib, or Plotly, since HoloViz embeds those figures and this skill covers how.
 user-invocable: true
 argument-hint: "[what to build — e.g. dashboard, plot a DataFrame, custom component, ask data a question]"
 metadata:
