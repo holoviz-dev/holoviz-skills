@@ -87,7 +87,7 @@ elif answer.status == "unanswerable":  # no table holds what the question needs
     print(answer.error)                # e.g. "No table records beak colour."
 ```
 
-`retry()` with no hint asks again. An unanswerable answer ran no query. A plan that neither queries nor answers comes back as an error, so `retry` can redo it.
+`retry()` with no hint asks again. An unanswerable answer ran no query. Spotting an impossible question is the model's call and small models miss some, answering anyway, so still read `answer.value` for questions the data may not cover. A plan that neither queries nor answers comes back as an error, so `retry` can redo it.
 
 ## Typed Answers
 
