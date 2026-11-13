@@ -136,6 +136,7 @@ in-progress notes so it is skipped by the extraction.
   subprocess so the free tier can be evaluated alongside paid models. Costs unknown for runs
   predating cost tracking are kept as unknown: they are excluded from averages and the total
   cost is marked partial rather than counting them as free.
+- **`panel migrate` in `migrating-to-panel-ui.md`** — an Automated Pass section covers Panel 1.10's codemod (`panel[migrate]`, dry run by default, `--diff`, `--fix`), what it rewrites and reports for manual review, and what to check afterwards: tile/geo layouts, kept `pn.pane.*` panes, and `stylesheets`. The checklist's layout step now matches the Layouts section.
 
 ### Changed
 
@@ -229,6 +230,7 @@ in-progress notes so it is skipped by the extraction.
   detected" when checking its config directory raised. Both now surface the error.
 - **`eval.py` reuses `aggregate_metrics.git_value`** instead of its own copy, and imports its
   sibling scripts at the top of the file.
+- **Panel skills target `panel.ui` instead of `panel_material_ui`.** Code references components directly as `pn.ui.X` with no separate import or `ui` alias. `using-material-ui.md`, `migrating-to-material-ui.md`, and `converting-designs-to-material-ui.md` are renamed to `using-panel-ui.md`, `migrating-to-panel-ui.md`, and `converting-designs-to-panel-ui.md`. Plain layouts now use `pn.ui.Column`/`pn.ui.Row` too, except directly around tile/geo plots, reversing the earlier native `pn.Column`/`pn.Row` recommendation. `using-panel-ui.md` and `migrating-to-panel-ui.md` state the Panel 1.10 requirement up front, and the migration guide and both routers point to the `panel migrate` codemod as the first step.
 
 ### Removed
 

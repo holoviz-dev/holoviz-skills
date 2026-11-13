@@ -1,6 +1,6 @@
-# Theming Material UI
+# Theming Panel UI
 
-Theme a panel-material-ui (pmui) app: the `theme_config` palette, typography, web fonts, shape, component overrides, icons, brand assets, and charts that match. For layout, `Page` and component gotchas, see [Using Material UI](using-material-ui.md), whose [Lookup](using-material-ui.md#lookup) section says where to fetch pmui docs as markdown.
+Theme a `panel.ui` app: the `theme_config` palette, typography, web fonts, shape, component overrides, icons, brand assets, and charts that match. For layout, `Page` and component gotchas, see [Using Panel UI](using-panel-ui.md), whose [Lookup](using-panel-ui.md#lookup) section says where to find `panel.ui` documentation.
 
 ## Contents
 
@@ -14,7 +14,7 @@ Theme a panel-material-ui (pmui) app: the `theme_config` palette, typography, we
 - [Brand Assets](#brand-assets)
 - [Chart Theming](#chart-theming) — incl. [plot fonts](#plot-fonts-bokeh-inherits-nothing)
 - [Complete Themed Example](#complete-themed-example)
-- [Deep Dives](#deep-dives) — full theming guides as markdown
+- [Deep Dives](#deep-dives) — theming API guidance
 
 ## Styling Layers
 
@@ -29,21 +29,21 @@ Theme a panel-material-ui (pmui) app: the `theme_config` palette, typography, we
 
 ```python
 # Basic styling
-pmui.Button(label="Custom", sx={"color": "white", "backgroundColor": "black"})
+pn.ui.Button(label="Custom", sx={"color": "white", "backgroundColor": "black"})
 
 # Hover states
-pmui.Button(sx={"&:hover": {"backgroundColor": "gray"}})
+pn.ui.Button(sx={"&:hover": {"backgroundColor": "gray"}})
 
-# Dark/light mode overrides
-pmui.Button(sx={"&.mui-dark:hover": {"backgroundColor": "orange"}})
+# Dark/light mode overrides: the mui-dark class sits on an ancestor, not the styled root
+pn.ui.Button(sx={".mui-dark &:hover": {"backgroundColor": "orange"}})
 
 # Target nested MUI parts
-pmui.FloatSlider(sx={"& .MuiSlider-thumb": {"borderRadius": 0}})
+pn.ui.FloatSlider(sx={"& .MuiSlider-thumb": {"borderRadius": 0}})
 ```
 
 ## Palette
 
-Each color category has four tokens: `main`, `light`, `dark`, `contrastText`. Only `main` is required; others auto-compute.
+Each color category has four tokens: `main`, `light`, `dark`, `contrastText`. Only `main` is required; others auto-compute. Colors must be hex, `rgb()` or `hsl()` strings: MUI's color parser throws on CSS names like `"teal"` and the Page fails to render.
 
 ```python
 theme_config = {
@@ -97,7 +97,7 @@ TYPOGRAPHY = {
     "kpi": {"fontFamily": MONO, "fontSize": "1.6rem", "fontWeight": 600,
             "fontVariantNumeric": "tabular-nums", "whiteSpace": "nowrap"},
 }
-pmui.Typography(f"{value:,.0f}", variant="kpi")
+pn.ui.Typography(f"{value:,.0f}", variant="kpi")
 ```
 
 - **rem, never px or pt.** MUI sizes in rem so a reader who raises their browser's default
@@ -117,8 +117,7 @@ pmui.Typography(f"{value:,.0f}", variant="kpi")
 ### Variants
 
 `h1`–`h6`, `subtitle1/2`, `body1/2`, `button`, `caption`, `overline`, plus any custom key
-you add. Set `"h3": None` to disable one. Full reference:
-`https://panel-material-ui.holoviz.org/markdown/how_to/customize_typography.md`.
+you add. Set `"h3": None` to disable one.
 
 ## Web Fonts
 
@@ -142,8 +141,8 @@ If the two lines are identical, the font did not load. (`document.fonts.check()`
 check, but a `<script>` in a Panel pane runs inside a shadow root, so `getElementById`
 against the document won't find your target.)
 
-Mechanisms that were tested and did **not** deliver a Google Font into a `pmui.Page`:
-`pmui.Page.config.css_files.append(url)`, `pn.extension(css_files=[url])`, per-component
+Mechanisms that were tested and did **not** deliver a Google Font into a `pn.ui.Page`:
+`pn.ui.Page.config.css_files.append(url)`, `pn.extension(css_files=[url])`, per-component
 `stylesheets=[url]`, and `pn.config.raw_css.append("@import url(...)")`. Two of those cannot
 work even in principle: Panel renders panes into **shadow roots** and `@font-face` is
 document-scoped, and an appended `@import` is ignored unless it is the *first* rule in its
@@ -158,7 +157,7 @@ required, self-host it and confirm with the specimen test above rather than assu
 ### Responsive Typography
 
 ```python
-pmui.Typography("Responsive", sx={
+pn.ui.Typography("Responsive", sx={
     "fontSize": "1.2rem",
     "@media (min-width: 600px)": {"fontSize": "1.5rem"},
     "@media (min-width: 900px)": {"fontSize": "2.4rem"},
@@ -219,9 +218,9 @@ Use Material Icons from [fonts.google.com/icons](https://fonts.google.com/icons?
 Buttons and some widgets accept `icon` directly:
 
 ```python
-pmui.Button(label="Save", icon="save")
-pmui.Button(label="Delete", icon="delete_outlined")  # Outlined variant
-pmui.IconButton(icon="settings")
+pn.ui.Button(label="Save", icon="save")
+pn.ui.Button(label="Delete", icon="delete_outlined")  # Outlined variant
+pn.ui.IconButton(icon="settings")
 ```
 
 ### Token Syntax in Labels
@@ -229,8 +228,8 @@ pmui.IconButton(icon="settings")
 Embed icons in text with `:material/icon_name:`:
 
 ```python
-pmui.Select(options=["Zoom :material/zoom:", "Pan :material/pan_tool:"])
-pmui.Button(label="Warning :material/warning@color=warning:")
+pn.ui.Select(options=["Zoom :material/zoom:", "Pan :material/pan_tool:"])
+pn.ui.Button(label="Warning :material/warning@color=warning:")
 ```
 
 Token options: `@size=large`, `@color=warning`, `@variant=outlined`.
@@ -238,7 +237,7 @@ Token options: `@size=large`, `@color=warning`, `@variant=outlined`.
 ### HTML/Markdown
 
 ```python
-pmui.Typography('<span class="material-icons">lightbulb</span> Idea')
+pn.ui.Typography('<span class="material-icons">lightbulb</span> Idea')
 ```
 
 ## Brand Assets
@@ -246,15 +245,19 @@ pmui.Typography('<span class="material-icons">lightbulb</span> Idea')
 ### Logo and Favicon
 
 ```python
-pmui.Page.param.logo.default = "/path/to/logo.png"
-pmui.Page.favicon = "/path/to/favicon.ico"
-pmui.Page(meta_name="My App")
+pn.ui.Page.param.logo.default = "/path/to/logo.png"
+pn.ui.Page.favicon = "/path/to/favicon.ico"
+pn.ui.Page(meta_name="My App")
+
+# Kiosk / wall-screen dashboard: fixed dark theme, no toggle, reload every 2s.
+# theme= and meta_refresh= are constructor aliases for dark_theme and meta=Meta(refresh=...).
+pn.ui.Page(title="Monitor", main=[...], theme="dark", theme_toggle=False, meta_refresh="2")
 ```
 
 ### Custom CSS
 
 ```python
-pmui.Page.config.raw_css.append("body { font-family: Montserrat; }")
+pn.ui.Page.config.raw_css.append("body { font-family: Montserrat; }")
 ```
 
 For loading a webfont, see [Web Fonts](#web-fonts) — `config.css_files` is **not** a
@@ -265,19 +268,19 @@ reliable way to do it.
 ```python
 pn.pane.Image.stylesheets = ["img {border-radius: 8px}"]
 pn.widgets.Tabulator.param.theme.default = "materialize"
-pmui.Button.param.disable_elevation.default = True
+pn.ui.Button.param.disable_elevation.default = True
 ```
 
 ## Chart Theming
 
-Plots auto-theme when using `pmui.Page` or `pmui.ThemeToggle` — but that covers *colours*,
+Plots auto-theme when using `pn.ui.Page` or `pn.ui.ThemeToggle` — but that covers *colours*,
 not type. See [Plot Fonts](#plot-fonts-bokeh-inherits-nothing).
 
 ### Categorical Palette
 
 ```python
 primary = "#6200ea"
-colors = pmui.theme.generate_palette(primary, n_colors=8)
+colors = pn.ui.theme.generate_palette(primary, n_colors=8)
 
 df.hvplot.scatter(x="x", y="y", color="category", cmap=colors)
 ```
@@ -285,7 +288,7 @@ df.hvplot.scatter(x="x", y="y", color="category", cmap=colors)
 ### Continuous Colormap
 
 ```python
-cmap = pmui.theme.linear_gradient("#ffffff", "#6200ea", n=256)
+cmap = pn.ui.theme.linear_gradient("#ffffff", "#6200ea", n=256)
 ```
 
 ### Plot Fonts: Bokeh inherits nothing
@@ -323,7 +326,6 @@ CSS on the widget, not a theme key.
 
 ```python
 import panel as pn
-import panel_material_ui as pmui
 
 pn.extension()
 
@@ -352,22 +354,14 @@ THEME = {
     },
 }
 
-pmui.Page(
+pn.ui.Page(
     title="Branded App",
     theme_config=THEME,
-    sidebar=[pmui.Button(label="Action", icon="bolt", color="primary")],
-    main=[pmui.Typography("Welcome", variant="h4")],
+    sidebar=[pn.ui.Button(label="Action", icon="bolt", color="primary")],
+    main=[pn.ui.Typography("Welcome", variant="h4")],
 ).servable()
 ```
 
 ## Deep Dives
 
-Full theming guides as markdown. Base: `https://panel-material-ui.holoviz.org/markdown/how_to/` — append:
-
-- `customize_palette.md` — palette tokens, `contrastThreshold`, `tonalOffset`
-- `customize_typography.md` — typography
-- `theme_components.md` — per-component theming (`components` key)
-- `control_dark_mode.md` — dark mode
-- `theme_plotting_libraries.md` — theme-aware plots (Bokeh/hvPlot/HoloViews/Plotly)
-- `using_mui_icons.md` — Material icons
-- `index.md` — full guide index
+`panel.ui` exposes the Material UI components through a stable Panel namespace. Its theming options use Material UI theme configuration: `palette`, `typography`, `shape`, and `components`. Consult the `Page`, `MaterialUIDesign`, and component API references for the installed Panel version rather than reaching into the implementation package.

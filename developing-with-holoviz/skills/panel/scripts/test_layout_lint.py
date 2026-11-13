@@ -1,7 +1,7 @@
 """Tests for layout_lint.py.
 
 Fixtures are hand-built HTML with a known, deliberately-planted violation
-(WRONG) and its fix (CORRECT) — there's no Panel/panel-material-ui available
+(WRONG) and its fix (CORRECT) — there's no Panel/`panel.ui` available
 in this test environment to serve a real app against, but layout_lint.py has
 no Panel-specific knowledge: it only inspects live DOM/CSSOM through a real
 browser, so a plain static HTML page exercises exactly the same code path a

@@ -16,15 +16,15 @@ Panel shell around them. Complete piece: `examples/graphic_story.py`.
 ## Reading column
 
 Clamp the body to a readable width instead of letting it stretch: wrap the article in
-`pmui.Container(width_option="md")` inside a `pmui.Page`. Section/masthead name goes in
-`Page.title`, the story's headline in the body as `pmui.Typography(variant="h3")`, the dek as a
+`pn.ui.Container(width_option="md")` inside a `pn.ui.Page`. Section/masthead name goes in
+`Page.title`, the story's headline in the body as `pn.ui.Typography(variant="h3")`, the dek as a
 `subtitle1` in `text.secondary`. An editorial serif (`theme_config` `typography.fontFamily`)
 sells the article feel.
 
 ## Prose-then-chart rhythm
 
 Build one `pn.Column` alternating a short paragraph and the chart it sets up, so the reader
-meets the point before the picture. Charts go in `pn.pane.HoloViews` (no pmui equivalent) and
+meets the point before the picture. Charts go in `pn.pane.HoloViews` (no `panel.ui` equivalent) and
 auto-theme under the Page.
 
 ## One visual family
@@ -40,7 +40,7 @@ message (`toolbar=None`, direct labels, annotations in place). No widgets, no si
 ## Gotchas
 
 - Body prose goes in `pn.pane.Markdown` (renders inline `**bold**`/`` `code` ``), not
-  `pmui.Typography` (plain text) — use Typography for the headline and dek.
+  `pn.ui.Typography` (plain text) — use Typography for the headline and dek.
 - `Page.main` needs a list: `main=[container]`, not `main=container`. No sidebar for an article.
 - The masthead AppBar defaults to blue; set `palette.primary.main` (e.g. a dark ink) so it reads
   as a masthead rather than an app header.

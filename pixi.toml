@@ -45,7 +45,6 @@ check-pip = { cmd = 'twine check dist/*', depends-on = [
 [feature.docs.dependencies]
 zensical = "*"
 panel = "*"
-panel-material-ui = "*"
 holoviews = "*"
 hvplot = "*"
 bokeh = "*"
@@ -105,7 +104,6 @@ matplotlib = "*"
 geoviews = "*"
 hvsampledata = "*"
 panel = "*"
-panel-material-ui = "*"
 pytest = "*"
 
 [feature.eval.pypi-dependencies]
