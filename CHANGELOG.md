@@ -14,7 +14,7 @@ in-progress notes so it is skipped by the extraction.
 
 ### Added
 
-- **Lumen skill** — `developing-with-holoviz/skills/lumen` teaches `lumen.read(...).ask(...)`, Lumen's
+- **Lumen skill**: `developing-with-holoviz/skills/lumen` teaches `lumen.read(...).ask(...)`, Lumen's
   API for asking questions of data from Python and notebooks (ships in Lumen 1.5). The core skill
   covers loading data, picking the LLM, reading an Answer whose failures come back as a status rather
   than an exception, privacy, and the mistakes agents make (a DataFrame accessor that does not

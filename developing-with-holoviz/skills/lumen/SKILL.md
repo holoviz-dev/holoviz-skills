@@ -1,6 +1,6 @@
 ---
 name: lumen
-description: Ask questions of data in plain language from Python or a notebook with Lumen AI — load data with lumen.read, call .ask() for an Answer holding the text, the SQL and a chart, follow up, check data, test, and map spatial or gridded data. Use when the user wants an LLM to query, chart or explain a DataFrame, file, database or xarray Dataset. Do not use for hand-written plots (use hvPlot) or for building a Panel app (use Panel).
+description: Ask questions of data in plain language from Python or a notebook with Lumen AI: load data with lumen.read, call .ask() for an Answer holding the text, the SQL and a chart, follow up, check data, test, and map spatial or gridded data. Use when the user wants an LLM to query, chart or explain a DataFrame, file, database or xarray Dataset. Do not use for hand-written plots (use hvPlot) or for building a Panel app (use Panel).
 metadata:
   version: "2026.11.13"
   author: holoviz
@@ -21,7 +21,7 @@ answer.value, answer.sql, answer.data           # the parts, for code
 
 ## Contents
 
-- [References](#references) — asking from notebooks, reusing answers, checking and testing, maps and grids
+- [References](#references): asking from notebooks, reusing answers, checking and testing, maps and grids
 - [Lookup](#lookup)
 - [Version](#version)
 - [Loading Data](#loading-data)
@@ -35,10 +35,10 @@ answer.value, answer.sql, answer.data           # the parts, for code
 
 Read these for specialized topics. Each is a standalone document you can load on demand.
 
-- [Asking from Notebooks](asking-from-notebooks.md) — `lumen.read` inputs, `ask`/`aask`, the Answer's fields, `chat` follow-ups, failed and unanswerable answers, `returns=` typed results, `confirm=True`, `describe`, the `%%lumen` magic, the cache, `configure`, where the card renders
-- [Reusing Answers](reusing-answers.md) — `refine` and `with_spec` for the chart, `chart`/`to_vega` objects, `compile` to an LLM-free function, `code`/`to_cell`/`export`, `explore` in the chat UI, `ask_about` a clicked point, chat exports
-- [Checking and Testing Data](checking-and-testing-data.md) — `overview()` quality flags, `check()` rules usable in pytest, recording and replaying LLM calls with `lumen.ai.testing`
-- [Asking about Maps and Grids](asking-about-maps-and-grids.md) — GeoDataFrames, GeoParquet and xarray input, public Overture/Zarr reads, `gdf`/`ds`/`to_file`/`map`, the spatial and gridded checks Lumen adds
+- [Asking from Notebooks](asking-from-notebooks.md): `lumen.read` inputs, `ask`/`aask`, the Answer's fields, `chat` follow-ups, failed and unanswerable answers, `returns=` typed results, `confirm=True`, `describe`, the `%%lumen` magic, the cache, `configure`, where the card renders
+- [Reusing Answers](reusing-answers.md): `refine` and `with_spec` for the chart, `chart`/`to_vega` objects, `compile` to an LLM-free function, `code`/`to_cell`/`export`, `explore` in the chat UI, `ask_about` a clicked point, chat exports
+- [Checking and Testing Data](checking-and-testing-data.md): `overview()` quality flags, `check()` rules usable in pytest, recording and replaying LLM calls with `lumen.ai.testing`
+- [Asking about Maps and Grids](asking-about-maps-and-grids.md): GeoDataFrames, GeoParquet and xarray input, public Overture/Zarr reads, `gdf`/`ds`/`to_file`/`map`, the spatial and gridded checks Lumen adds
 
 ## Lookup
 
