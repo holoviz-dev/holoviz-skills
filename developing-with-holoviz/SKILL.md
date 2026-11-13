@@ -56,7 +56,7 @@ A single request often spans multiple skills. Read ALL that apply. Paths below a
 | Debug a Panel app that serves but misbehaves — nothing updates, blank Page, flicker, screenshot spinner, version/deprecation surprises | `skills/panel/SKILL.md` + `skills/panel/troubleshooting-panel-apps.md` |
 | Ask questions of a DataFrame, file, database or xarray Dataset in plain language (LLM-written SQL, answer + chart), from Python or a notebook | `skills/lumen/SKILL.md` + `skills/lumen/asking-from-notebooks.md` |
 | Restyle, rerun, export, explore or follow up on a Lumen answer | `skills/lumen/SKILL.md` + `skills/lumen/reusing-answers.md` |
-| Check data against rules, or test code that calls Lumen's `ask` without a live LLM | `skills/lumen/SKILL.md` + `skills/lumen/checking-and-testing-data.md` |
+| Write pytest tests for code that calls Lumen's `ask` / `lumen.ai` without a live LLM in CI (record and replay), or check data against rules | `skills/lumen/SKILL.md` + `skills/lumen/checking-and-testing-data.md` |
 | Ask spatial or gridded questions with Lumen (GeoDataFrames, GeoParquet, xarray, Overture, ERA5) | `skills/lumen/SKILL.md` + `skills/lumen/asking-about-maps-and-grids.md` |
 
 ## Skill Map
