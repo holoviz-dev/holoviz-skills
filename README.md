@@ -72,7 +72,7 @@ holoviz-skills install --mistral-vibe  # .vibe/skills/
 
 ## Evaluation
 
-The `scripts/` directory contains an automated evaluation system that measures whether the skills improve Copilot's code generation quality. See [`scripts/README.md`](scripts/README.md) for details.
+The `scripts/` directory contains an automated evaluation system that measures whether the skills improve the Model's code generation quality. See [`scripts/README.md`](scripts/README.md) for details.
 
 CI support for evaluations is also available through the `Eval Command` GitHub Actions workflow, including a maintainer `@run-eval` pull request comment trigger. See the GitHub Actions section in [`scripts/README.md`](scripts/README.md#github-actions-eval-command).
 

@@ -394,7 +394,8 @@ class HistoricalDashboard(pn.viewable.Viewer):
             columns="condition",
             values="execution_success",
             aggfunc="first",
-        )
+            dropna=False,  # don't drop null rows
+        ).reindex(columns=list(_CONDITIONS))
         forward = piv["with_skills"].fillna(False).astype(bool)
         baseline = piv["without_skills"].fillna(False).astype(bool)
         effect = pd.Series(0, index=piv.index, dtype=int)
